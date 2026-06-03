@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guide Trading Bot — WhaleWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <style>
+    .sections-stack { display: flex; flex-direction: column; gap: var(--s-6); padding-bottom: var(--s-9); }
+    .read-bar {
+      height: 2px; width: 0%;
+      background: linear-gradient(90deg, var(--green), var(--cyan), var(--c-mm));
+      position: absolute; bottom: -1px; left: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="ocean-rays" aria-hidden="true"></div>
+<div class="bubbles" aria-hidden="true">
+  <div class="bubble" style="left:8%;bottom:-5%;width:12px;height:12px;--d:9px;animation-duration:24s"></div>
+  <div class="bubble" style="left:24%;bottom:-5%;width:7px;height:7px;--d:-6px;animation-duration:18s;animation-delay:3s"></div>
+  <div class="bubble" style="left:48%;bottom:-5%;width:16px;height:16px;--d:12px;animation-duration:28s;animation-delay:1s"></div>
+  <div class="bubble" style="left:72%;bottom:-5%;width:9px;height:9px;--d:-8px;animation-duration:22s;animation-delay:6s"></div>
+  <div class="bubble" style="left:90%;bottom:-5%;width:11px;height:11px;--d:8px;animation-duration:20s;animation-delay:4s"></div>
+</div>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · ethereum</span>
+      </span>
+    </a>
+    <span class="live-chip">BOT · guide</span>
+    <nav class="nav" style="margin-left:auto">
+      <a href="/"      class="nav-link">🏠 Dashboard</a>
+      <a href="/guide" class="nav-link">📘 Guide</a>
+      <a href="/bot"   class="nav-link is-active">🤖 Bot</a>
+      <a href="/why"   class="nav-link">🌊 Why</a>
+    </nav>
+  </div>
+  <div id="read-progress" class="read-bar"></div>
+</header>
+<div class="site-header-spacer"></div>
+
+<!-- ═══ STICKY SECTION NAV ═══ -->
+<nav id="sticky-nav" class="sticky-nav" aria-label="Sections">
+  <a href="#s01" class="sticky-nav-link section--purple" data-section="s01">01·Stratégie</a>
+  <a href="#s02" class="sticky-nav-link section--blue"   data-section="s02">02·API</a>
+  <a href="#s03" class="sticky-nav-link section--green"  data-section="s03">03·Backtesting</a>
+  <a href="#s04" class="sticky-nav-link section--yellow" data-section="s04">04·Risque</a>
+  <a href="#s05" class="sticky-nav-link section--red"    data-section="s05">05·Avantages</a>
+  <a href="#s06" class="sticky-nav-link section--cyan"   data-section="s06">06·Supervision</a>
+  <a href="#s07" class="sticky-nav-link section--purple" data-section="s07">07·Optimisation</a>
+  <a href="#s08" class="sticky-nav-link section--neutral" data-section="s08">08·Outils</a>
+</nav>
+
+<main>
+<div class="container-prose" style="padding-top:var(--s-6)">
+
+  <!-- HERO STRIP -->
+  <section class="hero-strip" id="hero">
+    <div>
+      <h1 class="hero-strip-title">Automatiser <span class="accent">sa stratégie</span> crypto</h1>
+      <p class="hero-strip-sub">De la conception à la prod — 8 piliers pour construire un bot rentable, sécurisé et supervisé en continu.</p>
+    </div>
+    <div class="hero-strip-whale" aria-hidden="true">🤖</div>
+  </section>
+
+  <div class="toc-pills mb-6">
+    <a href="#s01" class="toc-pill section--purple">01 · Stratégie</a>
+    <a href="#s02" class="toc-pill section--blue">02 · API</a>
+    <a href="#s03" class="toc-pill section--green">03 · Backtesting</a>
+    <a href="#s04" class="toc-pill section--yellow">04 · Risque</a>
+    <a href="#s05" class="toc-pill section--red">05 · Avantages</a>
+    <a href="#s06" class="toc-pill section--cyan">06 · Supervision</a>
+    <a href="#s07" class="toc-pill section--purple">07 · Optimisation</a>
+    <a href="#s08" class="toc-pill section--neutral">08 · Outils</a>
+  </div>
+
+  <div class="sections-stack">
+
+    <!-- ═══ 01 — STRATÉGIE ═══ -->
+    <section id="s01" class="section-card section--purple fade-up">
+      <div class="section-card-header">
+        <span class="section-num">01 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Choisir sa stratégie</h2>
+          <div class="section-tags">
+            <span class="section-tag">Scalping</span>
+            <span class="section-tag">Grid trading</span>
+            <span class="section-tag">DCA</span>
+            <span class="section-tag">Arbitrage</span>
+            <span class="section-tag">Market making</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="strat-row">
+          <div class="strat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <div class="strat-info">
+            <div class="strat-name">Scalping</div>
+            <div class="strat-desc">Trades ultra-rapides (secondes à minutes) sur de petits mouvements de prix. Nécessite une connexion bas-latence et des frais très faibles. Convient aux paires à fort volume comme BTC/USDT.</div>
+          </div>
+          <span class="strat-badge">Haute fréquence</span>
+        </div>
+        <div class="strat-row">
+          <div class="strat-icon" style="background:rgba(59,166,255,.10);color:var(--blue)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
+          <div class="strat-info">
+            <div class="strat-name">Grid Trading</div>
+            <div class="strat-desc">Place des ordres d'achat et de vente à intervalles réguliers (la « grille »). Performe bien en marché latéral. Le bot achète bas et vend haut automatiquement dans la range définie.</div>
+          </div>
+          <span class="strat-badge" style="background:rgba(59,166,255,.10);color:var(--blue);border-color:rgba(59,166,255,.22)">Marché latéral</span>
+        </div>
+        <div class="strat-row">
+          <div class="strat-icon" style="background:rgba(46,212,168,.10);color:var(--green)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+          </div>
+          <div class="strat-info">
+            <div class="strat-name">DCA — Dollar Cost Averaging</div>
+            <div class="strat-desc">Achète une quantité fixe à intervalles réguliers, quel que soit le prix. Idéal pour l'accumulation long terme. Simple à implémenter, faible risque d'overfit.</div>
+          </div>
+          <span class="strat-badge" style="background:rgba(46,212,168,.10);color:var(--green);border-color:rgba(46,212,168,.22)">Long terme</span>
+        </div>
+        <div class="strat-row">
+          <div class="strat-icon" style="background:rgba(255,198,87,.10);color:var(--c-sc)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18l-2 13H5L3 6z"/><path d="M3 6V3h2l1 3"/></svg>
+          </div>
+          <div class="strat-info">
+            <div class="strat-name">Arbitrage</div>
+            <div class="strat-desc">Exploite les différences de prix entre exchanges (ex : BTC à $2 100 sur Binance, $2 102 sur Coinbase). Compétitif, nécessite capital important et exécution &lt; 100ms.</div>
+          </div>
+          <span class="strat-badge" style="background:rgba(255,198,87,.10);color:var(--c-sc);border-color:rgba(255,198,87,.22)">Multi-exchange</span>
+        </div>
+        <div class="strat-row">
+          <div class="strat-icon" style="background:rgba(255,107,135,.10);color:var(--c-mev)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
+          </div>
+          <div class="strat-info">
+            <div class="strat-name">Market Making</div>
+            <div class="strat-desc">Place simultanément un ordre d'achat et de vente autour du prix mid. Capture le spread. Requiert une gestion d'inventaire précise pour éviter de se retrouver « chargé » d'un côté.</div>
+          </div>
+          <span class="strat-badge" style="background:rgba(255,107,135,.10);color:var(--c-mev);border-color:rgba(255,107,135,.22)">Avancé</span>
+        </div>
+        <div class="alert alert--info mt-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Commence par <strong>une seule stratégie</strong>, maîtrise-la, puis diversifie. Le multi-stratégie non maîtrisé est la première cause d'échec.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 02 — API ═══ -->
+    <section id="s02" class="section-card section--blue fade-up">
+      <div class="section-card-header">
+        <span class="section-num">02 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Connexion API sécurisée</h2>
+          <div class="section-tags">
+            <span class="section-tag">Permissions restreintes</span>
+            <span class="section-tag">IP whitelist</span>
+            <span class="section-tag">Rotation des clés</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="grid-2">
+          <div class="info-card">
+            <h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Permissions à accorder
+            </h4>
+            <ul>
+              <li><strong style="color:var(--green)">Read</strong> — lecture du solde, positions, historique</li>
+              <li><strong style="color:var(--green)">Trade</strong> — créer et annuler des ordres</li>
+              <li><strong style="color:var(--c-sc)">Futures</strong> — seulement si ta stratégie l'exige</li>
+            </ul>
+          </div>
+          <div class="info-card" style="--c-accent: var(--c-mev); --c-accent-bg: rgba(255,107,135,.06); --c-accent-border: rgba(255,107,135,.22)">
+            <h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Permissions à ne JAMAIS accorder
+            </h4>
+            <ul>
+              <li><strong style="color:var(--c-mev)">Withdraw</strong> — permet de vider le compte</li>
+              <li><strong style="color:var(--c-mev)">Transfer</strong> — déplacement entre wallets</li>
+              <li><strong style="color:var(--c-mev)">Sub-account</strong> — inutile pour un bot simple</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="check-list">
+          <div class="check-item">
+            <div class="check-dot">1</div>
+            <div class="check-text"><strong>IP Whitelist</strong> — Renseigne uniquement l'IP de ton serveur. Si la clé est volée, elle est inutilisable depuis un autre IP.</div>
+          </div>
+          <div class="check-item">
+            <div class="check-dot">2</div>
+            <div class="check-text"><strong>Variables d'environnement</strong> — Ne jamais hardcoder les clés dans le code. Utilise <code class="mono" style="color:var(--blue)">.env</code> + <code class="mono" style="color:var(--blue)">python-dotenv</code> ou des secrets Docker.</div>
+          </div>
+          <div class="check-item">
+            <div class="check-dot">3</div>
+            <div class="check-text"><strong>Rotation tous les 90j</strong> — Révoque et régénère les clés régulièrement. Documente les dates de rotation.</div>
+          </div>
+          <div class="check-item">
+            <div class="check-dot">4</div>
+            <div class="check-text"><strong>Clé dédiée par bot</strong> — Un bot = une clé API. Facilite la révocation ciblée sans couper tous les bots.</div>
+          </div>
+        </div>
+        <div class="code-block">
+          <pre><span class="cm"># .env — ne jamais commit ce fichier</span>
+<span class="kw">API_KEY</span>=<span class="st">"ta_clé_ici"</span>
+<span class="kw">API_SECRET</span>=<span class="st">"ton_secret_ici"</span>
+<span class="kw">EXCHANGE</span>=<span class="st">"binance"</span>
+
+<span class="cm"># main.py</span>
+<span class="kw">import</span> ccxt, os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+load_dotenv()
+exchange = ccxt.binance({<span class="st">'apiKey'</span>: os.getenv(<span class="st">'API_KEY'</span>), <span class="st">'secret'</span>: os.getenv(<span class="st">'API_SECRET'</span>)})</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 03 — BACKTESTING ═══ -->
+    <section id="s03" class="section-card section--green fade-up">
+      <div class="section-card-header">
+        <span class="section-num">03 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Backtesting &amp; validation</h2>
+          <div class="section-tags">
+            <span class="section-tag">Données historiques</span>
+            <span class="section-tag">Bull / Bear / Latéral</span>
+            <span class="section-tag">Anti-overfitting</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="metric-grid">
+          <div class="metric-box">
+            <div class="m-val" style="color:var(--green)">Sharpe</div>
+            <div class="m-lbl">Ratio risque/rendement<br>cible &gt; 1.5</div>
+          </div>
+          <div class="metric-box">
+            <div class="m-val" style="color:var(--c-sc)">Max DD</div>
+            <div class="m-lbl">Drawdown maximum<br>tolérer &lt; 20%</div>
+          </div>
+          <div class="metric-box">
+            <div class="m-val" style="color:var(--blue)">Win %</div>
+            <div class="m-lbl">Taux de trades gagnants<br>&gt; 50%</div>
+          </div>
+        </div>
+        <div class="grid-2 mt-5">
+          <div class="info-card">
+            <h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Sources de données
+            </h4>
+            <ul>
+              <li>CCXT historique OHLCV (binance, bybit…)</li>
+              <li>CryptoCompare API — gratuit jusqu'à 2000 points</li>
+              <li>Kaiko / CoinAPI — données tick haute qualité (payant)</li>
+              <li>CSV Binance archive — données 1min depuis 2017</li>
+            </ul>
+          </div>
+          <div class="info-card">
+            <h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+              Méthode walk-forward
+            </h4>
+            <ul>
+              <li>Train sur 70% des données (optimisation paramètres)</li>
+              <li>Validate sur 15% (ajustement)</li>
+              <li>Test final sur 15% restants (jamais vu)</li>
+              <li>Répéter sur différentes périodes de marché</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="check-list">
+          <div class="check-item">
+            <div class="check-dot">!</div>
+            <div class="check-text"><strong>Tester sur bull + bear + latéral</strong> — Une stratégie qui marche uniquement en bull 2020-2021 ne vaut rien. Teste sur 2018 (bear), 2019-2020 (latéral) et 2020-2021 (bull).</div>
+          </div>
+          <div class="check-item">
+            <div class="check-dot">!</div>
+            <div class="check-text"><strong>Inclure les frais</strong> — Un scalper avec 0.1% de frais sur 10 trades/jour perd 1%/jour de capital si la stratégie est à peine profitable. Simulation sans frais = inutile.</div>
+          </div>
+          <div class="check-item">
+            <div class="check-dot">!</div>
+            <div class="check-text"><strong>Slippage réaliste</strong> — Ajoute 0.05–0.2% de slippage simulé par ordre selon la liquidité de la paire. Les backtests idéaux ne reflètent pas la réalité.</div>
+          </div>
+        </div>
+        <div class="alert alert--warn mt-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span><strong>Overfitting :</strong> Si tes paramètres donnent 95% de win rate sur le backtest, c'est trop beau. Ton bot a « mémorisé » les données historiques. Simplifie et reteste.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 04 — RISQUE ═══ -->
+    <section id="s04" class="section-card section--yellow fade-up">
+      <div class="section-card-header">
+        <span class="section-num">04 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Gestion du risque</h2>
+          <div class="section-tags">
+            <span class="section-tag">Stop-loss dur</span>
+            <span class="section-tag">Taille fixe par trade</span>
+            <span class="section-tag">Max drawdown</span>
+            <span class="section-tag">Circuit breaker</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="grid-3">
+          <div class="info-card">
+            <h4>Stop-loss dur</h4>
+            <p>Ordre de vente automatique placé à l'ouverture de chaque position. Non négociable — jamais désactivé, jamais déplacé vers le bas « en espérant ».</p>
+          </div>
+          <div class="info-card">
+            <h4>Taille de position</h4>
+            <p>Risque max par trade = 1–2% du capital. Calcul : <code class="mono" style="color:var(--c-sc)">taille = (capital × 0.01) / (prix_entrée - stop_loss)</code></p>
+          </div>
+          <div class="info-card">
+            <h4>Max drawdown journalier</h4>
+            <p>Si le bot perd X% dans la journée, il s'arrête automatiquement jusqu'au lendemain. Évite les « death spirals » en cas de bug ou marché chaotique.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="flex flex-col gap-1 mb-3">
+          <div class="kv-row"><span class="k">Risque par trade</span><span class="v" style="color:var(--c-sc)">≤ 1% du capital</span></div>
+          <div class="kv-row"><span class="k">Max drawdown journalier</span><span class="v" style="color:var(--c-sc)">≤ 5% du capital</span></div>
+          <div class="kv-row"><span class="k">Max drawdown total (circuit breaker)</span><span class="v" style="color:var(--c-mev)">≤ 15% → arrêt complet</span></div>
+          <div class="kv-row"><span class="k">Positions simultanées max</span><span class="v" style="color:var(--c-sc)">3–5 selon capital</span></div>
+          <div class="kv-row"><span class="k">Ratio Reward/Risk minimum</span><span class="v" style="color:var(--green)">≥ 1.5 : 1</span></div>
+        </div>
+        <div class="alert alert--danger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Le <strong>circuit breaker</strong> est la règle la plus importante. Un bot en panne qui continue à trader peut vider un compte en quelques heures. Code-le en priorité absolue.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 05 — AVANTAGES ═══ -->
+    <section id="s05" class="section-card section--red fade-up">
+      <div class="section-card-header">
+        <span class="section-num">05 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Bénéfices : 24/7 sans émotion</h2>
+          <div class="section-tags">
+            <span class="section-tag">Pas de FOMO</span>
+            <span class="section-tag">Exécution instantanée</span>
+            <span class="section-tag">Marché non-stop</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="grid-2">
+          <div>
+            <div class="strat-row">
+              <div class="strat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h4l5 5V6L9 11z"/></svg></div>
+              <div class="strat-info">
+                <div class="strat-name">Zéro émotion</div>
+                <div class="strat-desc">Le bot exécute les règles définies, sans peur ni avidité. Pas de FOMO sur une pompe, pas de panique lors d'un dump. La stratégie est appliquée à 100%.</div>
+              </div>
+            </div>
+            <div class="strat-row">
+              <div class="strat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div class="strat-info">
+                <div class="strat-name">Exécution &lt; 100ms</div>
+                <div class="strat-desc">Un humain réagit en ~200–500ms. Un bot bien codé exécute un ordre en 50–100ms. Sur certaines stratégies, cette vitesse est décisive.</div>
+              </div>
+            </div>
+            <div class="strat-row">
+              <div class="strat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg></div>
+              <div class="strat-info">
+                <div class="strat-name">24h / 7j / 365j</div>
+                <div class="strat-desc">Le marché crypto ne ferme jamais. Un bot peut capturer des opportunités à 3h du matin ou le dimanche. L'humain ne peut pas.</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="strat-row">
+              <div class="strat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+              <div class="strat-info">
+                <div class="strat-name">Discipline absolue</div>
+                <div class="strat-desc">Le bot ne « skip » jamais un signal par fatigue. Il ne modifie pas ses stops « parce que ça va remonter ». La stratégie est toujours appliquée à la lettre.</div>
+              </div>
+            </div>
+            <div class="strat-row">
+              <div class="strat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+              <div class="strat-info">
+                <div class="strat-name">Backtestable &amp; améliorable</div>
+                <div class="strat-desc">Contrairement au trading manuel, chaque décision est loggée et reproductible. On peut mesurer exactement l'impact d'un changement de paramètre.</div>
+              </div>
+            </div>
+            <div class="strat-row">
+              <div class="strat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
+              <div class="strat-info">
+                <div class="strat-name">Multi-paires simultané</div>
+                <div class="strat-desc">Un humain peut gérer 2–3 paires en parallèle. Un bot peut en gérer 50+ sans dégradation de performance ou d'attention.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert--success mt-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>L'avantage principal d'un bot n'est pas d'être plus malin qu'un humain — c'est d'être <strong>parfaitement cohérent</strong> sur des milliers d'itérations.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 06 — SUPERVISION ═══ -->
+    <section id="s06" class="section-card section--cyan fade-up">
+      <div class="section-card-header">
+        <span class="section-num">06 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Supervision &amp; alertes</h2>
+          <div class="section-tags">
+            <span class="section-tag">Logs temps réel</span>
+            <span class="section-tag">Telegram / Email</span>
+            <span class="section-tag">Kill switch</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="grid-2">
+          <div class="info-card">
+            <h4>Quoi logger</h4>
+            <ul>
+              <li>Chaque ordre passé (prix, taille, timestamp)</li>
+              <li>Chaque signal généré (même non exécuté)</li>
+              <li>Erreurs API et reconnexions</li>
+              <li>Solde toutes les heures</li>
+              <li>Drawdown courant en temps réel</li>
+            </ul>
+          </div>
+          <div class="info-card">
+            <h4>Alertes à configurer</h4>
+            <ul>
+              <li>Trade exécuté → notification immédiate</li>
+              <li>Drawdown &gt; 5% → alerte warning</li>
+              <li>Circuit breaker déclenché → alerte critique</li>
+              <li>Bot inactif depuis &gt; 10min → alerte santé</li>
+              <li>Erreur API répétée → alerte urgente</li>
+            </ul>
+          </div>
+        </div>
+        <div class="code-block">
+          <pre><span class="cm"># Alerte Telegram simple</span>
+<span class="kw">import</span> requests
+
+<span class="kw">def</span> alert(msg):
+    url = <span class="st">f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"</span>
+    requests.post(url, data={<span class="st">'chat_id'</span>: CHAT_ID, <span class="st">'text'</span>: msg, <span class="st">'parse_mode'</span>: <span class="st">'HTML'</span>})
+
+<span class="cm"># Utilisation</span>
+alert(<span class="st">f"BUY BTC/USDT @ $</span>{price}<span class="st"> — size: </span>{size}<span class="st">"</span>)
+alert(<span class="st">f"CIRCUIT BREAKER — DD: </span>{drawdown:.1f}<span class="st">%"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+        <div class="check-list">
+          <div class="check-item">
+            <div class="check-dot">K</div>
+            <div class="check-text"><strong>Kill switch manuel</strong> — Un endpoint ou commande (ex : <code class="mono" style="color:var(--cyan)">/stop</code> via Telegram) qui coupe le bot immédiatement et annule tous les ordres ouverts. Indispensable.</div>
+          </div>
+          <div class="check-item">
+            <div class="check-dot">H</div>
+            <div class="check-text"><strong>Health check</strong> — Le bot envoie un « je suis vivant » toutes les 5 minutes. Si tu ne reçois pas ce ping, une alerte se déclenche. Utilise <code class="mono" style="color:var(--cyan)">healthchecks.io</code> (gratuit).</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 07 — OPTIMISATION ═══ -->
+    <section id="s07" class="section-card section--purple fade-up">
+      <div class="section-card-header">
+        <span class="section-num">07 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Optimisation continue</h2>
+          <div class="section-tags">
+            <span class="section-tag">Paper trading</span>
+            <span class="section-tag">A/B test</span>
+            <span class="section-tag">Ajustement paramètres</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="check-list">
+          <div class="check-item"><div class="check-dot">1</div><div class="check-text"><strong>Paper trading d'abord</strong> — Tourne le bot en simulation avec un capital fictif pendant au moins 2–4 semaines. Compare les résultats avec le backtest. Si divergence importante, trouve pourquoi avant d'aller live.</div></div>
+          <div class="check-item"><div class="check-dot">2</div><div class="check-text"><strong>Capital minimal au lancement</strong> — Lance avec 10–20% du capital cible. Augmente progressivement au fil des semaines si les résultats sont conformes au backtest.</div></div>
+          <div class="check-item"><div class="check-dot">3</div><div class="check-text"><strong>A/B test de stratégies</strong> — Fais tourner deux versions du bot en parallèle (avec des capitaux distincts). Comparer sur 30+ trades pour valider statistiquement un changement de paramètre.</div></div>
+          <div class="check-item"><div class="check-dot">4</div><div class="check-text"><strong>Review hebdomadaire</strong> — Analyse chaque semaine : trades gagnants vs perdants, heures de performance, paires les plus profitables. Ajuste les paramètres une variable à la fois.</div></div>
+          <div class="check-item"><div class="check-dot">5</div><div class="check-text"><strong>Ré-optimiser en cas de regime change</strong> — Une stratégie calibrée pour un marché bull ne performe pas en bear. Détecte les changements de régime (volatilité ATR, corrélation aux BTC movements) et adapte.</div></div>
+        </div>
+        <div class="alert alert--info mt-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Ne change <strong>jamais deux paramètres</strong> en même temps. Tu ne sauras jamais lequel a fait la différence. Une variable à la fois, avec suffisamment de données pour conclure.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 08 — OUTILS ═══ -->
+    <section id="s08" class="section-card section--neutral fade-up">
+      <div class="section-card-header">
+        <span class="section-num">08 / 08</span>
+        <div class="section-title-block">
+          <h2 class="section-title">Outils &amp; frameworks</h2>
+          <div class="section-tags">
+            <span class="section-tag">CCXT</span>
+            <span class="section-tag">Freqtrade</span>
+            <span class="section-tag">Hummingbot</span>
+            <span class="section-tag">Python</span>
+            <span class="section-tag">Serveur bas-latence</span>
+          </div>
+        </div>
+        <span class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </span>
+      </div>
+      <div class="section-card-body">
+        <div class="grid-2">
+          <div class="tool-card">
+            <div class="tool-name">CCXT</div>
+            <div class="tool-tag">Librairie Python / JS / PHP</div>
+            <div class="tool-desc">Connecte ton bot à 100+ exchanges avec une API unifiée. Gère les ordres, l'historique, le solde. Standard de l'industrie.</div>
+            <div class="tool-pros">
+              <div class="tool-pro">100+ exchanges supportés (Binance, Bybit, OKX…)</div>
+              <div class="tool-pro">API unifiée — même code sur tous les exchanges</div>
+              <div class="tool-pro">Open source, communauté active</div>
+            </div>
+          </div>
+          <div class="tool-card">
+            <div class="tool-name">Freqtrade</div>
+            <div class="tool-tag">Framework complet Python</div>
+            <div class="tool-desc">Framework open source tout-en-un : backtesting, optimisation, paper trading, live trading. Idéal pour les stratégies basées sur des indicateurs techniques.</div>
+            <div class="tool-pros">
+              <div class="tool-pro">Backtesting intégré avec graphiques</div>
+              <div class="tool-pro">Hyperopt — optimisation automatique des paramètres</div>
+              <div class="tool-pro">Interface web de monitoring incluse</div>
+            </div>
+          </div>
+          <div class="tool-card">
+            <div class="tool-name">Hummingbot</div>
+            <div class="tool-tag">Market making &amp; arbitrage</div>
+            <div class="tool-desc">Spécialisé market making et arbitrage. Performant sur les DEX et CEX. Interface CLI intuitive. Adapté aux stratégies haute fréquence.</div>
+            <div class="tool-pros">
+              <div class="tool-pro">Stratégies market making prêtes à l'emploi</div>
+              <div class="tool-pro">Support DEX (Uniswap, dYdX) et CEX</div>
+              <div class="tool-pro">Backtesting temps réel avec historique CLOB</div>
+            </div>
+          </div>
+          <div class="tool-card">
+            <div class="tool-name">Infrastructure serveur</div>
+            <div class="tool-tag">VPS / Cloud</div>
+            <div class="tool-desc">Le bot doit tourner sur un serveur dédié, pas sur ton PC. Uptime garanti, latence réduite, et pas de coupures inattendues.</div>
+            <div class="tool-pros">
+              <div class="tool-pro">VPS proche exchange : Vultr Tokyo / Singapore (~5ms)</div>
+              <div class="tool-pro">Hetzner CX11 (~4€/mois) — bon rapport qualité/prix</div>
+              <div class="tool-pro">Docker + systemd pour redémarrage automatique</div>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="grid-3">
+          <div class="info-card">
+            <h4>Stack recommandée</h4>
+            <ul>
+              <li>Python 3.11 + CCXT</li>
+              <li>pandas + ta-lib (indicateurs)</li>
+              <li>SQLite (logs trades)</li>
+              <li>python-telegram-bot (alertes)</li>
+            </ul>
+          </div>
+          <div class="info-card">
+            <h4>Déploiement</h4>
+            <ul>
+              <li>Docker container isolé</li>
+              <li>systemd restart automatique</li>
+              <li>Cron backup DB toutes les heures</li>
+              <li>GitHub Actions CI/CD optionnel</li>
+            </ul>
+          </div>
+          <div class="info-card">
+            <h4>Monitoring</h4>
+            <ul>
+              <li>healthchecks.io (gratuit)</li>
+              <li>Grafana + InfluxDB (métriques)</li>
+              <li>Bot Telegram custom</li>
+              <li>Uptime Robot (ping HTTP)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="alert alert--success mt-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Pour débuter : <strong>CCXT + Freqtrade</strong> sur un VPS Hetzner. Stack simple, documentée, et suffisante pour aller profitable rapidement.</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</main>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12c0-3 2-5 5-5s5 2 5 5"/>
+          <path d="M13 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5-5-2-5-5"/>
+          <path d="M3 12c0 3 2 5 5 5s5-2 5-5"/>
+        </svg>
+      </span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Ethereum On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"      class="nav-link">Dashboard</a>
+      <a href="/guide" class="nav-link">Guide</a>
+      <a href="/bot"   class="nav-link">Bot</a>
+      <a href="/why"   class="nav-link">Why</a>
+    </nav>
+    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+  </div>
+</footer>
+
+<button id="back-top" class="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Retour en haut" aria-label="Retour en haut">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+
+<script>
+  const prog = document.getElementById('read-progress');
+  const stickyNav = document.getElementById('sticky-nav');
+  const backTop = document.getElementById('back-top');
+
+  window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+    prog.style.width = pct + '%';
+    backTop.classList.toggle('is-visible', window.scrollY > 400);
+  }, { passive: true });
+
+  // Sticky nav (after hero)
+  const heroObs = new IntersectionObserver(([e]) => {
+    stickyNav.classList.toggle('is-visible', !e.isIntersecting);
+  }, { threshold: 0 });
+  heroObs.observe(document.getElementById('hero'));
+
+  // Section highlight
+  const sectionObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      const pill = document.querySelector(`.sticky-nav-link[data-section="${e.target.id}"]`);
+      if (pill) pill.classList.toggle('is-active', e.isIntersecting);
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('section[id^="s0"]').forEach(s => sectionObs.observe(s));
+
+  // Fade in
+  const fadeObs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('is-visible'); });
+  }, { threshold: 0.06 });
+  document.querySelectorAll('.fade-up').forEach(el => fadeObs.observe(el));
+</script>
+</body>
+</html>

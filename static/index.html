@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhaleWatch — ETH On-Chain Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* Page-specific overrides */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-4); }
+    @media (max-width: 980px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .stats-grid { grid-template-columns: 1fr; } }
+
+    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--s-5); }
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .patterns-grid { display: grid; grid-template-columns: 3fr 2fr; gap: var(--s-5); }
+    @media (max-width: 980px) { .patterns-grid { grid-template-columns: 1fr; } }
+
+    .insight-row {
+      display: flex; align-items: flex-start; gap: var(--s-3);
+      padding: var(--s-4);
+      border-radius: var(--radius-md);
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--c-accent, var(--cyan));
+      margin-bottom: var(--s-2);
+    }
+    .insight-icon {
+      width: 32px; height: 32px;
+      display: grid; place-items: center;
+      border-radius: 8px;
+      background: var(--c-accent-bg, rgba(75,212,255,.08));
+      color: var(--c-accent, var(--cyan));
+      flex-shrink: 0;
+    }
+    .insight-icon svg { width: 16px; height: 16px; }
+    .insight-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--c-accent, var(--cyan));
+    }
+    .insight-title {
+      font-size: var(--fs-md); font-weight: 600; color: #fff;
+      line-height: 1.4; margin-top: 2px;
+    }
+    .insight-detail {
+      font-size: var(--fs-sm); color: var(--muted);
+      line-height: var(--lh-normal); margin-top: 2px;
+    }
+    .insight-row--blue   { --c-accent: var(--blue);   --c-accent-bg: rgba(59,166,255,.10); }
+    .insight-row--green  { --c-accent: var(--green);  --c-accent-bg: rgba(46,212,168,.10); }
+    .insight-row--red    { --c-accent: var(--c-mev);  --c-accent-bg: rgba(255,107,135,.10); }
+    .insight-row--yellow { --c-accent: var(--c-sc);   --c-accent-bg: rgba(255,198,87,.10); }
+    .insight-row--purple { --c-accent: var(--c-mm);   --c-accent-bg: rgba(182,117,238,.10); }
+    .insight-row--cyan   { --c-accent: var(--cyan);   --c-accent-bg: rgba(75,212,255,.10); }
+
+    /* Trading zones */
+    .zone-card {
+      padding: var(--s-4);
+      border-radius: var(--radius-md);
+      background: rgba(46,212,168,.04);
+      border: 1px solid rgba(46,212,168,.18);
+    }
+    .zone-card--sell {
+      background: rgba(255,107,135,.04);
+      border-color: rgba(255,107,135,.18);
+    }
+    .zone-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: var(--s-3); gap: var(--s-2); flex-wrap: wrap;
+    }
+    .zone-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: .10em;
+      text-transform: uppercase; color: var(--green);
+    }
+    .zone-card--sell .zone-badge { color: var(--c-mev); }
+    .zone-trades { font-size: 10px; color: var(--muted); font-family: 'Fira Code', monospace; }
+    .zone-prices { display: flex; flex-direction: column; gap: 3px; margin-bottom: var(--s-3); }
+    .zone-price-row {
+      display: flex; justify-content: space-between;
+      padding: 5px var(--s-3);
+      border-radius: 5px;
+      font-size: var(--fs-sm);
+      color: var(--muted);
+    }
+    .zone-price-row.band { background: rgba(46,212,168,.06); color: #a0d4bf; }
+    .zone-card--sell .zone-price-row.band { background: rgba(255,107,135,.06); color: #e8b3c0; }
+    .zone-price-row.median {
+      background: rgba(46,212,168,.14);
+      color: var(--green); font-weight: 700;
+      box-shadow: inset 0 0 0 1px rgba(46,212,168,.28);
+    }
+    .zone-card--sell .zone-price-row.median {
+      background: rgba(255,107,135,.14);
+      color: var(--c-mev);
+      box-shadow: inset 0 0 0 1px rgba(255,107,135,.28);
+    }
+    .zone-action {
+      padding: var(--s-2) var(--s-3);
+      border-radius: 6px;
+      font-size: var(--fs-sm);
+      text-align: center;
+      background: rgba(0,0,0,.22);
+      border: 1px dashed rgba(46,212,168,.28);
+      color: #a0d4bf;
+    }
+    .zone-card--sell .zone-action { border-color: rgba(255,107,135,.28); color: #e8b3c0; }
+
+    /* Price ladder */
+    .price-ladder { position: relative; height: 78px; padding: 14px 0; }
+    .price-ladder-axis {
+      position: absolute; left: 5%; right: 5%; top: 50%;
+      height: 1px; background: var(--border-2); transform: translateY(-50%); z-index: 1;
+    }
+    .price-ladder-band {
+      position: absolute; height: 8px; border-radius: 4px; z-index: 2;
+    }
+    .price-ladder-buy {
+      top: calc(50% - 12px);
+      background: rgba(46,212,168,.55);
+    }
+    .price-ladder-sell {
+      top: calc(50% + 4px);
+      background: rgba(255,107,135,.55);
+    }
+    .price-ladder-tick {
+      position: absolute; width: 1px; height: 5px;
+      background: rgba(255,255,255,.4); z-index: 3;
+      transform: translateX(-50%);
+    }
+    .price-ladder-tick.buy  { top: calc(50% - 12px); height: 8px; }
+    .price-ladder-tick.sell { top: calc(50% + 4px);  height: 8px; }
+    .price-ladder-current {
+      position: absolute; top: 4px; bottom: 4px;
+      width: 2px; background: var(--c-sc);
+      transform: translateX(-50%); z-index: 5;
+    }
+    .price-ladder-current::before {
+      content: attr(data-price);
+      position: absolute; bottom: 100%; left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px; font-family: 'Fira Code', monospace; color: var(--c-sc);
+      white-space: nowrap; margin-bottom: 2px; font-weight: 700;
+      background: var(--bg); padding: 1px 5px;
+      border-radius: 3px; border: 1px solid rgba(255,198,87,.30);
+    }
+    .price-ladder-current::after {
+      content: ''; position: absolute; top: 50%; left: -3px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--c-sc);
+      transform: translateY(-50%);
+    }
+    .price-ladder-mlabel {
+      position: absolute;
+      font-size: 9.5px; font-family: 'Fira Code', monospace;
+      white-space: nowrap; font-weight: 700;
+      transform: translateX(-50%); z-index: 4;
+    }
+    .price-ladder-mlabel.buy  { top: 0; color: var(--green); }
+    .price-ladder-mlabel.sell { bottom: 0; color: var(--c-mev); }
+
+    /* Hourly heatmap bar */
+    .hour-bar {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end;
+      gap: 2px; flex: 1; min-width: 0; height: 60px;
+    }
+    .hour-bar-fill {
+      width: 100%; border-radius: 2px 2px 0 0;
+      background: rgba(75, 212, 255, .25);
+    }
+    .hour-bar-label { font-size: 9px; color: var(--muted-2); white-space: nowrap; }
+
+    /* Insight signal count badge */
+    .signal-count {
+      font-size: var(--fs-xs);
+      font-family: 'Fira Code', monospace;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(75,212,255,.10);
+      color: var(--cyan);
+      border: 1px solid rgba(75,212,255,.25);
+    }
+
+    /* Sentiment gauge */
+    .sentiment {
+      display: inline-flex; align-items: center; gap: var(--s-2);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .sentiment-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Distribution rows */
+    .dist-row { font-size: var(--fs-sm); }
+    .dist-row + .dist-row { margin-top: var(--s-3); }
+    .dist-bar {
+      height: 5px; border-radius: 3px; background: var(--border);
+      overflow: hidden;
+    }
+    .dist-bar-fill { height: 100%; border-radius: 3px; }
+
+    /* Search empty state */
+    .empty-state {
+      padding: var(--s-8) var(--s-4);
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty-state svg { width: 32px; height: 32px; opacity: .4; margin-bottom: var(--s-3); }
+
+    /* Pagination */
+    .pagination {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: var(--s-3) var(--s-5);
+      border-top: 1px solid var(--border);
+      font-size: var(--fs-xs);
+      color: var(--muted);
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: var(--s-3) var(--s-5);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .toolbar .filters { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+
+    /* Progress line at top of page */
+    .progress-line {
+      height: 2px; width: 100%;
+      background: linear-gradient(90deg, var(--green), var(--cyan), var(--green));
+      background-size: 200% 100%;
+      animation: progress-shimmer 1.5s linear infinite;
+    }
+    @keyframes progress-shimmer { to { background-position: -200% 0; } }
+  </style>
+</head>
+<body>
+
+<!-- ═══ AMBIENT (rays + bubbles) ═════════════════════════════════════════════ -->
+<div class="ocean-rays" aria-hidden="true"></div>
+<div class="bubbles" aria-hidden="true">
+  <div class="bubble" style="left:6%;bottom:-5%;width:14px;height:14px;--d:10px;animation-duration:24s"></div>
+  <div class="bubble" style="left:18%;bottom:-5%;width:7px;height:7px;--d:-6px;animation-duration:18s;animation-delay:3s"></div>
+  <div class="bubble" style="left:32%;bottom:-5%;width:20px;height:20px;--d:14px;animation-duration:28s;animation-delay:1s"></div>
+  <div class="bubble" style="left:48%;bottom:-5%;width:9px;height:9px;--d:-9px;animation-duration:20s;animation-delay:6s"></div>
+  <div class="bubble" style="left:63%;bottom:-5%;width:16px;height:16px;--d:8px;animation-duration:26s;animation-delay:2s"></div>
+  <div class="bubble" style="left:78%;bottom:-5%;width:6px;height:6px;--d:-7px;animation-duration:16s;animation-delay:9s"></div>
+  <div class="bubble" style="left:90%;bottom:-5%;width:12px;height:12px;--d:11px;animation-duration:22s;animation-delay:4s"></div>
+</div>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · ethereum</span>
+      </span>
+    </a>
+
+    <span class="live-chip">LIVE · 7j</span>
+
+    <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
+      <a href="/"      class="nav-link is-active">🏠 Dashboard</a>
+      <a href="/why"   class="nav-link">🌊 Why</a>
+      <a href="/bot"   class="nav-link">🤖 Bot</a>
+      <a href="/guide" class="nav-link">📘 Guide</a>
+    </nav>
+
+    <!-- Center status (transient) -->
+    <div id="status-bar" class="hidden flex items-center gap-2" style="font-size:var(--fs-xs);color:var(--aqua)">
+      <svg class="spin" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="30 10" opacity=".4"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+      <span id="status-text">Sonar actif…</span>
+    </div>
+
+    <div class="header-prices">
+      <span><span class="lbl">Ξ</span><span class="val" id="eth-price">—</span></span>
+      <span><span class="lbl">₿</span><span class="val" id="btc-price">—</span></span>
+      <span class="flex items-center gap-2">
+        <span id="live-dot" class="live-dot hidden"></span>
+        <span class="updated" id="last-updated">—</span>
+        <span class="updated mono" id="refresh-countdown"></span>
+      </span>
+      <button id="btn-refresh" onclick="triggerRefresh()" class="btn btn-primary btn-sm">
+        <svg id="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15 0M20 15a9 9 0 0 1-15 0"/></svg>
+        Sonar
+      </button>
+    </div>
+  </div>
+  <div id="progress-line" class="progress-line hidden"></div>
+</header>
+<div class="site-header-spacer"></div>
+
+<main class="container" style="padding-top:var(--s-6);padding-bottom:var(--s-8)">
+
+  <!-- ═══ HERO STRIP ═══════════════════════════════════════════════════════ -->
+  <section class="hero-strip">
+    <div>
+      <h1 class="hero-strip-title">Plonge dans <span class="accent">l'océan des baleines</span></h1>
+      <p class="hero-strip-sub"><span id="hero-wallets">—</span> wallets suivis · <span id="hero-volume">—</span> de flux DEX · <span id="hero-mev">—</span> prédateurs MEV repérés</p>
+    </div>
+    <div class="hero-strip-whale" aria-hidden="true">🐳</div>
+  </section>
+
+  <!-- ═══ STAT CARDS ═══════════════════════════════════════════════════════ -->
+  <section class="stats-grid mb-5">
+
+    <div class="stat stat--green">
+      <svg id="spark-volume" viewBox="0 0 80 30" preserveAspectRatio="none" class="spark-overlay">
+        <defs><linearGradient id="sg-v" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5eff9e" stop-opacity=".6"/><stop offset="100%" stop-color="#5eff9e" stop-opacity="0"/></linearGradient></defs>
+        <polyline id="spark-volume-line" points="0,28 80,28" fill="none" stroke="#5eff9e" stroke-width="1.5"/>
+        <polygon id="spark-volume-fill" points="0,28 80,28 80,30 0,30" fill="url(#sg-v)"/>
+      </svg>
+      <div class="stat-head">
+        <span class="stat-label">Flux 7j</span>
+        <span class="stat-emoji" aria-hidden="true">🌊</span>
+      </div>
+      <p id="stat-volume" class="stat-value tabular-nums">—</p>
+      <p class="stat-sub">Volume DEX Ethereum</p>
+    </div>
+
+    <div class="stat stat--cyan">
+      <svg id="spark-total" viewBox="0 0 80 30" preserveAspectRatio="none" class="spark-overlay">
+        <defs><linearGradient id="sg-t" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e2ff" stop-opacity=".6"/><stop offset="100%" stop-color="#00e2ff" stop-opacity="0"/></linearGradient></defs>
+        <polyline id="spark-total-line" points="0,28 80,28" fill="none" stroke="#00e2ff" stroke-width="1.5"/>
+        <polygon id="spark-total-fill" points="0,28 80,28 80,30 0,30" fill="url(#sg-t)"/>
+      </svg>
+      <div class="stat-head">
+        <span class="stat-label">École</span>
+        <span class="stat-emoji" aria-hidden="true">🐠</span>
+      </div>
+      <p id="stat-total" class="stat-value tabular-nums">—</p>
+      <p id="stat-contracts-sub" class="stat-sub">— smart contracts</p>
+    </div>
+
+    <div class="stat stat--red">
+      <svg id="spark-mev" viewBox="0 0 80 30" preserveAspectRatio="none" class="spark-overlay">
+        <defs><linearGradient id="sg-m" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff7a9c" stop-opacity=".6"/><stop offset="100%" stop-color="#ff7a9c" stop-opacity="0"/></linearGradient></defs>
+        <polyline id="spark-mev-line" points="0,28 80,28" fill="none" stroke="#ff7a9c" stroke-width="1.5"/>
+        <polygon id="spark-mev-fill" points="0,28 80,28 80,30 0,30" fill="url(#sg-m)"/>
+      </svg>
+      <div class="stat-head">
+        <span class="stat-label">Prédateurs</span>
+        <span class="stat-emoji" aria-hidden="true">🦈</span>
+      </div>
+      <p id="stat-mev" class="stat-value tabular-nums">—</p>
+      <p id="stat-mev-vol" class="stat-sub">MEV vol cumulé</p>
+    </div>
+
+    <div class="stat stat--yellow">
+      <svg id="spark-eth" viewBox="0 0 80 30" preserveAspectRatio="none" class="spark-overlay">
+        <defs><linearGradient id="sg-e" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd970" stop-opacity=".6"/><stop offset="100%" stop-color="#ffd970" stop-opacity="0"/></linearGradient></defs>
+        <polyline id="spark-eth-line" points="0,28 80,28" fill="none" stroke="#ffd970" stroke-width="1.5"/>
+        <polygon id="spark-eth-fill" points="0,28 80,28 80,30 0,30" fill="url(#sg-e)"/>
+      </svg>
+      <div class="stat-head">
+        <span class="stat-label">Marée live</span>
+        <span class="stat-emoji" aria-hidden="true">💰</span>
+      </div>
+      <p id="stat-eth" class="stat-value tabular-nums" style="font-size:32px">—</p>
+      <p class="stat-sub">Ξ ETH · <span style="color:var(--gold)">₿ <span id="stat-btc" class="tabular-nums">—</span></span> · CoinGecko live</p>
+    </div>
+
+  </section>
+
+  <!-- ═══ TRADING ZONES ════════════════════════════════════════════════════ -->
+  <section class="card card-pad-lg hidden mb-5" id="zones-card">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <h2 class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Zones d'entrée &amp; sortie
+        <span class="live-dot"></span>
+      </h2>
+      <div class="flex items-center gap-2 fs-xs text-muted flex-wrap">
+        <span>Prix live ETH :</span>
+        <span id="zones-current" class="font-mono font-bold" style="color:var(--c-sc);padding:2px 8px;border-radius:5px;background:rgba(255,198,87,.08);border:1px solid rgba(255,198,87,.20)">—</span>
+        <span>sur <span id="zones-trade-count" class="font-mono text-cyan">—</span> trades whales</span>
+      </div>
+    </div>
+
+    <div id="zones-reco" class="alert alert--success mb-4">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div style="flex:1;min-width:0">
+        <p style="font-weight:700;color:#fff" id="zones-reco-title">Analyse en cours…</p>
+        <p style="font-size:var(--fs-sm);color:var(--muted);margin-top:2px" id="zones-reco-detail">En attente des données whales</p>
+      </div>
+      <span id="zones-reco-tag" class="tag" style="background:rgba(46,212,168,.15);color:var(--green);border-color:rgba(46,212,168,.30)">—</span>
+    </div>
+
+    <div class="mb-4" style="padding:var(--s-3);border-radius:var(--radius-md);background:var(--bg-soft);border:1px solid var(--border)">
+      <div class="flex items-center justify-between mb-3">
+        <span class="fs-xs text-muted uppercase tracking-wide font-semibold">Position du prix actuel</span>
+        <span class="fs-xs font-mono text-muted">échelle linéaire</span>
+      </div>
+      <div id="price-ladder" class="price-ladder"></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="zone-card">
+        <div class="zone-header">
+          <span class="zone-badge">Zone BUY · accumulation whale</span>
+          <span class="zone-trades" id="zone-buy-trades">—</span>
+        </div>
+        <div class="zone-prices">
+          <div class="zone-price-row"        ><span>P10 · très rare</span>     <span id="zone-buy-p10"    class="font-mono">—</span></div>
+          <div class="zone-price-row band"   ><span>P25 · idéal</span>         <span id="zone-buy-p25"    class="font-mono">—</span></div>
+          <div class="zone-price-row median" ><span>Médiane</span>             <span id="zone-buy-median" class="font-mono">—</span></div>
+          <div class="zone-price-row band"   ><span>P75 · tardif</span>        <span id="zone-buy-p75"    class="font-mono">—</span></div>
+          <div class="zone-price-row"        ><span>P90 · très tardif</span>   <span id="zone-buy-p90"    class="font-mono">—</span></div>
+        </div>
+        <div class="zone-action" id="zone-buy-action">—</div>
+      </div>
+      <div class="zone-card zone-card--sell">
+        <div class="zone-header">
+          <span class="zone-badge">Zone SELL · distribution whale</span>
+          <span class="zone-trades" id="zone-sell-trades">—</span>
+        </div>
+        <div class="zone-prices">
+          <div class="zone-price-row"        ><span>P10 · très tôt</span>      <span id="zone-sell-p10"    class="font-mono">—</span></div>
+          <div class="zone-price-row band"   ><span>P25 · tôt</span>           <span id="zone-sell-p25"    class="font-mono">—</span></div>
+          <div class="zone-price-row median" ><span>Médiane</span>             <span id="zone-sell-median" class="font-mono">—</span></div>
+          <div class="zone-price-row band"   ><span>P75 · idéal</span>         <span id="zone-sell-p75"    class="font-mono">—</span></div>
+          <div class="zone-price-row"        ><span>P90 · très rare</span>     <span id="zone-sell-p90"    class="font-mono">—</span></div>
+        </div>
+        <div class="zone-action" id="zone-sell-action">—</div>
+      </div>
+    </div>
+
+    <p class="fs-xs text-muted text-center mt-3">
+      Niveaux whales = médianes &amp; quantiles sur trades WETH des wallets ≥200 trades/7j · prix live ETH (jaune) se déplace contre ces zones
+    </p>
+  </section>
+
+  <!-- ═══ PATTERNS CARD ════════════════════════════════════════════════════ -->
+  <section class="card card-pad-lg mb-5" id="patterns-card">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <h2 class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Comportements de la Meute
+        <span id="patterns-signal-count" class="signal-count hidden"></span>
+        <span id="patterns-meta" class="card-meta"></span>
+        <span id="sentiment-badge" class="sentiment hidden"></span>
+      </h2>
+      <div class="flex items-center gap-2">
+        <select id="patterns-n" class="select">
+          <option value="50">Top 50</option>
+          <option value="100" selected>Top 100</option>
+          <option value="200">Top 200</option>
+          <option value="500">Top 500</option>
+        </select>
+        <button id="btn-patterns" onclick="loadPatterns()" class="btn btn-ghost btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
+          Réanalyser
+        </button>
+      </div>
+    </div>
+    <div id="patterns-body">
+      <p class="fs-sm text-muted text-center" style="padding:var(--s-7) 0">
+        Cliquez <strong style="color:var(--text)">Réanalyser</strong> pour analyser les patterns des top wallets via Dune
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ CHARTS ═══════════════════════════════════════════════════════════ -->
+  <section class="charts-grid mb-5">
+    <div class="card card-pad-lg">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Top 10 Wallets par Volume
+        </h2>
+        <span class="card-meta">7j · Ethereum</span>
+      </div>
+      <div style="height:255px"><canvas id="chartBar"></canvas></div>
+    </div>
+
+    <div class="card card-pad-lg">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12a10 10 0 0 0 10 10V12H2z" fill="currentColor" opacity=".15"/></svg>
+          Écosystème
+        </h2>
+        <span class="card-meta">par catégorie</span>
+      </div>
+      <div style="height:200px;display:flex;align-items:center;justify-content:center">
+        <canvas id="chartPie"></canvas>
+      </div>
+      <div id="legend" class="mt-3" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </section>
+
+  <!-- ═══ TABLE ════════════════════════════════════════════════════════════ -->
+  <section class="card mb-5">
+    <div class="toolbar">
+      <h2 class="card-title" style="margin-right:auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Classement des Wallets
+      </h2>
+      <input id="search-input" type="text" placeholder="Adresse, label…" oninput="onSearch()" class="input" style="min-width:200px"/>
+      <div class="filters" id="filter-chips">
+        <button class="chip is-active" data-cat="all"             onclick="setCat('all',this)">Tous</button>
+        <button class="chip" data-cat="MEV Bot"                  onclick="setCat('MEV Bot',this)">Prédateurs</button>
+        <button class="chip" data-cat="DEX Protocol"             onclick="setCat('DEX Protocol',this)">DEX</button>
+        <button class="chip" data-cat="Market Maker"             onclick="setCat('Market Maker',this)">Market Maker</button>
+        <button class="chip" data-cat="Smart Contract"           onclick="setCat('Smart Contract',this)">Smart Contract</button>
+        <button class="chip" data-cat="Unknown"                  onclick="setCat('Unknown',this)">Inconnu</button>
+      </div>
+      <span id="row-count" class="fs-xs text-muted" style="margin-left:auto"></span>
+      <button onclick="exportCSV()" class="btn btn-ghost btn-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th class="sortable" onclick="sortBy('rank')">Espèce <span id="si-rank"></span></th>
+            <th>Wallet</th>
+            <th>Type · Label</th>
+            <th class="sortable text-right" onclick="sortBy('total_volume_usd')">Volume <span id="si-total_volume_usd">↓</span></th>
+            <th class="sortable text-right" onclick="sortBy('dune_nb_trades')">Trades <span id="si-dune_nb_trades"></span></th>
+            <th class="sortable text-right" onclick="sortBy('avg_trade_usd')">Avg Trade <span id="si-avg_trade_usd"></span></th>
+            <th class="text-right">Links</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="7" class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 6c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
+            <p>Océan vide — cliquez <strong style="color:var(--text)">Sonar</strong> pour scanner</p>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <span id="page-info"></span>
+      <div class="flex gap-2">
+        <button id="btn-prev" onclick="changePage(-1)" class="btn btn-ghost btn-sm">← Préc.</button>
+        <button id="btn-next" onclick="changePage(1)"  class="btn btn-ghost btn-sm">Suiv. →</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══ FOOTER ═══════════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12c0-3 2-5 5-5s5 2 5 5"/>
+          <path d="M13 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5-5-2-5-5"/>
+          <path d="M3 12c0 3 2 5 5 5s5-2 5-5"/>
+        </svg>
+      </span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Ethereum On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"      class="nav-link">Dashboard</a>
+      <a href="/guide" class="nav-link">Guide</a>
+      <a href="/bot"   class="nav-link">Bot</a>
+      <a href="/why"   class="nav-link">Why</a>
+    </nav>
+    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+  </div>
+</footer>
+
+<!-- ═══ MODAL ═══════════════════════════════════════════════════════════════ -->
+<div id="modal" class="modal-overlay is-hidden">
+  <div class="modal-panel">
+    <div id="modal-body" style="padding:var(--s-6)"></div>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-stack"></div>
+<button id="back-top" class="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Retour en haut" aria-label="Retour en haut">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+
+<script>
+// ═════════════════════════════════════════════════════════════════════════════
+// Toast
+// ═════════════════════════════════════════════════════════════════════════════
+function showToast(msg, type='', duration=2600){
+  const el=document.createElement('div');
+  el.className='toast'+(type?' toast--'+type:'');
+  el.textContent=msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(), duration+300);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Back-to-top
+// ═════════════════════════════════════════════════════════════════════════════
+window.addEventListener('scroll',()=>{
+  document.getElementById('back-top')?.classList.toggle('is-visible', window.scrollY>350);
+},{passive:true});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// State
+// ═════════════════════════════════════════════════════════════════════════════
+let allWallets=[], filtered=[], maxVol=0;
+let _whaleAlertShown = false;
+let _mevBuyMedian = 0, _mevSellMedian = 0, _mevRefEth = 0, _analysisEthPrice = 0;
+let catFilter='all', search='', sortField='total_volume_usd', sortAsc=false;
+let page=1; const PER_PAGE=25;
+let chartBar=null, chartPie=null, poll=null;
+let _sorted=[];
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Sentiment score
+// ═════════════════════════════════════════════════════════════════════════════
+function computeSentiment(wallets){
+  if(!wallets.length) return null;
+  const total = wallets.length;
+  const mevCount = wallets.filter(w=>w.category==='MEV Bot').length;
+  const mevRatio = mevCount / total;
+  const totalVol = wallets.reduce((s,w)=>s+(w.total_volume_usd||0),0);
+  const top5Vol  = wallets.slice(0,5).reduce((s,w)=>s+(w.total_volume_usd||0),0);
+  const concRatio = totalVol > 0 ? top5Vol / totalVol : 0.5;
+  let score = 50;
+  score -= mevRatio * 90;
+  score -= Math.max(0, concRatio - 0.2) * 55;
+  return Math.max(5, Math.min(95, Math.round(score)));
+}
+
+function renderSentimentBadge(score){
+  const badge = document.getElementById('sentiment-badge');
+  if(!badge || score === null) return;
+  let label, color;
+  if(score < 25)      { label='Extrême Peur';  color='var(--c-mev)'; }
+  else if(score < 45) { label='Peur';           color='#ff9663'; }
+  else if(score < 55) { label='Neutre';         color='var(--c-sc)'; }
+  else if(score < 75) { label='Optimisme';      color='var(--green)'; }
+  else                { label='Euphorie';       color='var(--cyan)'; }
+  badge.innerHTML = `<span class="sentiment-dot"></span>Sentiment · ${label} · ${score}`;
+  badge.style.color = color;
+  badge.style.background = `color-mix(in srgb, ${color} 12%, transparent)`;
+  badge.style.border = `1px solid color-mix(in srgb, ${color} 30%, transparent)`;
+  badge.classList.remove('hidden');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Whale tier — emojis restaurés (brand identity)
+// ═════════════════════════════════════════════════════════════════════════════
+function whaleTier(vol){
+  if(vol>=500e6) return {emoji:'🐳', label:'Mega Whale', cls:'tier--mega',    color:'#dab5ff'};
+  if(vol>=100e6) return {emoji:'🐋', label:'Whale',      cls:'tier--whale',   color:'#80edff'};
+  if(vol>=10e6)  return {emoji:'🐬', label:'Dolphin',    cls:'tier--dolphin', color:'#9affc1'};
+  if(vol>=1e6)   return {emoji:'🐠', label:'Fish',       cls:'tier--fish',    color:'#ffe39a'};
+  return               {emoji:'🦐', label:'Shrimp',     cls:'tier--shrimp',  color:'#b8d3e4'};
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Chart colours
+// ═════════════════════════════════════════════════════════════════════════════
+const CAT_COLOR = {
+  'MEV Bot':       '#ff7a9c',
+  'DEX Protocol':  '#7aa9ff',
+  'Market Maker':  '#c47dff',
+  'Smart Contract':'#ffd970',
+  'Other':         '#00e2ff',
+  'Unknown':       '#7baacf',
+};
+function catColor(cat){ return CAT_COLOR[cat]||'#5a8197'; }
+function catClass(cat){
+  if(cat==='MEV Bot')       return 'tag tag--mev';
+  if(cat==='DEX Protocol')  return 'tag tag--dex';
+  if(cat==='Market Maker')  return 'tag tag--mm';
+  if(cat==='Smart Contract')return 'tag tag--sc';
+  if(cat==='Other')         return 'tag tag--other';
+  return 'tag tag--unk';
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Charts
+// ═════════════════════════════════════════════════════════════════════════════
+function initCharts(){
+  chartBar = new Chart(document.getElementById('chartBar').getContext('2d'),{
+    type:'bar',
+    data:{labels:[],datasets:[{data:[],backgroundColor:[],borderRadius:4,borderSkipped:false,maxBarThickness:20}]},
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#01060d',borderColor:'#1a558a',borderWidth:1,padding:10,
+        titleColor:'#00e2ff',bodyColor:'#dff1ff',
+        callbacks:{label:c=>'  ' + formatUSD(c.raw)}
+      }},
+      scales:{
+        x:{grid:{color:'rgba(0,226,255,.05)'},border:{display:false},ticks:{color:'#7baacf',callback:v=>formatUSDShort(v),font:{family:'JetBrains Mono',size:10}}},
+        y:{grid:{display:false},border:{display:false},ticks:{color:'#a8cce4',font:{family:'Sora',size:11}}}
+      }
+    }
+  });
+  chartPie = new Chart(document.getElementById('chartPie').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:[],datasets:[{data:[],backgroundColor:[],borderWidth:2,borderColor:'#082a48',hoverOffset:6}]},
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'72%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#01060d',borderColor:'#1a558a',borderWidth:1,padding:10,
+          titleColor:'#00e2ff',bodyColor:'#dff1ff',
+          callbacks:{label:c=>` ${c.label}: ${c.parsed}`}}
+      }
+    }
+  });
+}
+
+const _CATSHORT={'MEV Bot':'MEV','DEX Protocol':'DEX','Market Maker':'MM','Smart Contract':'SC','Unknown':'Unk'};
+function _barLabel(w){
+  if(w.label&&w.label!=='Unknown') return trunc(w.label,18);
+  const cat=_CATSHORT[w.category]||w.category?.slice(0,4)||'?';
+  return cat+' '+w.address.slice(0,6)+'…'+w.address.slice(-3);
+}
+function updateCharts(wallets){
+  const top10=[...wallets].sort((a,b)=>(b.total_volume_usd||0)-(a.total_volume_usd||0)).slice(0,10);
+  chartBar.data.labels = top10.map(w=>_barLabel(w));
+  chartBar.data.datasets[0].data = top10.map(w=>w.total_volume_usd||0);
+  chartBar.data.datasets[0].backgroundColor = top10.map(w=>catColor(w.category));
+  chartBar.update('none');
+
+  const cats={};
+  wallets.forEach(w=>{const c=w.category||'Unknown'; cats[c]=(cats[c]||0)+1;});
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  chartPie.data.labels = sorted.map(e=>e[0]);
+  chartPie.data.datasets[0].data = sorted.map(e=>e[1]);
+  chartPie.data.datasets[0].backgroundColor = sorted.map(e=>catColor(e[0]));
+  chartPie.update('none');
+
+  const catTotal = sorted.reduce((s,[,n])=>s+n,0);
+  const leg=document.getElementById('legend');
+  leg.innerHTML=sorted.map(([cat,n])=>{
+    const pct=catTotal>0?Math.round(n/catTotal*100):0;
+    const col=catColor(cat);
+    return `<div class="flex items-center justify-between fs-xs">
+      <div class="flex items-center gap-2">
+        <span style="width:10px;height:10px;border-radius:2px;background:${col}"></span>
+        <span style="color:var(--text-soft)">${cat}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="tabular-nums font-semibold" style="color:${col};min-width:28px;text-align:right">${pct}%</span>
+        <div style="width:48px;height:4px;border-radius:2px;background:var(--border)">
+          <div style="height:4px;border-radius:2px;width:${pct}%;background:${col};opacity:.85"></div>
+        </div>
+        <span class="tabular-nums" style="width:28px;text-align:right;color:var(--muted)">${n}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Table
+// ═════════════════════════════════════════════════════════════════════════════
+function renderTable(wallets){
+  document.getElementById('row-count').textContent=`${wallets.length} wallet${wallets.length!==1?'s':''}`;
+  const tbody=document.getElementById('tbody');
+
+  if(!wallets.length){
+    const q=search?`"${search}"`:catFilter!=='all'?`"${catFilter}"`:'';
+    tbody.innerHTML=`<tr><td colspan="7" class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <p style="font-weight:600;color:var(--text)">Aucun résultat${q?' pour '+q:''}</p>
+      <p class="fs-xs mt-3">Essaie un autre filtre ou efface la recherche</p>
+    </td></tr>`;
+    document.getElementById('page-info').textContent='';
+    document.getElementById('btn-prev').disabled=true;
+    document.getElementById('btn-next').disabled=true;
+    return;
+  }
+
+  const pages=Math.ceil(wallets.length/PER_PAGE);
+  page=Math.min(page,pages);
+  const start=(page-1)*PER_PAGE;
+  const slice=wallets.slice(start,start+PER_PAGE);
+
+  document.getElementById('page-info').textContent=`Page ${page} / ${pages}`;
+  document.getElementById('btn-prev').disabled=page<=1;
+  document.getElementById('btn-next').disabled=page>=pages;
+
+  tbody.innerHTML=slice.map(w=>{
+    const pct=maxVol>0?Math.round((w.total_volume_usd||0)/maxVol*100):0;
+    const tier=whaleTier(w.total_volume_usd||0);
+    const rankNum=w.rank<=3
+      ? `<span class="font-mono font-bold tabular-nums" style="color:${tier.color};font-size:13px">#${w.rank}</span>`
+      : `<span class="font-mono tabular-nums" style="color:var(--muted)">${w.rank}</span>`;
+    const tierBadge=`<span class="tier ${tier.cls}" title="${tier.label}"><span class="emoji">${tier.emoji}</span>${tier.label}</span>`;
+    const typeBadge=w.is_contract===true
+      ? '<span class="badge badge--sc">SC</span>'
+      : w.is_contract===false
+        ? '<span class="badge badge--eoa">EOA</span>'
+        : '';
+    const label=w.label&&w.label!=='Unknown'?w.label:'Unknown';
+    const catBadge=w.category?`<span class="${catClass(w.category)}">${w.category}</span>`:'';
+    const avgTrade=(w.dune_nb_trades&&w.dune_nb_trades>0)
+      ? formatUSD((w.dune_volume_usd||0)/w.dune_nb_trades)
+      : null;
+    const avgTradeCell=avgTrade
+      ? `<span class="font-mono tabular-nums" style="color:var(--cyan)">${avgTrade}</span>`
+      : `<span style="color:var(--dim)">—</span>`;
+    const trades=w.dune_nb_trades
+      ? `<span class="tabular-nums" style="color:var(--text-soft)">${fmtInt(w.dune_nb_trades)}</span>`
+      : `<span style="color:var(--dim)">—</span>`;
+
+    return `<tr class="tbl-row" onclick="openModal('${w.address}')">
+      <td>
+        <div class="flex items-center gap-2">
+          <span style="min-width:24px;text-align:right">${rankNum}</span>
+          ${tierBadge}
+        </div>
+      </td>
+      <td>
+        <div class="flex items-center gap-2">
+          <span class="mono" style="color:var(--blue)">${truncAddr(w.address)}</span>
+          <button class="icon-btn" onclick="copyAddr(event,'${w.address}')" title="Copier">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      </td>
+      <td>
+        <div class="flex items-center gap-2 flex-wrap">
+          ${typeBadge}
+          <span style="color:var(--text-soft);font-weight:500">${trunc(label,22)}</span>
+          ${catBadge}
+        </div>
+      </td>
+      <td class="text-right">
+        <div class="flex items-center justify-between gap-2" style="justify-content:flex-end">
+          <span class="font-bold tabular-nums" style="color:${tier.color}">${formatUSD(w.total_volume_usd)}</span>
+          <span class="volbar"><span class="volbar-fill" style="width:${pct}%"></span></span>
+        </div>
+      </td>
+      <td class="text-right">${trades}</td>
+      <td class="text-right">${avgTradeCell}</td>
+      <td class="text-right">
+        <div class="flex items-center justify-between gap-1" style="justify-content:flex-end">
+          <a href="https://etherscan.io/address/${w.address}" target="_blank" onclick="event.stopPropagation()" class="icon-btn" title="Etherscan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+          <a href="https://debank.com/profile/${w.address}" target="_blank" onclick="event.stopPropagation()" class="icon-btn" title="DeBank">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8" stroke-linecap="round"/></svg>
+          </a>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Count-up animation
+// ═════════════════════════════════════════════════════════════════════════════
+function countUp(el, target, formatter, duration=900){
+  if(!el) return;
+  const start=performance.now();
+  function step(now){
+    const t=Math.min((now-start)/duration,1);
+    const ease=1-Math.pow(1-t,3);
+    el.textContent=formatter(target*ease);
+    if(t<1) requestAnimationFrame(step);
+    else el.textContent=formatter(target);
+  }
+  requestAnimationFrame(step);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Sparklines
+// ═════════════════════════════════════════════════════════════════════════════
+function drawSparkline(id, value, color){
+  const lineEl = document.getElementById(id+'-line');
+  const fillEl = document.getElementById(id+'-fill');
+  if(!lineEl||!fillEl||!value) return;
+  const pts=[];
+  let v = value*(0.55+Math.random()*0.3);
+  for(let i=0;i<13;i++){
+    v = Math.max(0, v*(0.88+Math.random()*0.24));
+    pts.push(v);
+  }
+  pts.push(value);
+  const min=Math.min(...pts)*0.9, max=Math.max(...pts)*1.02;
+  const rng=max-min||1;
+  const coords = pts.map((p,i)=>{
+    const x=(i/(pts.length-1)*80).toFixed(1);
+    const y=(28-(p-min)/rng*26).toFixed(1);
+    return `${x},${y}`;
+  }).join(' ');
+  lineEl.setAttribute('points', coords);
+  fillEl.setAttribute('points', coords+` 80,30 0,30`);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Stats
+// ═════════════════════════════════════════════════════════════════════════════
+function updateStats(data){
+  const ws=data.wallets||[];
+  const totVol = data.total_volume_usd||0;
+  countUp(document.getElementById('stat-volume'), totVol, formatUSDShort);
+  countUp(document.getElementById('stat-total'),  ws.length, v=>Math.round(v));
+  const mevs=ws.filter(w=>w.category==='MEV Bot');
+  countUp(document.getElementById('stat-mev'), mevs.length, v=>Math.round(v));
+  document.getElementById('stat-mev-vol').textContent=formatUSDShort(mevs.reduce((s,w)=>s+(w.total_volume_usd||0),0))+' vol cumulé';
+  const contracts=ws.filter(w=>w.is_contract).length;
+  document.getElementById('stat-contracts-sub').textContent=`${contracts} smart contracts`;
+  const ep=data.eth_price;
+  if(ep) _analysisEthPrice = ep;
+  document.getElementById('stat-eth').textContent=fmtPrice(ep);
+  document.getElementById('eth-price').textContent=fmtPrice(ep);
+  // Hero strip live stats
+  document.getElementById('hero-wallets').textContent = ws.length;
+  document.getElementById('hero-volume').textContent  = formatUSDShort(totVol);
+  document.getElementById('hero-mev').textContent     = mevs.length;
+  drawSparkline('spark-volume', totVol, '#5eff9e');
+  drawSparkline('spark-total',  ws.length, '#00e2ff');
+  drawSparkline('spark-mev',    mevs.length, '#ff7a9c');
+  drawSparkline('spark-eth',    ep||0, '#ffd970');
+  fetchLivePrices();
+  if(data.last_updated){
+    _lastUpdatedAt = new Date(data.last_updated).getTime();
+    document.getElementById('live-dot')?.classList.remove('hidden');
+    _scheduleAutoRefresh();
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Icon helpers (inline SVG strings — used in JS-emitted HTML)
+// ═════════════════════════════════════════════════════════════════════════════
+function _svg(inner, size=16){
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0">${inner}</svg>`;
+}
+const ICON = {
+  pair:    _svg('<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>'),
+  dex:     _svg('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>'),
+  time:    _svg('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
+  size:    _svg('<path d="M3 3v18h18"/><path d="M7 17l4-4 4 2 5-7"/>'),
+  special: _svg('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'),
+  whale:   _svg('<path d="M3 12c0-3 2-5 5-5s5 2 5 5"/><path d="M13 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5-5-2-5-5"/>'),
+  bolt:    _svg('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>', 14),
+  hold:    _svg('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/>'),
+  hourglass: _svg('<path d="M6 2h12M6 22h12M6 2v4a6 6 0 0 0 12 0V2M6 22v-4a6 6 0 0 1 12 0v4"/>', 14),
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Patterns
+// ═════════════════════════════════════════════════════════════════════════════
+async function loadPatterns(forceRefresh=false){
+  const btn  = document.getElementById('btn-patterns');
+  const body = document.getElementById('patterns-body');
+  const n    = parseInt(document.getElementById('patterns-n')?.value || '100');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="spin" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="30 10" opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> Analyse…`;
+  body.innerHTML = `<div class="flex items-center justify-between gap-3 text-muted" style="justify-content:center;padding:var(--s-7) 0">
+    <svg class="spin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="30 10" opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+    <span class="fs-sm">Interrogation Dune — top <strong style="color:var(--text)">${n}</strong> wallets · ~${n<=100?'60':'120'}s…</span>
+  </div>`;
+
+  try {
+    let r = await fetch('/api/patterns');
+    if (r.ok && !forceRefresh) {
+      const cached = await r.json();
+      if (cached.n_wallets === n) {
+        renderPatterns(cached);
+        _setPatternsMeta(cached);
+        _resetPatternsBtn();
+        return;
+      }
+    }
+    await fetch(`/api/patterns/refresh?n=${n}`, { method: 'POST' });
+    let tries = 0, maxTries = n <= 100 ? 40 : 70;
+    while (tries++ < maxTries) {
+      await new Promise(res => setTimeout(res, 3000));
+      r = await fetch('/api/patterns');
+      if (r.ok) {
+        const d = await r.json();
+        if (d.n_wallets === n) { renderPatterns(d); _setPatternsMeta(d); break; }
+      }
+    }
+    if (tries >= maxTries) throw new Error('Timeout — réessayez');
+    _resetPatternsBtn();
+  } catch(e) {
+    body.innerHTML = `<p class="fs-sm text-center" style="color:var(--c-mev);padding:var(--s-5) 0">${e.message}</p>`;
+    btn.innerHTML = 'Réessayer'; btn.disabled = false;
+  }
+}
+function _resetPatternsBtn(){
+  const btn = document.getElementById('btn-patterns');
+  if(!btn) return;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg> Réanalyser`;
+  btn.disabled = false;
+}
+function _setPatternsMeta(d){
+  const meta = document.getElementById('patterns-meta');
+  if(meta) meta.textContent = `· ${d.n_wallets} wallets · ${d.days}j · ${(d.generated_at||'').slice(0,16).replace('T',' ')} UTC`;
+}
+
+function renderPatterns(d) {
+  const fmt = formatUSD;
+  const fmtN = fmtNum;
+
+  const insightMeta = {
+    pair:           { cls:'insight-row--blue',   label:'Paire',     icon: ICON.pair },
+    dex:            { cls:'insight-row--purple', label:'DEX',       icon: ICON.dex },
+    time:           { cls:'insight-row--green',  label:'Timing',    icon: ICON.time },
+    size:           { cls:'insight-row--yellow', label:'Taille',    icon: ICON.size },
+    specialization: { cls:'insight-row--red',    label:'Spécia.',   icon: ICON.special },
+    whale:          { cls:'insight-row--cyan',   label:'Baleine',   icon: ICON.whale },
+    mev_price:      { cls:'insight-row--yellow', label:'MEV Prix',  icon: ICON.bolt },
+    hold_time:      { cls:'insight-row--purple', label:'Détention', icon: ICON.hold },
+  };
+
+  // Override size insight detail (recalc from size_distribution)
+  const sizeBuckets = d.size_distribution || [];
+  const sizeTotalTrades = sizeBuckets.reduce((s,b)=>s+(b.trade_count||0), 0);
+  const sizeTotalVol    = sizeBuckets.reduce((s,b)=>s+(b.volume_usd||0), 0);
+  const topByCount  = sizeBuckets.reduce((a,b)=>b.trade_count>a.trade_count?b:a, sizeBuckets[0]||{});
+  const topByVol    = sizeBuckets.reduce((a,b)=>b.volume_usd>a.volume_usd?b:a, sizeBuckets[0]||{});
+  const topCountPct = sizeTotalTrades ? Math.round(topByCount.trade_count/sizeTotalTrades*100) : 0;
+  const topVolPct   = sizeTotalVol    ? Math.round(topByVol.volume_usd/sizeTotalVol*100) : 0;
+
+  const insightsHtml = (d.insights||[]).map(ins => {
+    const m = insightMeta[ins.type] || { cls:'insight-row--cyan', label:'', icon: ICON.special };
+    if (ins.type === 'size') {
+      ins = {...ins,
+        title: `Taille majoritaire : ${topByCount.bucket || ins.title}`,
+        detail: `${topCountPct}% des trades par nombre · volume dominant : ${topByVol.bucket} (${topVolPct}% du vol)`
+      };
+    }
+    let titleHtml = ins.title;
+    let liveBadge = '';
+    if (ins.type === 'mev_price' && d.mev_price_levels && d.mev_price_levels.buy) {
+      const bm = d.mev_price_levels.buy.median, sm = d.mev_price_levels.sell.median;
+      titleHtml = `Prix MEV WETH — buy <span id="mev-insight-buy" class="font-mono">${fmtP(bm)}</span> / sell <span id="mev-insight-sell" class="font-mono">${fmtP(sm)}</span>`;
+      liveBadge = ' <span class="live-dot" title="Mise à jour temps réel"></span>';
+    }
+    return `<div class="insight-row ${m.cls}">
+      <div class="insight-icon">${m.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="flex items-center gap-2">
+          <span class="insight-label">${m.label}</span>${liveBadge}
+        </div>
+        <p class="insight-title">${titleHtml}</p>
+        <p class="insight-detail">${ins.detail}</p>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Hourly heatmap
+  const hourlyData = d.hourly_activity || [];
+  const maxTrades = Math.max(...hourlyData.map(h=>h.trades), 1);
+  const minTrades = Math.min(...hourlyData.map(h=>h.trades), 0);
+  const peakHour = hourlyData.reduce((a,b)=>b.trades>a.trades?b:a, {trades:0,hour:0});
+  const hours = Array.from({length:24}, (_,h) => {
+    const row = hourlyData.find(r=>r.hour===h) || {trades:0, volume_usd:0};
+    const norm = maxTrades > minTrades ? (row.trades - minTrades) / (maxTrades - minTrades) : 0;
+    const isPeak = h === peakHour.hour;
+    const barH = Math.round(8 + norm * 44);
+    const color = isPeak ? 'var(--green)' : `rgba(75,212,255,${(0.15 + norm * 0.55).toFixed(2)})`;
+    return `<div class="hour-bar" title="${h}h UTC — ${fmtN(row.trades)} trades${isPeak?' · PIC':''}">
+      <div class="hour-bar-fill" style="height:${barH}px;background:${color}"></div>
+      <span class="hour-bar-label" style="${isPeak?'color:var(--green);font-weight:700':''}">${h%4===0?h+'h':isPeak?'▲':''}</span>
+    </div>`;
+  }).join('');
+
+  // Distribution buckets
+  const buckets = d.size_distribution || [];
+  const maxBTrades = Math.max(...buckets.map(b=>b.trade_count), 1);
+  const maxBVol    = Math.max(...buckets.map(b=>b.volume_usd), 1);
+  const volTotal   = buckets.reduce((s,b)=>s+(b.volume_usd||0), 0);
+  const bucketsHtml = buckets.map(b => {
+    const pctTrades = Math.round(b.trade_count / maxBTrades * 100);
+    const pctVol    = Math.round(b.volume_usd   / maxBVol    * 100);
+    const volShare  = Math.round(b.volume_usd   / volTotal   * 100);
+    return `<div class="dist-row">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-soft font-semibold" style="width:90px">${b.bucket}</span>
+        <div class="flex items-center gap-3 fs-xs">
+          <span class="tabular-nums text-muted">${fmtN(b.trade_count)} trades</span>
+          <span class="font-semibold tabular-nums text-green" style="width:60px;text-align:right">${fmt(b.volume_usd)}</span>
+          <span class="tabular-nums text-muted" style="width:32px;text-align:right">${volShare}%</span>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="dist-bar"><div class="dist-bar-fill" style="width:${pctTrades}%;background:var(--c-sc)"></div></div>
+        <div class="dist-bar"><div class="dist-bar-fill" style="width:${pctVol}%;background:var(--cyan)"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Top pairs
+  const dexColors = { uniswap:'#ff007a', aerodrome:'#2563eb', fluid:'#7c3aed', curve:'#f59e0b', pancakeswap:'#f97316', prjx:'#06b6d4', velodrome:'#6366f1', sushiswap:'#e11d48' };
+  const getDexColor = p => dexColors[p?.toLowerCase()] || '#5a8197';
+  const maxPairVol = d.top_pairs?.[0]?.volume_usd || 1;
+  const pairsHtml = (d.top_pairs||[]).slice(0,8).map((p,i) => {
+    const pct = Math.round(p.volume_usd / maxPairVol * 100);
+    const dc = getDexColor(p.project);
+    return `<div style="padding:var(--s-3) 0;border-bottom:1px solid var(--border)">
+      <div class="flex items-center justify-between mb-3 gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-muted fs-xs" style="width:14px">${i+1}</span>
+          <span class="font-mono fs-sm font-semibold" style="color:var(--text)">${p.pair}</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:600;background:${dc}22;color:${dc};border:1px solid ${dc}44">${p.project}</span>
+        </div>
+        <span class="font-semibold tabular-nums text-green fs-sm">${fmt(p.volume_usd)}</span>
+      </div>
+      <div class="flex items-center gap-2" style="padding-left:22px">
+        <div class="dist-bar" style="flex:1"><div class="dist-bar-fill" style="width:${pct}%;background:${dc}"></div></div>
+        <span class="text-muted fs-xs tabular-nums">${fmtN(p.total_trades)} trades · avg ${fmt(p.avg_usd)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Top DEX
+  const maxDexVol = d.top_dexes?.[0]?.volume_usd || 1;
+  const dexHtml = (d.top_dexes||[]).slice(0,6).map((x,i) => {
+    const pct = Math.round(x.volume_usd / maxDexVol * 100);
+    const dc = getDexColor(x.project);
+    return `<div class="flex items-center gap-2 fs-sm" style="padding:6px 0">
+      <span style="width:8px;height:8px;border-radius:50%;background:${dc};flex-shrink:0"></span>
+      <span class="text-soft font-semibold" style="width:90px">${x.project}</span>
+      <div class="dist-bar" style="flex:1;height:6px"><div class="dist-bar-fill" style="width:${pct}%;background:${dc};opacity:.85"></div></div>
+      <span class="text-soft tabular-nums" style="width:60px;text-align:right">${fmt(x.volume_usd)}</span>
+      <span class="text-muted tabular-nums" style="width:28px;text-align:right">${x.wallet_count}w</span>
+    </div>`;
+  }).join('');
+
+  // MEV price levels
+  const mev = d.mev_price_levels;
+  let mevHtml = '';
+  if (mev && mev.buy && mev.sell) {
+    const b = mev.buy, s = mev.sell;
+    const pMin = Math.min(b.p10, s.p10);
+    const pMax = Math.max(b.p90, s.p90);
+    const rng  = pMax - pMin || 1;
+    const toX  = v => Math.max(0, Math.min(100, ((v - pMin) / rng * 100))).toFixed(1);
+    const bW   = v => Math.max(1, ((v.p75 - v.p25) / rng * 100)).toFixed(1);
+    const spread = mev.spread_usd;
+    const spreadColor = spread >= 0 ? '#2ed4a8' : '#ff6b87';
+    const arrow = spread >= 0 ? '↑' : '↓';
+
+    const barRow = (side, data, col) => `
+      <div class="flex items-center gap-3 fs-sm">
+        <span style="width:36px;text-align:right;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${col};font-size:11px;flex-shrink:0">${side}</span>
+        <div style="flex:1;position:relative;height:24px">
+          <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border-2)"></div>
+          <div style="position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:${toX(data.p10)}%;width:${((data.p90-data.p10)/rng*100).toFixed(1)}%;background:${col}14;border:1px solid ${col}22"></div>
+          <div style="position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:${toX(data.p25)}%;width:${bW(data)}%;background:${col};opacity:.35"></div>
+          <div style="position:absolute;top:0;bottom:0;width:2px;border-radius:1px;left:${toX(data.median)}%;transform:translateX(-50%);background:${col}"></div>
+        </div>
+        <div class="flex items-center gap-2" style="flex-shrink:0;text-align:right">
+          <span id="mev-${side.toLowerCase()}-median" class="font-mono font-bold" style="color:${col}">${fmtP(data.median)}</span>
+          <span class="text-muted fs-xs">${fmtN(data.trade_count)} trades</span>
+        </div>
+      </div>`;
+
+    const buyRow  = barRow('BUY',  b, '#2ed4a8');
+    const sellRow = barRow('SELL', s, '#ff6b87');
+
+    _mevBuyMedian  = b.median;
+    _mevSellMedian = s.median;
+    _mevRefEth     = _analysisEthPrice || _prevPrices['eth-price'] || b.median;
+
+    const tickCount = 5;
+    const ticks = Array.from({length: tickCount}, (_,i) => {
+      const v = pMin + (rng * i / (tickCount-1));
+      return `<span style="left:${(i/(tickCount-1)*100).toFixed(1)}%;transform:translateX(-50%);position:absolute">${fmtP(v)}</span>`;
+    }).join('');
+
+    mevHtml = `
+    <div class="mt-5" style="padding-top:var(--s-5);border-top:1px solid var(--border)">
+      <div style="padding:var(--s-4);border-radius:var(--radius-md);background:rgba(255,198,87,.04);border:1px solid rgba(255,198,87,.18)">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <p class="fs-xs uppercase tracking-wide font-semibold flex items-center gap-2" style="color:var(--c-sc)">
+            ${ICON.bolt} Prix d'entrée MEV
+            <span style="padding:2px 7px;border-radius:5px;font-family:'Fira Code',monospace;font-size:10px;font-weight:700;background:rgba(255,198,87,.15);color:var(--c-sc);border:1px solid rgba(255,198,87,.30)">WETH</span>
+            <span class="live-dot"></span>
+            <span style="text-transform:none;font-weight:400;color:var(--muted);font-size:10px">(wallets ≥200 trades/7j)</span>
+          </p>
+          <span class="fs-xs font-mono font-semibold" style="padding:2px 8px;border-radius:5px;color:${spreadColor};background:${spreadColor}18;border:1px solid ${spreadColor}33">spread ${arrow}${fmtP2(Math.abs(spread))} (${spread>=0?'+':''}${mev.spread_bps} bps)</span>
+        </div>
+        <div class="flex flex-col gap-3">
+          ${buyRow}
+          ${sellRow}
+          <div style="position:relative;font-size:9.5px;color:var(--muted-2);font-family:'Fira Code',monospace;height:16px;padding-left:40px;padding-right:90px">${ticks}</div>
+        </div>
+        <div class="flex items-center justify-between fs-xs mt-3" style="color:var(--muted)">
+          <span>Bande = P25–P75 · trait = médiane · fond = P10–P90</span>
+          <span>Δ buy→sell : <span class="font-mono" style="color:${spreadColor}">${spread>=0?'+':''}${fmtP2(spread)}</span></span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Hold time distribution
+  const holdDist = d.hold_time_distribution || [];
+  let holdHtml = '';
+  if (holdDist.length) {
+    const totalFlips = holdDist.reduce((s,r) => s + r.flip_count, 0);
+    const maxFlips   = Math.max(...holdDist.map(r => r.flip_count), 1);
+    const bucketColor = b => {
+      if (b.includes('bloc'))   return '#2ed4a8';
+      if (b.includes('1min'))   return '#4cd4ff';
+      if (b.includes('5min'))   return '#a3e635';
+      if (b.includes('1h'))     return '#ffc657';
+      if (b.includes('24h'))    return '#ff9663';
+      return '#ff6b87';
+    };
+    const fmtSec = s => {
+      if (s < 60)   return `${Math.round(s)}s`;
+      if (s < 3600) return `${Math.floor(s/60)}m${Math.round(s%60)}s`;
+      return `${Math.floor(s/3600)}h${Math.round((s%3600)/60)}m`;
+    };
+    const cumFast = holdDist.filter(r => r.avg_hold_sec <= 13).reduce((s,r) => s + r.pct, 0);
+    const barsHtml = holdDist.map(r => {
+      const pct  = Math.round(r.flip_count / maxFlips * 100);
+      const col  = bucketColor(r.bucket);
+      const med  = r.median_hold_sec > 0 ? `médiane ${fmtSec(r.median_hold_sec)}` : '';
+      return `<div class="flex items-center gap-2 fs-sm">
+        <span style="width:120px;text-align:right;color:var(--text-soft);font-weight:500;flex-shrink:0">${r.bucket}</span>
+        <div style="flex:1;position:relative;height:20px;display:flex;align-items:center">
+          <div style="position:absolute;top:0;bottom:0;left:0;border-radius:0 3px 3px 0;width:${pct}%;background:${col};opacity:.8;min-width:2px"></div>
+          <span style="position:relative;padding-left:8px;color:var(--text);font-weight:600">${fmtN(r.flip_count)}</span>
+        </div>
+        <span class="tabular-nums font-bold" style="width:32px;text-align:right;color:${col}">${r.pct}%</span>
+        <span class="text-muted tabular-nums" style="width:80px;text-align:right">${med}</span>
+      </div>`;
+    }).join('');
+    holdHtml = `
+    <div class="mt-4">
+      <div style="padding:var(--s-4);border-radius:var(--radius-md);background:rgba(182,117,238,.04);border:1px solid rgba(182,117,238,.18)">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <p class="fs-xs uppercase tracking-wide font-semibold flex items-center gap-2" style="color:var(--c-mm)">
+            ${ICON.hourglass} Temps de détention MEV
+            <span style="padding:2px 7px;border-radius:5px;font-family:'Fira Code',monospace;font-size:10px;font-weight:700;background:rgba(255,198,87,.15);color:var(--c-sc);border:1px solid rgba(255,198,87,.30)">WETH buy→sell</span>
+            <span style="text-transform:none;font-weight:400;color:var(--muted);font-size:10px">(même wallet)</span>
+          </p>
+          <span class="fs-xs tabular-nums font-mono text-muted">${fmtN(totalFlips)} paires</span>
+        </div>
+        <div class="flex flex-col gap-3 mb-3">${barsHtml}</div>
+        <div class="flex items-center justify-between fs-xs">
+          <span class="text-muted"><span class="font-bold text-green">${cumFast.toFixed(0)}%</span> des flips dans le même bloc Ethereum <span style="opacity:.7">(sandwich pur)</span></span>
+          <span class="text-muted">1 bloc ≈ 12s</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Signal count badge
+  const sigCount = document.getElementById('patterns-signal-count');
+  if(sigCount && (d.insights||[]).length){
+    sigCount.textContent = `${d.insights.length} signaux`;
+    sigCount.classList.remove('hidden');
+  }
+
+  // Assemble
+  document.getElementById('patterns-body').innerHTML = `
+    <div class="patterns-grid">
+      <div>
+        <p class="fs-xs uppercase tracking-wide font-semibold mb-3 text-muted">SIGNAUX DÉTECTÉS</p>
+        ${insightsHtml}
+      </div>
+      <div class="flex flex-col gap-5">
+        <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(59,166,255,.04);border:1px solid rgba(59,166,255,.15)">
+          <div class="flex items-center justify-between mb-3">
+            <p class="fs-xs uppercase tracking-wide font-semibold text-soft">Activité UTC</p>
+            <span class="fs-xs font-semibold text-green">▲ pic ${peakHour.hour}h · ${fmtN(peakHour.trades)}</span>
+          </div>
+          <div class="flex items-end gap-1" style="width:100%">${hours}</div>
+        </div>
+        <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(255,198,87,.04);border:1px solid rgba(255,198,87,.15)">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <p class="fs-xs uppercase tracking-wide font-semibold" style="color:var(--c-sc)">Taille des trades</p>
+            <div class="flex items-center gap-3 fs-xs">
+              <span class="flex items-center gap-2"><span style="width:12px;height:5px;border-radius:2px;background:var(--c-sc)"></span><span class="text-muted">Nombre</span></span>
+              <span class="flex items-center gap-2"><span style="width:12px;height:5px;border-radius:2px;background:var(--cyan)"></span><span class="text-muted">Volume</span></span>
+            </div>
+          </div>
+          <div class="flex flex-col gap-4">${bucketsHtml}</div>
+        </div>
+      </div>
+    </div>
+    ${mevHtml}
+    ${holdHtml}
+    <div class="grid-2 mt-5" style="padding-top:var(--s-5);border-top:1px solid var(--border)">
+      <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(59,166,255,.04);border:1px solid rgba(59,166,255,.15)">
+        <p class="fs-xs uppercase tracking-wide font-semibold mb-3 text-soft">Top Paires <span class="text-muted" style="text-transform:none;font-weight:400;font-size:10px">volume · DEX · wallets</span></p>
+        ${pairsHtml}
+      </div>
+      <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(182,117,238,.04);border:1px solid rgba(182,117,238,.15)">
+        <p class="fs-xs uppercase tracking-wide font-semibold mb-3" style="color:var(--c-mm)">Top DEX</p>
+        <div class="flex flex-col gap-1">${dexHtml}</div>
+      </div>
+    </div>`;
+
+  _lastPatterns = d;
+  renderTradingZones();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Trading zones
+// ═════════════════════════════════════════════════════════════════════════════
+let _lastPatterns = null;
+function renderTradingZones(){
+  const card = document.getElementById('zones-card');
+  if(!card) return;
+  const mev = _lastPatterns?.mev_price_levels;
+  if(!mev?.buy || !mev?.sell){ card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+
+  const live  = _prevPrices['eth-price'] || _analysisEthPrice || mev.buy.median;
+  const $ = id => document.getElementById(id);
+
+  const buy = mev.buy, sell = mev.sell;
+  const setSide = (prefix, q) => {
+    ['p10','p25','median','p75','p90'].forEach(k => { const el = $(`${prefix}-${k}`); if(el) el.textContent = fmtP(q[k]); });
+    $(`${prefix}-trades`).textContent = (q.trade_count||0).toLocaleString('en-US') + ' trades';
+  };
+  setSide('zone-buy',  buy);
+  setSide('zone-sell', sell);
+
+  $('zones-current').textContent     = fmtP(live);
+  $('zones-trade-count').textContent = ((buy.trade_count||0) + (sell.trade_count||0)).toLocaleString('en-US');
+
+  const bMed = buy.median,  bP25 = buy.p25,  bP75 = buy.p75;
+  const sMed = sell.median, sP25 = sell.p25, sP75 = sell.p75;
+  const pctVsBuy  = ((live - bMed) / bMed)  * 100;
+  const pctVsSell = ((live - sMed) / sMed) * 100;
+
+  let color, tag, title, detail, alertCls;
+  if (live < bP25)        { color='#2ed4a8'; alertCls='alert--success'; tag='STRONG BUY';  title="Sous la zone d'accumulation whale";        detail=`Live ${fmtP(live)} sous P25 BUY ${fmtP(bP25)} — opportunité rare, ${fmtPct(pctVsBuy)} vs médiane whale`; }
+  else if (live <= bP75)  { color='#2ed4a8'; alertCls='alert--success'; tag='BUY ZONE';    title="Dans la zone d'accumulation whale";        detail=`Live ${fmtP(live)} entre P25 ${fmtP(bP25)} et P75 ${fmtP(bP75)} — c'est ici que les bots entrent`; }
+  else if (live < sP25)   { color='#ffc657'; alertCls='alert--warn';    tag='NEUTRAL';     title="Au-dessus du BUY, sous le SELL — attendre"; detail=`${fmtPct(pctVsBuy)} vs médiane BUY · ${fmtPct(pctVsSell)} vs médiane SELL`; }
+  else if (live <= sP75)  { color='#ff6b87'; alertCls='alert--danger';  tag='SELL ZONE';   title='Dans la zone de distribution whale';       detail=`Live ${fmtP(live)} entre P25 ${fmtP(sP25)} et P75 ${fmtP(sP75)} — les bots vendent ici`; }
+  else                    { color='#ff6b87'; alertCls='alert--danger';  tag='STRONG SELL'; title='Au-dessus de la zone de distribution';     detail=`Live ${fmtP(live)} au-dessus P75 SELL ${fmtP(sP75)} — risque de correction, ${fmtPct(pctVsSell)} vs médiane`; }
+
+  $('zones-reco-title').textContent = title;
+  $('zones-reco-detail').textContent = detail;
+  const reco = $('zones-reco');
+  reco.className = 'alert ' + alertCls + ' mb-4';
+  const t = $('zones-reco-tag');
+  t.textContent = tag;
+  t.style.background = color + '18';
+  t.style.color = color;
+  t.style.borderColor = color + '40';
+
+  $('zone-buy-action').innerHTML  = `Live ${fmtP(live)} · <span class="font-mono font-bold" style="color:${pctVsBuy < 0 ? '#2ed4a8' : '#ffc657'}">${fmtPct(pctVsBuy)}</span> vs médiane BUY`;
+  $('zone-sell-action').innerHTML = `Live ${fmtP(live)} · <span class="font-mono font-bold" style="color:${pctVsSell > 0 ? '#ff6b87' : '#ffc657'}">${fmtPct(pctVsSell)}</span> vs médiane SELL`;
+
+  const all = [buy.p10, buy.p90, sell.p10, sell.p90, live];
+  const lo = Math.min(...all) * 0.998, hi = Math.max(...all) * 1.002, span = hi - lo;
+  const pos = v => (((v - lo) / span) * 90 + 5).toFixed(1) + '%';
+  const wid = (a,b) => (((b - a) / span) * 90).toFixed(1) + '%';
+  const pl = $('price-ladder');
+  if(pl) pl.innerHTML = `
+    <div class="price-ladder-axis"></div>
+    <div class="price-ladder-band price-ladder-buy"  style="left:${pos(buy.p25)};width:${wid(buy.p25, buy.p75)}"  title="BUY P25–P75 : ${fmtP(buy.p25)}–${fmtP(buy.p75)}"></div>
+    <div class="price-ladder-band price-ladder-sell" style="left:${pos(sell.p25)};width:${wid(sell.p25, sell.p75)}" title="SELL P25–P75 : ${fmtP(sell.p25)}–${fmtP(sell.p75)}"></div>
+    <div class="price-ladder-tick buy"  style="left:${pos(buy.p10)}" title="BUY P10"></div>
+    <div class="price-ladder-tick buy"  style="left:${pos(buy.p90)}" title="BUY P90"></div>
+    <div class="price-ladder-tick sell" style="left:${pos(sell.p10)}" title="SELL P10"></div>
+    <div class="price-ladder-tick sell" style="left:${pos(sell.p90)}" title="SELL P90"></div>
+    <span class="price-ladder-mlabel buy"  style="left:${pos(bMed)}">BUY ${fmtP(bMed)}</span>
+    <span class="price-ladder-mlabel sell" style="left:${pos(sMed)}">SELL ${fmtP(sMed)}</span>
+    <div class="price-ladder-current" data-price="${fmtP(live)}" style="left:${pos(live)}"></div>
+  `;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Live prices
+// ═════════════════════════════════════════════════════════════════════════════
+const _prevPrices = {};
+function _setPriceEl(id, raw, str){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = str;
+  _prevPrices[id] = raw;
+  if(id === 'eth-price' && _mevRefEth > 0 && _mevBuyMedian > 0){
+    const delta = raw - _mevRefEth;
+    const setIf = (el, val) => { if(el) el.textContent = fmtP(val); };
+    setIf(document.getElementById('mev-buy-median'),  _mevBuyMedian  + delta);
+    setIf(document.getElementById('mev-sell-median'), _mevSellMedian + delta);
+    setIf(document.getElementById('mev-insight-buy'),  _mevBuyMedian  + delta);
+    setIf(document.getElementById('mev-insight-sell'), _mevSellMedian + delta);
+    if(_lastPatterns) renderTradingZones();
+  }
+}
+async function fetchLivePrices(){
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin&vs_currencies=usd');
+    const d=await r.json();
+    if(d?.bitcoin?.usd){
+      const raw=d.bitcoin.usd;
+      _setPriceEl('btc-price', raw, fmtPrice(raw));
+      _setPriceEl('stat-btc',  raw, fmtPrice(raw));
+    }
+    if(d?.ethereum?.usd){
+      const raw=d.ethereum.usd;
+      _setPriceEl('eth-price', raw, fmtPrice(raw));
+      _setPriceEl('stat-eth',  raw, fmtPrice(raw));
+    }
+  }catch(e){}
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Auto refresh
+// ═════════════════════════════════════════════════════════════════════════════
+let _lastUpdatedAt = null;
+let _autoTimer = null;
+let _nextRefreshAt = null;
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+function _scheduleAutoRefresh(){
+  if(_autoTimer) clearTimeout(_autoTimer);
+  _nextRefreshAt = Date.now() + AUTO_REFRESH_MS;
+  _autoTimer = setTimeout(()=>{ if(!poll) triggerRefresh(); }, AUTO_REFRESH_MS);
+}
+
+function _startLiveCounter(){
+  setInterval(()=>{
+    const el = document.getElementById('last-updated');
+    const cd = document.getElementById('refresh-countdown');
+    if(!el) return;
+    const now = Date.now();
+    if(_lastUpdatedAt){
+      const sec = Math.floor((now - _lastUpdatedAt)/1000);
+      if(sec < 60)        el.textContent = `il y a ${sec}s`;
+      else if(sec < 3600) el.textContent = `il y a ${Math.floor(sec/60)}m`;
+      else                el.textContent = `il y a ${Math.floor(sec/3600)}h`;
+    }
+    if(cd && _nextRefreshAt){
+      const remain = _nextRefreshAt - now;
+      if(remain > 0){
+        const m = Math.floor(remain/60000);
+        const s = String(Math.floor((remain%60000)/1000)).padStart(2,'0');
+        cd.textContent = `· ${m}:${s}`;
+      } else { cd.textContent = '· ↻'; }
+    }
+  }, 1000);
+}
+
+function _startPriceRefresh(){ setInterval(fetchLivePrices, 30_000); }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Filters / sort / pagination
+// ═════════════════════════════════════════════════════════════════════════════
+let _searchTimer;
+function onSearch(){ clearTimeout(_searchTimer); _searchTimer=setTimeout(()=>{ search=document.getElementById('search-input').value.toLowerCase(); applyFilters(); },160); }
+function setCat(cat,btn){
+  catFilter=cat;
+  document.querySelectorAll('.chip').forEach(b=>b.classList.remove('is-active'));
+  btn.classList.add('is-active');
+  applyFilters();
+}
+function applyFilters(){
+  page=1;
+  filtered=allWallets.filter(w=>{
+    const mc=catFilter==='all'||(w.category||'Unknown')===catFilter;
+    const ms=!search||w.address.toLowerCase().includes(search)||(w.label||'').toLowerCase().includes(search);
+    return mc&&ms;
+  });
+  applySortRender();
+}
+function sortBy(field){
+  if(sortField===field){sortAsc=!sortAsc;}else{sortField=field;sortAsc=false;}
+  document.querySelectorAll('[id^="si-"]').forEach(el=>el.textContent='');
+  const el=document.getElementById('si-'+field);
+  if(el)el.textContent=sortAsc?'↑':'↓';
+  applySortRender();
+}
+function updateFilterCounts(wallets){
+  const counts={};
+  wallets.forEach(w=>{ const c=w.category||'Unknown'; counts[c]=(counts[c]||0)+1; });
+  const total=wallets.length;
+  const labels={
+    'all':            `Tous · ${total}`,
+    'MEV Bot':        `Prédateurs · ${counts['MEV Bot']||0}`,
+    'DEX Protocol':   `DEX · ${counts['DEX Protocol']||0}`,
+    'Market Maker':   `Market Maker · ${counts['Market Maker']||0}`,
+    'Smart Contract': `Smart Contract · ${counts['Smart Contract']||0}`,
+    'Unknown':        `Inconnu · ${counts['Unknown']||0}`
+  };
+  document.querySelectorAll('.chip').forEach(btn=>{
+    const cat=btn.dataset.cat;
+    if(labels[cat]) btn.textContent=labels[cat];
+  });
+}
+function applySortRender(){
+  _sorted=[...filtered].sort((a,b)=>{
+    let va=a[sortField]??-Infinity, vb=b[sortField]??-Infinity;
+    if(typeof va==='string')va=va.toLowerCase();
+    if(typeof vb==='string')vb=vb.toLowerCase();
+    return sortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+  });
+  renderTable(_sorted);
+}
+function changePage(d){
+  page+=d;
+  renderTable(_sorted);
+  window.scrollTo({top:document.querySelector('#tbody').closest('.card').offsetTop-70,behavior:'smooth'});
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Modal
+// ═════════════════════════════════════════════════════════════════════════════
+function openModal(addr){
+  const w=allWallets.find(x=>x.address===addr);
+  if(!w)return;
+  const mev=w.mev_score||0;
+  const mevBar=`<div class="flex items-center gap-1">${[0,1,2].map(i=>`<span style="width:8px;height:8px;border-radius:2px;background:${i<mev?'var(--c-mev)':'var(--border)'}"></span>`).join('')}<span class="text-muted" style="margin-left:6px">${['—','moyen','élevé'][mev]||'—'}</span></div>`;
+
+  const rows=[
+    ['Adresse',`<span class="mono fs-xs" style="color:var(--blue);word-break:break-all">${w.address}</span>`],
+    ['Type',w.is_contract===true?'<span class="badge badge--sc">SMART CONTRACT</span>':w.is_contract===false?'<span class="badge badge--eoa">EOA</span>':'<span class="text-muted">—</span>'],
+    ['Nom contrat',w.contract_name?`<span class="text-soft">${w.contract_name}</span>`:'<span class="text-muted">non vérifié</span>'],
+    ['Label',w.label&&w.label!=='Unknown'?`<span class="text-soft font-semibold">${w.label}</span>`:'<span class="text-muted">Unknown</span>'],
+    ['Catégorie',w.category?`<span class="${catClass(w.category)}">${w.category}</span>`:'—'],
+    ['Score MEV',mevBar],
+    ['',''],
+    ['Volume Total',`<span class="text-green font-semibold">${formatUSD(w.total_volume_usd)}</span>`],
+    ['Volume Dune DEX',formatUSD(w.dune_volume_usd)],
+    ['Trades (7j)',fmtInt(w.dune_nb_trades)],
+    ['Taille moy. trade',w.avg_trade_usd>0?`<span class="text-cyan">${formatUSD(w.avg_trade_usd)}</span>`:'—'],
+    ['Tx Count',w.total_tx_count?fmtInt(w.total_tx_count):'—'],
+    ['Token Transfers',fmtInt(w.token_transfer_count)],
+    ['Tokens uniques',fmtInt(w.unique_tokens_traded)],
+    ['Volume ETH récent',w.volume_eth_recent?w.volume_eth_recent.toFixed(4)+' ETH':'—'],
+    ['Balance ETH',w.current_balance_eth!=null&&w.current_balance_eth>0?`<span class="text-cyan font-mono">${w.current_balance_eth.toFixed(4)} ETH</span>`:'—'],
+    ['Gas dépensé',w.gas_spent_eth&&w.gas_spent_eth>0?w.gas_spent_eth.toFixed(6)+' ETH':'—'],
+  ];
+
+  document.getElementById('modal-body').innerHTML=`
+    <div class="flex items-start justify-between mb-5">
+      <div>
+        <h3 class="font-bold" style="color:#fff;font-size:var(--fs-md)">Wallet #${w.rank}</h3>
+        <p class="fs-xs text-muted mono mt-3">${truncAddr(w.address)}</p>
+      </div>
+      <button onclick="closeModal()" class="icon-btn" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-2">
+      ${rows.map(([k,v])=>k?`
+        <div class="flex items-start justify-between gap-3" style="padding:4px 0;border-bottom:1px solid var(--border)">
+          <span class="fs-xs text-muted" style="width:120px;flex-shrink:0">${k}</span>
+          <span class="fs-xs text-soft text-right">${v??'—'}</span>
+        </div>`:'<div style="height:8px"></div>'
+      ).join('')}
+    </div>
+    <div class="grid-3 mt-5">
+      <a href="https://etherscan.io/address/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Etherscan ↗</a>
+      <a href="https://debank.com/profile/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">DeBank ↗</a>
+      <a href="https://app.zerion.io/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Zerion ↗</a>
+    </div>
+    <div class="mt-4">
+      <button id="btn-load-trades" onclick="loadWalletTrades('${w.address}')" class="btn btn-ghost" style="width:100%;height:36px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Charger résumé trades (7j via Dune)
+      </button>
+      <div id="trades-panel" class="mt-3 hidden"></div>
+    </div>`;
+  document.getElementById('modal').classList.remove('is-hidden');
+}
+function closeModal(){ document.getElementById('modal').classList.add('is-hidden'); }
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+async function loadWalletTrades(addr){
+  const btn=document.getElementById('btn-load-trades');
+  const panel=document.getElementById('trades-panel');
+  btn.disabled=true;
+  btn.innerHTML=`<svg class="spin" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="30 10" opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> Interrogation Dune…`;
+  panel.classList.add('hidden');
+  panel.innerHTML='';
+  try{
+    const r=await fetch(`/api/wallet/${addr}/trades`);
+    const d=await r.json();
+    if(d.error){panel.innerHTML=`<p class="fs-xs" style="color:var(--c-mev)">${d.error}</p>`;panel.classList.remove('hidden');return;}
+    panel.innerHTML=renderTradesPanel(d);
+    panel.classList.remove('hidden');
+    btn.classList.add('hidden');
+  }catch(e){
+    panel.innerHTML=`<p class="fs-xs" style="color:var(--c-mev)">Erreur: ${e.message}</p>`;
+    panel.classList.remove('hidden');
+    btn.disabled=false;
+    btn.innerHTML='Réessayer';
+  }
+}
+
+function renderTradesPanel(d){
+  const fmt=formatUSD; const fmtN=fmtNum;
+  const fmtAmt=(n,sym)=>{
+    const f=parseFloat(n);
+    if(!f)return `— ${sym}`;
+    return f>=1e6?`${(f/1e6).toFixed(2)}M ${sym}`:f>=1e3?`${(f/1e3).toFixed(2)}K ${sym}`:`${f.toFixed(4)} ${sym}`;
+  };
+
+  const statsHtml=`
+    <div class="grid-3 mb-4">
+      <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(46,212,168,.06);border:1px solid rgba(46,212,168,.18)">
+        <p class="fs-xs text-muted mb-3">Volume ${d.days}j</p>
+        <p class="font-bold text-green fs-sm">${fmt(d.total_volume_usd)}</p>
+      </div>
+      <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(59,166,255,.06);border:1px solid rgba(59,166,255,.18)">
+        <p class="fs-xs text-muted mb-3">Trades</p>
+        <p class="font-bold fs-sm" style="color:var(--blue)">${fmtN(d.total_trades)}</p>
+      </div>
+      <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(182,117,238,.06);border:1px solid rgba(182,117,238,.18)">
+        <p class="fs-xs text-muted mb-3">Avg/trade</p>
+        <p class="font-bold fs-sm" style="color:var(--c-mm)">${fmt(d.avg_trade_usd)}</p>
+      </div>
+    </div>`;
+
+  const topPairsHtml=d.top_pairs.length?`
+    <div class="mb-4">
+      <p class="fs-xs uppercase tracking-wide text-muted mb-3 font-semibold">Top paires</p>
+      <div class="flex flex-col gap-1">
+        ${d.top_pairs.slice(0,6).map((p,i)=>{
+          const maxV=d.top_pairs[0].volume_usd||1;
+          const pct=Math.round((p.volume_usd/maxV)*100);
+          return `<div class="flex items-center gap-2 fs-xs">
+            <span class="text-muted" style="width:14px;flex-shrink:0">${i+1}</span>
+            <div style="flex:1;min-width:0">
+              <div class="flex items-center justify-between gap-2 mb-3">
+                <span class="text-soft font-mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.pair}</span>
+                <span class="text-green" style="flex-shrink:0">${fmt(p.volume_usd)}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="dist-bar" style="flex:1;height:3px"><div class="dist-bar-fill" style="width:${pct}%;background:var(--green)"></div></div>
+                <span class="text-muted" style="flex-shrink:0">${fmtN(p.nb_trades)} trades · ${p.project}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`:'';
+
+  const dexHtml=d.top_dexes.length?`
+    <div class="mb-4">
+      <p class="fs-xs uppercase tracking-wide text-muted mb-3 font-semibold">DEX utilisés</p>
+      <div class="flex flex-wrap gap-2">
+        ${d.top_dexes.map(x=>`<span class="chip">${x.project} <span class="text-cyan">${fmt(x.volume_usd)}</span></span>`).join('')}
+      </div>
+    </div>`:'';
+
+  const recentHtml=d.recent_trades.length?`
+    <div>
+      <p class="fs-xs uppercase tracking-wide text-muted mb-3 font-semibold">Derniers trades</p>
+      <div style="overflow-x:auto">
+        <table class="tbl" style="font-size:11px">
+          <thead><tr>
+            <th>Heure</th><th>DEX</th><th>Acheté</th><th>Vendu</th><th class="text-right">USD</th><th class="text-center">Tx</th>
+          </tr></thead>
+          <tbody>
+            ${d.recent_trades.slice(0,15).map(t=>`
+              <tr>
+                <td class="text-muted mono">${(t.time||'').slice(5,16)}</td>
+                <td style="color:var(--blue)">${t.project}</td>
+                <td class="text-green mono">${fmtAmt(t.bought_amount,t.bought_symbol)}</td>
+                <td class="text-red mono">${fmtAmt(t.sold_amount,t.sold_symbol)}</td>
+                <td class="text-right text-soft mono">${fmt(t.amount_usd)}</td>
+                <td class="text-center">
+                  <a href="https://etherscan.io/tx/${t.tx_hash}" target="_blank" class="text-muted" style="text-decoration:none">↗</a>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`:'';
+
+  return `<div style="padding-top:var(--s-4);border-top:1px solid var(--border)">
+    <p class="fs-xs uppercase tracking-wide text-muted mb-3 font-semibold">Résumé trades · ${d.days}j · ${d.chains.join(', ')||'ethereum'}</p>
+    ${statsHtml}${topPairsHtml}${dexHtml}${recentHtml}
+  </div>`;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Data
+// ═════════════════════════════════════════════════════════════════════════════
+async function loadData(){
+  try{
+    const r=await fetch('/api/wallets');
+    const data=await r.json();
+    allWallets=(data.wallets||[]).map(w=>({
+      ...w,
+      avg_trade_usd:(w.dune_nb_trades&&w.dune_nb_trades>0)?(w.dune_volume_usd||0)/w.dune_nb_trades:0
+    }));
+    if(allWallets.length){
+      maxVol=Math.max(...allWallets.map(w=>w.total_volume_usd||0));
+      updateStats(data);
+      updateCharts(allWallets);
+      applyFilters();
+      updateFilterCounts(allWallets);
+      renderSentimentBadge(computeSentiment(allWallets));
+      if(!_whaleAlertShown){
+        _whaleAlertShown = true;
+        const topW = allWallets[0];
+        const topVol = topW?.total_volume_usd || topW?.dune_volume_usd || 0;
+        if(topVol > 100_000_000){
+          const addr = topW.address.slice(0,6)+'…'+topW.address.slice(-4);
+          const trades = (topW.dune_nb_trades||topW.trades||0).toLocaleString('en-US');
+          const fmtV = v => v>=1e9 ? '$'+(v/1e9).toFixed(2)+'B' : v>=1e6 ? '$'+(v/1e6).toFixed(0)+'M' : '$'+Math.round(v).toLocaleString();
+          const catEmoji = topW.category==='MEV Bot' ? '🦈' : topW.category==='Market Maker' ? '🐬' : '🐋';
+          showToast(`${catEmoji} Baleine détectée · ${addr} · ${fmtV(topVol)} · ${trades} trades/7j`, 'whale', 5200);
+        }
+      }
+    }
+  }catch(e){console.error(e);}
+}
+
+async function triggerRefresh(){
+  const btn=document.getElementById('btn-refresh');
+  btn.disabled=true;
+  document.getElementById('refresh-icon').classList.add('spin');
+  try{
+    const r=await fetch('/api/refresh',{method:'POST'});
+    const d=await r.json();
+    if(d.status==='running'||d.message==='Analyse lancée') startPoll();
+    else{ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
+  }catch(e){ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
+}
+
+function startPoll(){
+  if(poll)clearInterval(poll);
+  document.getElementById('status-bar').classList.remove('hidden');
+  document.getElementById('progress-line').classList.remove('hidden');
+  poll=setInterval(doPoll,2500);
+}
+
+async function doPoll(){
+  try{
+    const r=await fetch('/api/status');
+    const d=await r.json();
+    document.getElementById('status-text').textContent=d.progress||d.status||'En cours…';
+    if(d.status==='completed'){
+      clearInterval(poll); poll=null;
+      document.getElementById('status-bar').classList.add('hidden');
+      document.getElementById('progress-line').classList.add('hidden');
+      document.getElementById('btn-refresh').disabled=false;
+      document.getElementById('refresh-icon').classList.remove('spin');
+      await loadData();
+      showToast('Analyse terminée — données mises à jour','success');
+    }else if(d.status==='error'){
+      clearInterval(poll); poll=null;
+      document.getElementById('status-bar').classList.add('hidden');
+      document.getElementById('progress-line').classList.add('hidden');
+      document.getElementById('status-text').textContent='Erreur · '+d.error;
+      document.getElementById('btn-refresh').disabled=false;
+      document.getElementById('refresh-icon').classList.remove('spin');
+    }
+  }catch(e){}
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CSV export
+// ═════════════════════════════════════════════════════════════════════════════
+function exportCSV(){
+  if(!allWallets.length)return;
+  const cols=['rank','address','label','category','is_contract','total_volume_usd','dune_volume_usd','dune_nb_trades','total_tx_count','token_transfer_count','current_balance_eth','gas_spent_eth','mev_score'];
+  const csv=[cols.join(','),...allWallets.map(w=>cols.map(c=>{const v=w[c]??'';return typeof v==='string'&&v.includes(',')?`"${v}"`:v;}).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`top_wallets_eth_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Helpers
+// ═════════════════════════════════════════════════════════════════════════════
+function truncAddr(a){return a?a.slice(0,6)+'…'+a.slice(-4):'—';}
+function trunc(s,n){return s&&s.length>n?s.slice(0,n)+'…':s||'—';}
+function fmtInt(v){if(v==null||v===0)return'—';return Math.round(v).toLocaleString('en-US');}
+const fmtNum   = v => Number(v||0).toLocaleString('en-US');
+const fmtPrice = v => v ? '$'+Math.round(v).toLocaleString('en-US') : '—';
+const fmtP     = v => '$' + Math.round(v).toLocaleString('en-US');
+const fmtP2    = v => '$' + Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtPct   = (v,d=2) => (v>=0?'+':'') + Number(v).toFixed(d) + '%';
+function formatUSD(v){
+  if(v==null||v===0)return'$0';
+  if(v>=1e9)return'$'+(v/1e9).toFixed(2)+'B';
+  if(v>=1e6)return'$'+(v/1e6).toFixed(2)+'M';
+  if(v>=1e3)return'$'+(v/1e3).toFixed(1)+'K';
+  return'$'+v.toFixed(0);
+}
+function formatUSDShort(v){
+  if(!v)return'$0';
+  if(v>=1e12)return'$'+(v/1e12).toFixed(1)+'T';
+  if(v>=1e9)return'$'+(v/1e9).toFixed(1)+'B';
+  if(v>=1e6)return'$'+(v/1e6).toFixed(1)+'M';
+  if(v>=1e3)return'$'+(v/1e3).toFixed(0)+'K';
+  return'$'+v.toFixed(0);
+}
+function copyAddr(e,addr){
+  e.stopPropagation();
+  navigator.clipboard.writeText(addr).then(()=>showToast('Adresse copiée','success')).catch(()=>showToast('Adresse copiée','success'));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Boot
+// ═════════════════════════════════════════════════════════════════════════════
+initCharts();
+loadData();
+fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
+fetch('/api/patterns').then(r=>r.ok?r.json():null).then(d=>{ if(d&&!d.error){ renderPatterns(d); _setPatternsMeta(d); _resetPatternsBtn(); } }).catch(()=>{});
+_startLiveCounter();
+_startPriceRefresh();
+</script>
+</body>
+</html>

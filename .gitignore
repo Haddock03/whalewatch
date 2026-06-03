@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Cache (régénérés via Sonar)
+cache/results.json
+cache/patterns.json
+cache/*.csv
+
+# CSV générés
+top_wallets_final.csv
+
+# Logs
+*.log

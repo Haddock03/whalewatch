@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notre Why — WhaleWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <style>
+    /* Page-specific overrides */
+    .why-hero {
+      padding: 96px 0 72px;
+      text-align: center;
+    }
+    .why-hero h1 {
+      font-size: clamp(34px, 6vw, 60px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -.02em;
+      color: #fff;
+      margin: 0 0 var(--s-4) 0;
+    }
+    .why-hero h1 .accent {
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .why-hero h1 small {
+      display: block;
+      font-size: .5em;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: var(--s-3);
+      letter-spacing: 0;
+    }
+    .why-hero p.lead {
+      font-size: clamp(15px, 1.8vw, 17px);
+      color: var(--muted);
+      max-width: 620px;
+      margin: 0 auto var(--s-7);
+      line-height: var(--lh-loose);
+    }
+    .why-hero p.lead strong { color: var(--text-soft); font-weight: 600; }
+
+    .cta-row {
+      display: flex; gap: var(--s-3);
+      flex-wrap: wrap; justify-content: center;
+    }
+
+    .section-block {
+      padding: var(--s-9) 0;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-left: var(--s-5);
+      padding-right: var(--s-5);
+    }
+
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: var(--s-2);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid;
+      margin-bottom: var(--s-5);
+    }
+    .eyebrow svg { width: 12px; height: 12px; }
+    .eyebrow--red    { color: var(--c-mev); background: rgba(255,107,135,.06); border-color: rgba(255,107,135,.25); }
+    .eyebrow--green  { color: var(--green);  background: rgba(46,212,168,.06);  border-color: rgba(46,212,168,.25); }
+    .eyebrow--blue   { color: var(--blue);   background: rgba(59,166,255,.06);  border-color: rgba(59,166,255,.25); }
+    .eyebrow--cyan   { color: var(--cyan);   background: rgba(75,212,255,.06);  border-color: rgba(75,212,255,.25); }
+
+    .big-title {
+      font-size: clamp(24px, 4vw, 40px);
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -.01em;
+      color: #fff;
+      margin: 0 0 var(--s-4);
+    }
+    .big-title em { color: var(--c-accent, var(--green)); font-style: normal; }
+    .body-text {
+      font-size: var(--fs-lg);
+      color: var(--muted);
+      line-height: var(--lh-loose);
+      max-width: 680px;
+    }
+    .body-text strong { color: var(--text-soft); font-weight: 600; }
+
+    /* Problem cards */
+    .problem-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: var(--s-5);
+      margin-top: var(--s-7);
+    }
+    @media (max-width: 720px) { .problem-grid { grid-template-columns: 1fr; } }
+    .problem-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--c-mev);
+      border-radius: var(--radius-md);
+      padding: var(--s-6);
+    }
+    .problem-card .p-icon {
+      display: grid; place-items: center;
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: rgba(255,107,135,.10);
+      color: var(--c-mev);
+      margin-bottom: var(--s-3);
+    }
+    .problem-card .p-icon svg { width: 20px; height: 20px; }
+    .problem-card h3 {
+      font-size: var(--fs-lg); font-weight: 700;
+      color: #fff; margin: 0 0 var(--s-2);
+    }
+    .problem-card p {
+      font-size: var(--fs-md);
+      color: var(--muted);
+      line-height: var(--lh-loose);
+      margin: 0;
+    }
+    .problem-card p strong { color: #ffaab9; font-weight: 600; }
+
+    .solution-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: var(--s-5);
+    }
+    @media (max-width: 720px) { .solution-grid { grid-template-columns: 1fr; } }
+    .solution-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: var(--radius-md);
+      padding: var(--s-6);
+    }
+    .solution-card .s-icon {
+      display: grid; place-items: center;
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: rgba(46,212,168,.10);
+      color: var(--green);
+      margin-bottom: var(--s-3);
+    }
+    .solution-card .s-icon svg { width: 20px; height: 20px; }
+    .solution-card h3 {
+      font-size: var(--fs-lg); font-weight: 700;
+      color: var(--green); margin: 0 0 var(--s-2);
+    }
+    .solution-card p {
+      font-size: var(--fs-md);
+      color: var(--muted);
+      line-height: var(--lh-loose);
+      margin: 0;
+    }
+
+    .vs-divider {
+      display: flex; align-items: center; gap: var(--s-4);
+      margin: var(--s-7) 0;
+      color: var(--muted-2);
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .vs-divider::before, .vs-divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: var(--border);
+    }
+
+    /* Manifesto */
+    .manifesto-section {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-soft);
+    }
+    .manifesto-wrap {
+      max-width: 780px; margin: 0 auto;
+      padding: var(--s-9) var(--s-5);
+    }
+    .manifesto-quote {
+      font-size: clamp(20px, 3vw, 30px);
+      font-weight: 700; line-height: 1.45;
+      color: var(--text);
+      letter-spacing: -.005em;
+      margin-bottom: var(--s-7);
+    }
+    .manifesto-quote .a1 { color: var(--green); }
+    .manifesto-quote .a2 { color: var(--cyan); }
+    .manifesto-body {
+      display: flex; flex-direction: column;
+      gap: var(--s-5);
+    }
+    .manifesto-para {
+      font-size: var(--fs-lg);
+      color: var(--muted);
+      line-height: var(--lh-loose);
+      padding-left: var(--s-5);
+      border-left: 2px solid var(--border);
+    }
+    .manifesto-para strong { color: var(--text-soft); font-weight: 600; }
+    .manifesto-para.highlight {
+      border-left-color: var(--cyan);
+      background: rgba(75,212,255,.04);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      padding: var(--s-4) var(--s-5);
+      color: var(--text-soft);
+    }
+
+    /* Numbers */
+    .numbers-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2px;
+      margin-top: var(--s-7);
+      background: var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    @media (max-width: 800px) { .numbers-grid { grid-template-columns: 1fr 1fr; } }
+    .num-cell {
+      background: var(--surface);
+      padding: var(--s-7) var(--s-4);
+      text-align: center;
+    }
+    .num-val {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      color: var(--cyan);
+      line-height: 1;
+      margin-bottom: var(--s-2);
+      font-family: 'Fira Code', monospace;
+      font-feature-settings: "tnum";
+    }
+    .num-val.green { color: var(--green); }
+    .num-label {
+      font-size: var(--fs-xs);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    /* Approche layers */
+    .layers-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-7);
+      align-items: center;
+      margin-top: var(--s-7);
+    }
+    @media (max-width: 800px) { .layers-layout { grid-template-columns: 1fr; gap: var(--s-5); } }
+    .depth-stack {
+      display: flex; flex-direction: column;
+      gap: var(--s-2);
+    }
+    .depth-layer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: var(--s-4);
+      padding: var(--s-3) var(--s-5);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      border: 1px solid var(--c-layer, var(--border));
+      border-left: 3px solid var(--c-layer, var(--border));
+    }
+    .depth-layer .d-label {
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--c-layer, var(--muted));
+      margin-bottom: 2px;
+    }
+    .depth-layer .d-info {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .depth-layer .d-info strong { color: var(--c-layer); font-weight: 600; }
+
+    .pledge-grid {
+      display: flex; flex-direction: column;
+      gap: var(--s-3); margin-top: var(--s-5);
+    }
+    .pledge-item {
+      display: flex; align-items: flex-start; gap: var(--s-4);
+      padding: var(--s-4) var(--s-5);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .pledge-icon {
+      display: grid; place-items: center;
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: rgba(75,212,255,.10);
+      color: var(--cyan);
+      flex-shrink: 0;
+    }
+    .pledge-icon svg { width: 18px; height: 18px; }
+    .pledge-content h4 {
+      font-size: var(--fs-md);
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 var(--s-1);
+    }
+    .pledge-content p {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      line-height: var(--lh-normal);
+      margin: 0;
+    }
+
+    /* Call section */
+    .call-section {
+      padding: var(--s-9) var(--s-5);
+      text-align: center;
+    }
+    .call-title {
+      font-size: clamp(26px, 4.5vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -.01em;
+      color: #fff;
+      margin: 0 0 var(--s-5);
+    }
+    .call-title .grad {
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .call-sub {
+      font-size: var(--fs-lg);
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto var(--s-7);
+      line-height: var(--lh-loose);
+    }
+
+    .btn-cta-primary {
+      background: var(--cyan);
+      color: #04101e;
+      padding: 0 var(--s-5);
+      height: 40px;
+    }
+    .btn-cta-primary:hover { background: #6fdcff; }
+
+    /* Reading progress */
+    .read-bar {
+      height: 2px; width: 0%;
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      position: absolute; bottom: -1px; left: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="ocean-rays" aria-hidden="true"></div>
+<div class="bubbles" aria-hidden="true">
+  <div class="bubble" style="left:6%;bottom:-5%;width:14px;height:14px;--d:10px;animation-duration:26s"></div>
+  <div class="bubble" style="left:24%;bottom:-5%;width:8px;height:8px;--d:-7px;animation-duration:18s;animation-delay:3s"></div>
+  <div class="bubble" style="left:48%;bottom:-5%;width:18px;height:18px;--d:13px;animation-duration:30s;animation-delay:1s"></div>
+  <div class="bubble" style="left:68%;bottom:-5%;width:7px;height:7px;--d:-8px;animation-duration:20s;animation-delay:6s"></div>
+  <div class="bubble" style="left:92%;bottom:-5%;width:11px;height:11px;--d:9px;animation-duration:22s;animation-delay:4s"></div>
+</div>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · ethereum</span>
+      </span>
+    </a>
+    <span class="live-chip">WHY · manifeste</span>
+    <nav class="nav" style="margin-left:auto">
+      <a href="/"      class="nav-link">🏠 Dashboard</a>
+      <a href="/guide" class="nav-link">📘 Guide</a>
+      <a href="/bot"   class="nav-link">🤖 Bot</a>
+      <a href="/why"   class="nav-link is-active">🌊 Why</a>
+    </nav>
+  </div>
+  <div id="read-progress" class="read-bar"></div>
+</header>
+<div class="site-header-spacer"></div>
+
+<main>
+
+  <!-- ═══ HERO STRIP ═══ -->
+  <div class="container-prose" style="padding-top:var(--s-7)">
+    <section class="hero-strip" id="top" style="padding:var(--s-8) var(--s-7)">
+      <div>
+        <h1 class="hero-strip-title" style="font-size:clamp(28px,4.5vw,42px);line-height:1.1">Vois ce que les <span class="accent">baleines</span> voient</h1>
+        <p class="hero-strip-sub" style="margin-bottom:var(--s-5)">L'information on-chain est publique. Elle devrait l'être pour tous. WhaleWatch est l'outil que les traders indépendants auraient dû avoir depuis longtemps.</p>
+        <div class="flex gap-3 flex-wrap">
+          <a href="/" class="btn btn-primary btn-lg">🏠 Voir le dashboard</a>
+          <a href="#manifesto" class="btn btn-ghost btn-lg">Lire le manifeste ↓</a>
+        </div>
+      </div>
+      <div class="hero-strip-whale" aria-hidden="true" style="font-size:100px">🐳</div>
+    </section>
+  </div>
+
+  <!-- ═══ PROBLEM ═══ -->
+  <section id="problem" class="section-block">
+    <div class="fade-up">
+      <div class="eyebrow eyebrow--red">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Le constat
+      </div>
+      <h2 class="big-title">Deux marchés dans <em style="color:var(--c-mev)">le même océan</em></h2>
+      <p class="body-text">Le marché crypto est présenté comme décentralisé et égalitaire. La réalité des données on-chain raconte une autre histoire.</p>
+    </div>
+
+    <div class="problem-grid">
+      <div class="problem-card fade-up">
+        <div class="p-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9 21V12h6v9"/></svg>
+        </div>
+        <h3>Les gros joueurs</h3>
+        <p>Les fonds quantitatifs, les desks de trading institutionnel et les market makers ont accès à des flux de données temps réel, des modèles d'analyse on-chain sophistiqués et des équipes dédiées au monitoring des gros wallets. Leur avantage informationnel est <strong>massif et structurel</strong>.</p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="p-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/></svg>
+        </div>
+        <h3>Le retail trader</h3>
+        <p>Le trader individuel navigue dans le brouillard. Il suit Twitter, réagit aux nouvelles avec 30 minutes de retard, et ne comprend pas pourquoi le marché a bougé avant l'annonce. Il est, par construction, <strong>toujours en retard</strong> sur les grandes mains.</p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="p-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg>
+        </div>
+        <h3>Les bots MEV</h3>
+        <p>Des centaines de bots scrutent chaque transaction dans la mempool pour s'intercaler entre ton ordre et l'exécution. En 2024, les bots MEV ont extrait plus d'<strong>1 milliard de dollars</strong> directement des traders lambda — souvent sans qu'ils s'en rendent compte.</p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="p-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20" fill="currentColor" opacity=".3"/></svg>
+        </div>
+        <h3>L'information asymétrique</h3>
+        <p>La blockchain est publique, mais lire et interpréter des millions de transactions en temps réel nécessite une infrastructure coûteuse et une expertise rare. Cette asymétrie d'accès à l'information <strong>recrée exactement les inégalités</strong> que la crypto était censée abolir.</p>
+      </div>
+    </div>
+
+    <div class="vs-divider fade-up">Notre réponse</div>
+
+    <div class="solution-grid">
+      <div class="solution-card fade-up">
+        <div class="s-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h3>Visibilité totale sur les baleines</h3>
+        <p>Nous agrégeons et analysons les données on-chain des wallets à plus fort volume pour te donner la même visibilité que les pros — en temps réel, gratuitement.</p>
+      </div>
+      <div class="solution-card fade-up">
+        <div class="s-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H1l8-8 8 8h-8v12z" transform="rotate(180 12 12)"/><path d="M12 3v18M5 12l7 7 7-7" /></svg>
+        </div>
+        <h3>Patterns comportementaux décodés</h3>
+        <p>Au-delà des chiffres bruts, notre moteur d'analyse identifie les comportements : paires dominantes, horaires d'activité, tailles de position, stratégies MEV.</p>
+      </div>
+      <div class="solution-card fade-up">
+        <div class="s-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <h3>Signaux actionnables</h3>
+        <p>Pas de données brutes imbuvables. Des signaux clairs : qui achète quoi, quand, avec quelle conviction, et ce que ça implique pour ta propre stratégie.</p>
+      </div>
+      <div class="solution-card fade-up">
+        <div class="s-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <h3>Open &amp; transparent</h3>
+        <p>Nos sources sont publiques (Dune, Etherscan, on-chain). Nos méthodes sont documentées. Tu peux vérifier chaque donnée toi-même. Pas de boîte noire.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ MANIFESTO ═══ -->
+  <section id="manifesto" class="manifesto-section">
+    <div class="manifesto-wrap">
+      <div class="fade-up">
+        <div class="eyebrow eyebrow--green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Manifeste
+        </div>
+      </div>
+      <blockquote class="manifesto-quote fade-up">
+        « La blockchain a promis la <span class="a1">transparence pour tous</span>.<br>
+        Nous tenons cette promesse — <span class="a2">un wallet à la fois</span>. »
+      </blockquote>
+      <div class="manifesto-body">
+        <p class="manifesto-para fade-up">
+          Chaque transaction sur Ethereum est <strong>publique, permanente et vérifiable</strong>. Un wallet qui a déplacé 500 millions de dollars en USDC n'a pas le droit au secret — ce droit n'existe pas sur une blockchain publique. Ce que les institutions ont compris avant tout le monde, c'est que cette transparence est une <strong>arme</strong>. Ils ont construit leurs outils pour l'exploiter.
+        </p>
+        <p class="manifesto-para fade-up">
+          Nous avons décidé de construire le même outil, et de le rendre accessible. Pas parce que nous croyons que le marché deviendra parfaitement efficient — il ne le sera jamais. Mais parce que <strong>réduire l'asymétrie d'information</strong> entre le retail et l'institutionnel est une cause qui vaut la peine d'être défendue.
+        </p>
+        <p class="manifesto-para highlight fade-up">
+          <strong>WhaleWatch ne crée pas l'information — elle existe déjà.</strong><br>
+          Nous la rendons lisible. Ce que les baleines font dans les profondeurs de la blockchain, nous le cartographions en temps réel pour que chaque trader indépendant puisse naviguer avec les mêmes cartes que les institutionnels.
+        </p>
+        <p class="manifesto-para fade-up">
+          Nous ne promettons pas la richesse. Nous promettons la <strong>clarté</strong>. Savoir que 82 wallets contrôlent 70% du volume DEX d'Ethereum. Savoir que le pic d'activité est à 14h–15h UTC. Savoir que les bots MEV ont sandwiché 745 000 trades cette semaine. Ces informations changent la manière dont on trade — si on les a.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ NUMBERS ═══ -->
+  <section id="numbers" class="section-block" style="text-align:center">
+    <div class="fade-up">
+      <div class="eyebrow eyebrow--blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        En temps réel
+      </div>
+      <h2 class="big-title" style="max-width:800px;margin:0 auto var(--s-4)">Ce que notre radar <em style="color:var(--cyan)">détecte en ce moment</em></h2>
+    </div>
+    <div class="numbers-grid fade-up">
+      <div class="num-cell">
+        <div class="num-val green" id="stat-wallets">212</div>
+        <div class="num-label">Wallets<br>trackés</div>
+      </div>
+      <div class="num-cell">
+        <div class="num-val green" id="stat-vol">$7.6B</div>
+        <div class="num-label">Volume DEX<br>7 jours</div>
+      </div>
+      <div class="num-cell">
+        <div class="num-val green" id="stat-mev">31</div>
+        <div class="num-label">Bots MEV<br>identifiés</div>
+      </div>
+      <div class="num-cell">
+        <div class="num-val green" id="stat-signals">7</div>
+        <div class="num-label">Signaux<br>actifs</div>
+      </div>
+    </div>
+    <p class="fs-xs font-mono text-muted mt-4" id="stat-ts">Chargement…</p>
+  </section>
+
+  <!-- ═══ APPROCHE — DEPTH LAYERS ═══ -->
+  <section id="approach" class="section-block">
+    <div class="fade-up">
+      <div class="eyebrow eyebrow--green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c0-3 2-5 5-5s5 2 5 5"/><path d="M13 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5-5-2-5-5"/><path d="M3 12c0 3 2 5 5 5s5-2 5-5"/></svg>
+        Notre approche
+      </div>
+      <h2 class="big-title">WhaleWatch opère <em style="color:var(--cyan)">là où peu osent regarder</em></h2>
+    </div>
+
+    <div class="layers-layout">
+      <div class="depth-stack fade-up">
+        <div class="depth-layer" style="--c-layer: #5a9ed4">
+          <div>
+            <div class="d-label">Surface</div>
+            <div class="d-info">Twitter · news · sentiment — <strong>tout le monde y voit</strong></div>
+          </div>
+        </div>
+        <div class="depth-layer" style="--c-layer: var(--green)">
+          <div>
+            <div class="d-label">Zone lumineuse</div>
+            <div class="d-info">DEX analytics · volume · TVL — <strong>les actifs regardent ici</strong></div>
+          </div>
+        </div>
+        <div class="depth-layer" style="--c-layer: var(--c-mm)">
+          <div>
+            <div class="d-label">Zone crépusculaire</div>
+            <div class="d-info">Wallet tracking · on-chain flows — <strong>nous cartographions ici</strong></div>
+          </div>
+        </div>
+        <div class="depth-layer" style="--c-layer: var(--c-mev)">
+          <div>
+            <div class="d-label">Abysses</div>
+            <div class="d-info">MEV mempool · dark pools — <strong>bientôt</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fade-up">
+        <p class="body-text mb-5">Nous opérons dans les profondeurs où peu de retail traders osent regarder — et nous remontons l'information là où elle est utile.</p>
+        <div class="pledge-grid">
+          <div class="pledge-item">
+            <div class="pledge-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <div class="pledge-content">
+              <h4>Traquer, pas copier</h4>
+              <p>Comprendre ce que font les baleines pour <em>anticiper</em> les mouvements de marché, pas pour les copier aveuglément sans contexte.</p>
+            </div>
+          </div>
+          <div class="pledge-item">
+            <div class="pledge-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+            </div>
+            <div class="pledge-content">
+              <h4>Rendre public ce qui l'est déjà</h4>
+              <p>La blockchain est ouverte. Notre seule valeur ajoutée : transformer des millions de lignes de données brutes en signaux lisibles par tous.</p>
+            </div>
+          </div>
+          <div class="pledge-item">
+            <div class="pledge-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 16h6v6h-6z"/><path d="M2 16h6v6H2z"/><path d="M9 2h6v6H9z"/><path d="M5 16V8a4 4 0 0 1 4-4h6"/><path d="M19 16V8a4 4 0 0 0-4-4"/></svg>
+            </div>
+            <div class="pledge-content">
+              <h4>Équilibrer le terrain de jeu</h4>
+              <p>Pas d'éliminer les baleines — elles apportent de la liquidité. Mais donner aux petits poissons la même carte des courants sous-marins.</p>
+            </div>
+          </div>
+          <div class="pledge-item">
+            <div class="pledge-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <div class="pledge-content">
+              <h4>Construire nos propres outils</h4>
+              <p>On ne dépend pas des plateformes payantes réservées aux institutionnels. On construit — pipeline Dune, scraping on-chain, bot d'analyse maison.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CALL ═══ -->
+  <section id="call" class="call-section">
+    <div class="fade-up">
+      <h2 class="call-title">
+        L'information est<br>
+        <span class="grad">déjà publique.</span><br>
+        Maintenant elle est lisible.
+      </h2>
+      <p class="call-sub">
+        Cesse de réagir aux nouvelles. Commence à lire les eaux avant que la tempête se forme.
+      </p>
+      <div class="cta-row">
+        <a href="/" class="btn btn-cta-primary btn-lg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Ouvrir le radar
+        </a>
+        <a href="/guide" class="btn btn-ghost btn-lg">Apprendre à trader</a>
+        <a href="/bot"   class="btn btn-ghost btn-lg">Automatiser</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12c0-3 2-5 5-5s5 2 5 5"/>
+          <path d="M13 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5-5-2-5-5"/>
+          <path d="M3 12c0 3 2 5 5 5s5-2 5-5"/>
+        </svg>
+      </span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Ethereum On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"      class="nav-link">Dashboard</a>
+      <a href="/guide" class="nav-link">Guide</a>
+      <a href="/bot"   class="nav-link">Bot</a>
+      <a href="/why"   class="nav-link">Why</a>
+    </nav>
+    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+  </div>
+</footer>
+
+<button id="back-top" class="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Retour en haut" aria-label="Retour en haut">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+
+<script>
+  // Reading progress
+  const prog = document.getElementById('read-progress');
+  const backTop = document.getElementById('back-top');
+  window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    prog.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    backTop.classList.toggle('is-visible', window.scrollY > 500);
+  }, { passive: true });
+
+  // Fade-up on scroll
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('is-visible'); });
+  }, { threshold: 0.07 });
+  document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+
+  // Live stats
+  fetch('/api/wallets').then(r => r.json()).then(d => {
+    const ws = d.wallets || [];
+    const vol = ws.reduce((s, w) => s + (w.total_volume_usd || 0), 0);
+    const mev = ws.filter(w => w.category === 'MEV Bot').length;
+    document.getElementById('stat-wallets').textContent = ws.length || '212';
+    document.getElementById('stat-vol').textContent = vol >= 1e9 ? '$' + (vol/1e9).toFixed(1) + 'B' : vol >= 1e6 ? '$' + (vol/1e6).toFixed(0) + 'M' : '—';
+    document.getElementById('stat-mev').textContent = mev || '31';
+    document.getElementById('stat-ts').textContent = 'Données live · ' + new Date().toLocaleTimeString('fr-FR');
+  }).catch(() => {
+    document.getElementById('stat-ts').textContent = 'Données en cache';
+  });
+
+  fetch('/api/patterns').then(r => r.json()).then(d => {
+    if (d && d.signals) document.getElementById('stat-signals').textContent = d.signals.length || '7';
+  }).catch(() => {});
+</script>
+</body>
+</html>
