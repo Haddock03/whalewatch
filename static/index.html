@@ -1766,11 +1766,40 @@ async function triggerRefresh(){
   btn.disabled=true;
   document.getElementById('refresh-icon').classList.add('spin');
   try{
-    const r=await fetch('/api/refresh',{method:'POST'});
+    // Lance EN PARALLÈLE l'analyse wallets ET le calcul patterns whales
+    // (deux pipelines indépendants côté serveur)
+    const [r] = await Promise.all([
+      fetch('/api/refresh', { method: 'POST' }),
+      fetch('/api/patterns/refresh?n=100&days=7', { method: 'POST' }).catch(()=>null)
+    ]);
     const d=await r.json();
     if(d.status==='running'||d.message==='Analyse lancée') startPoll();
     else{ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
+    // Poll patterns en arrière-plan (le calcul Dune patterns prend 60-120s)
+    _pollPatternsUntilReady();
   }catch(e){ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
+}
+
+// ─── Polling patterns indépendant du polling wallets ────────────────────────
+let _patternsPoll = null;
+function _pollPatternsUntilReady(){
+  if(_patternsPoll) clearInterval(_patternsPoll);
+  let tries = 0, maxTries = 60; // 60 × 5s = 5min max
+  _patternsPoll = setInterval(async () => {
+    if(++tries > maxTries){ clearInterval(_patternsPoll); _patternsPoll = null; return; }
+    try{
+      const r = await fetch('/api/patterns');
+      if(!r.ok) return;                // 404 = pas encore prêt
+      const d = await r.json();
+      if(!d || d.error) return;
+      // Patterns dispo → render + arrêt du poll
+      renderPatterns(d);
+      _setPatternsMeta(d);
+      _resetPatternsBtn();
+      clearInterval(_patternsPoll); _patternsPoll = null;
+      showToast('Patterns whales mis à jour — Zones d\'entrée/sortie actives', 'success');
+    }catch(e){}
+  }, 5000);
 }
 
 function startPoll(){
@@ -1854,7 +1883,16 @@ function copyAddr(e,addr){
 initCharts();
 loadData();
 fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
-fetch('/api/patterns').then(r=>r.ok?r.json():null).then(d=>{ if(d&&!d.error){ renderPatterns(d); _setPatternsMeta(d); _resetPatternsBtn(); } }).catch(()=>{});
+// Charge patterns si dispo, sinon poll en arrière-plan jusqu'à dispo
+// (cas typique : 1er chargement après deploy, ou patterns en cours de calcul)
+fetch('/api/patterns').then(r=>r.ok?r.json():null).then(d=>{
+  if(d && !d.error){
+    renderPatterns(d); _setPatternsMeta(d); _resetPatternsBtn();
+  } else {
+    // Pas de patterns → on poll discrètement, ça apparaîtra dès que prêt
+    _pollPatternsUntilReady();
+  }
+}).catch(()=>{ _pollPatternsUntilReady(); });
 _startLiveCounter();
 _startPriceRefresh();
 </script>
