@@ -934,7 +934,6 @@ function updateStats(data){
   if(data.last_updated){
     _lastUpdatedAt = new Date(data.last_updated).getTime();
     document.getElementById('live-dot')?.classList.remove('hidden');
-    _scheduleAutoRefresh();
   }
 }
 
@@ -971,27 +970,26 @@ async function loadPatterns(forceRefresh=false){
   </div>`;
 
   try {
-    let r = await fetch('/api/patterns');
-    if (r.ok && !forceRefresh) {
-      const cached = await r.json();
-      if (cached.n_wallets === n) {
-        renderPatterns(cached);
-        _setPatternsMeta(cached);
-        _resetPatternsBtn();
+    // Tente cache d'abord (sauf si forceRefresh demandé)
+    if (!forceRefresh) {
+      const cached = await fetch('/api/patterns').then(r => r.ok ? r.json() : null).catch(() => null);
+      if (cached && cached.n_wallets === n) {
+        renderPatterns(cached); _setPatternsMeta(cached); _resetPatternsBtn();
         return;
       }
     }
+    // Sinon déclenche le calcul puis poll
     await fetch(`/api/patterns/refresh?n=${n}`, { method: 'POST' });
-    let tries = 0, maxTries = n <= 100 ? 40 : 70;
+    const maxTries = n <= 100 ? 40 : 70;
+    let tries = 0, ready = false;
     while (tries++ < maxTries) {
       await new Promise(res => setTimeout(res, 3000));
-      r = await fetch('/api/patterns');
-      if (r.ok) {
-        const d = await r.json();
-        if (d.n_wallets === n) { renderPatterns(d); _setPatternsMeta(d); break; }
+      const d = await fetch('/api/patterns').then(r => r.ok ? r.json() : null).catch(() => null);
+      if (d && d.n_wallets === n) {
+        renderPatterns(d); _setPatternsMeta(d); ready = true; break;
       }
     }
-    if (tries >= maxTries) throw new Error('Timeout — réessayez');
+    if (!ready) throw new Error('Timeout — réessayez');
     _resetPatternsBtn();
   } catch(e) {
     body.innerHTML = `<p class="fs-sm text-center" style="color:var(--c-mev);padding:var(--s-5) 0">${e.message}</p>`;
@@ -1821,6 +1819,7 @@ async function doPoll(){
       document.getElementById('btn-refresh').disabled=false;
       document.getElementById('refresh-icon').classList.remove('spin');
       await loadData();
+      _scheduleAutoRefresh();  // prochain refresh auto 5min après cette complétion
       showToast('Analyse terminée — données mises à jour','success');
     }else if(d.status==='error'){
       clearInterval(poll); poll=null;
@@ -1895,6 +1894,7 @@ fetch('/api/patterns').then(r=>r.ok?r.json():null).then(d=>{
 }).catch(()=>{ _pollPatternsUntilReady(); });
 _startLiveCounter();
 _startPriceRefresh();
+_scheduleAutoRefresh();   // 1er auto-refresh dans AUTO_REFRESH_MS
 </script>
 <script src="/static/assets/app.js" defer></script>
 </body>
