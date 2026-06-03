@@ -1007,47 +1007,52 @@ function _setPatternsMeta(d){
   if(meta) meta.textContent = `· ${d.n_wallets} wallets · ${d.days}j · ${(d.generated_at||'').slice(0,16).replace('T',' ')} UTC`;
 }
 
-function renderPatterns(d) {
-  const fmt = formatUSD;
-  const fmtN = fmtNum;
+// ─── Patterns: constantes & helpers de rendu ─────────────────────────────────
+const INSIGHT_META = {
+  pair:           { cls:'insight-row--blue',   label:'Paire',     icon: 'pair' },
+  dex:            { cls:'insight-row--purple', label:'DEX',       icon: 'dex' },
+  time:           { cls:'insight-row--green',  label:'Timing',    icon: 'time' },
+  size:           { cls:'insight-row--yellow', label:'Taille',    icon: 'size' },
+  specialization: { cls:'insight-row--red',    label:'Spécia.',   icon: 'special' },
+  whale:          { cls:'insight-row--cyan',   label:'Baleine',   icon: 'whale' },
+  mev_price:      { cls:'insight-row--yellow', label:'MEV Prix',  icon: 'bolt' },
+  hold_time:      { cls:'insight-row--purple', label:'Détention', icon: 'hold' },
+};
+const DEX_COLORS = {
+  uniswap:'#ff007a', aerodrome:'#2563eb', fluid:'#7c3aed', curve:'#f59e0b',
+  pancakeswap:'#f97316', prjx:'#06b6d4', velodrome:'#6366f1', sushiswap:'#e11d48',
+};
+const dexColor = p => DEX_COLORS[p?.toLowerCase()] || '#5a8197';
 
-  const insightMeta = {
-    pair:           { cls:'insight-row--blue',   label:'Paire',     icon: ICON.pair },
-    dex:            { cls:'insight-row--purple', label:'DEX',       icon: ICON.dex },
-    time:           { cls:'insight-row--green',  label:'Timing',    icon: ICON.time },
-    size:           { cls:'insight-row--yellow', label:'Taille',    icon: ICON.size },
-    specialization: { cls:'insight-row--red',    label:'Spécia.',   icon: ICON.special },
-    whale:          { cls:'insight-row--cyan',   label:'Baleine',   icon: ICON.whale },
-    mev_price:      { cls:'insight-row--yellow', label:'MEV Prix',  icon: ICON.bolt },
-    hold_time:      { cls:'insight-row--purple', label:'Détention', icon: ICON.hold },
+// Recalcule l'insight "size" depuis size_distribution (corrige cache stale)
+function _sizeInsightOverride(d){
+  const buckets = d.size_distribution || [];
+  if (!buckets.length) return null;
+  const totalT = buckets.reduce((s,b)=>s+(b.trade_count||0), 0);
+  const totalV = buckets.reduce((s,b)=>s+(b.volume_usd||0),  0);
+  const topC   = buckets.reduce((a,b)=>b.trade_count>a.trade_count?b:a);
+  const topV   = buckets.reduce((a,b)=>b.volume_usd  >a.volume_usd  ?b:a);
+  return {
+    title:  `Taille majoritaire : ${topC.bucket || ''}`,
+    detail: `${totalT?Math.round(topC.trade_count/totalT*100):0}% des trades par nombre · `
+          + `volume dominant : ${topV.bucket} (${totalV?Math.round(topV.volume_usd/totalV*100):0}% du vol)`,
   };
+}
 
-  // Override size insight detail (recalc from size_distribution)
-  const sizeBuckets = d.size_distribution || [];
-  const sizeTotalTrades = sizeBuckets.reduce((s,b)=>s+(b.trade_count||0), 0);
-  const sizeTotalVol    = sizeBuckets.reduce((s,b)=>s+(b.volume_usd||0), 0);
-  const topByCount  = sizeBuckets.reduce((a,b)=>b.trade_count>a.trade_count?b:a, sizeBuckets[0]||{});
-  const topByVol    = sizeBuckets.reduce((a,b)=>b.volume_usd>a.volume_usd?b:a, sizeBuckets[0]||{});
-  const topCountPct = sizeTotalTrades ? Math.round(topByCount.trade_count/sizeTotalTrades*100) : 0;
-  const topVolPct   = sizeTotalVol    ? Math.round(topByVol.volume_usd/sizeTotalVol*100) : 0;
-
-  const insightsHtml = (d.insights||[]).map(ins => {
-    const m = insightMeta[ins.type] || { cls:'insight-row--cyan', label:'', icon: ICON.special };
-    if (ins.type === 'size') {
-      ins = {...ins,
-        title: `Taille majoritaire : ${topByCount.bucket || ins.title}`,
-        detail: `${topCountPct}% des trades par nombre · volume dominant : ${topByVol.bucket} (${topVolPct}% du vol)`
-      };
-    }
-    let titleHtml = ins.title;
-    let liveBadge = '';
-    if (ins.type === 'mev_price' && d.mev_price_levels && d.mev_price_levels.buy) {
-      const bm = d.mev_price_levels.buy.median, sm = d.mev_price_levels.sell.median;
-      titleHtml = `Prix MEV WETH — buy <span id="mev-insight-buy" class="font-mono">${fmtP(bm)}</span> / sell <span id="mev-insight-sell" class="font-mono">${fmtP(sm)}</span>`;
+function _renderInsights(d) {
+  const override = _sizeInsightOverride(d);
+  return (d.insights||[]).map(ins => {
+    const m = INSIGHT_META[ins.type] || { cls:'insight-row--cyan', label:'', icon:'special' };
+    if (ins.type === 'size' && override) ins = { ...ins, ...override };
+    let titleHtml = ins.title, liveBadge = '';
+    if (ins.type === 'mev_price' && d.mev_price_levels?.buy) {
+      const { buy, sell } = d.mev_price_levels;
+      titleHtml = `Prix MEV WETH — buy <span id="mev-insight-buy" class="font-mono">${fmtP(buy.median)}</span> `
+                + `/ sell <span id="mev-insight-sell" class="font-mono">${fmtP(sell.median)}</span>`;
       liveBadge = ' <span class="live-dot" title="Mise à jour temps réel"></span>';
     }
     return `<div class="insight-row ${m.cls}">
-      <div class="insight-icon">${m.icon}</div>
+      <div class="insight-icon">${ICON[m.icon]}</div>
       <div style="flex:1;min-width:0">
         <div class="flex items-center gap-2">
           <span class="insight-label">${m.label}</span>${liveBadge}
@@ -1057,56 +1062,58 @@ function renderPatterns(d) {
       </div>
     </div>`;
   }).join('');
+}
 
-  // Hourly heatmap
-  const hourlyData = d.hourly_activity || [];
-  const maxTrades = Math.max(...hourlyData.map(h=>h.trades), 1);
-  const minTrades = Math.min(...hourlyData.map(h=>h.trades), 0);
-  const peakHour = hourlyData.reduce((a,b)=>b.trades>a.trades?b:a, {trades:0,hour:0});
-  const hours = Array.from({length:24}, (_,h) => {
-    const row = hourlyData.find(r=>r.hour===h) || {trades:0, volume_usd:0};
-    const norm = maxTrades > minTrades ? (row.trades - minTrades) / (maxTrades - minTrades) : 0;
-    const isPeak = h === peakHour.hour;
+function _renderHourlyHeatmap(d) {
+  const data = d.hourly_activity || [];
+  const maxT = Math.max(...data.map(h=>h.trades), 1);
+  const minT = Math.min(...data.map(h=>h.trades), 0);
+  const peak = data.reduce((a,b)=>b.trades>a.trades?b:a, {trades:0,hour:0});
+  const html = Array.from({length:24}, (_,h) => {
+    const row  = data.find(r=>r.hour===h) || {trades:0};
+    const norm = maxT > minT ? (row.trades - minT) / (maxT - minT) : 0;
+    const isPeak = h === peak.hour;
     const barH = Math.round(8 + norm * 44);
-    const color = isPeak ? 'var(--green)' : `rgba(75,212,255,${(0.15 + norm * 0.55).toFixed(2)})`;
-    return `<div class="hour-bar" title="${h}h UTC — ${fmtN(row.trades)} trades${isPeak?' · PIC':''}">
+    const color = isPeak ? 'var(--green)' : `rgba(75,212,255,${(0.15 + norm*0.55).toFixed(2)})`;
+    return `<div class="hour-bar" title="${h}h UTC — ${fmtNum(row.trades)} trades${isPeak?' · PIC':''}">
       <div class="hour-bar-fill" style="height:${barH}px;background:${color}"></div>
       <span class="hour-bar-label" style="${isPeak?'color:var(--green);font-weight:700':''}">${h%4===0?h+'h':isPeak?'▲':''}</span>
     </div>`;
   }).join('');
+  return { html, peak };
+}
 
-  // Distribution buckets
+function _renderSizeBuckets(d) {
   const buckets = d.size_distribution || [];
-  const maxBTrades = Math.max(...buckets.map(b=>b.trade_count), 1);
-  const maxBVol    = Math.max(...buckets.map(b=>b.volume_usd), 1);
-  const volTotal   = buckets.reduce((s,b)=>s+(b.volume_usd||0), 0);
-  const bucketsHtml = buckets.map(b => {
-    const pctTrades = Math.round(b.trade_count / maxBTrades * 100);
-    const pctVol    = Math.round(b.volume_usd   / maxBVol    * 100);
-    const volShare  = Math.round(b.volume_usd   / volTotal   * 100);
+  const maxT  = Math.max(...buckets.map(b=>b.trade_count), 1);
+  const maxV  = Math.max(...buckets.map(b=>b.volume_usd),  1);
+  const totalV = buckets.reduce((s,b)=>s+(b.volume_usd||0), 0);
+  return buckets.map(b => {
+    const pctT = Math.round(b.trade_count / maxT * 100);
+    const pctV = Math.round(b.volume_usd  / maxV * 100);
+    const share= Math.round(b.volume_usd  / totalV * 100);
     return `<div class="dist-row">
       <div class="flex items-center justify-between mb-3">
         <span class="text-soft font-semibold" style="width:90px">${b.bucket}</span>
         <div class="flex items-center gap-3 fs-xs">
-          <span class="tabular-nums text-muted">${fmtN(b.trade_count)} trades</span>
-          <span class="font-semibold tabular-nums text-green" style="width:60px;text-align:right">${fmt(b.volume_usd)}</span>
-          <span class="tabular-nums text-muted" style="width:32px;text-align:right">${volShare}%</span>
+          <span class="tabular-nums text-muted">${fmtNum(b.trade_count)} trades</span>
+          <span class="font-semibold tabular-nums text-green" style="width:60px;text-align:right">${formatUSD(b.volume_usd)}</span>
+          <span class="tabular-nums text-muted" style="width:32px;text-align:right">${share}%</span>
         </div>
       </div>
       <div class="flex flex-col gap-1">
-        <div class="dist-bar"><div class="dist-bar-fill" style="width:${pctTrades}%;background:var(--c-sc)"></div></div>
-        <div class="dist-bar"><div class="dist-bar-fill" style="width:${pctVol}%;background:var(--cyan)"></div></div>
+        <div class="dist-bar"><div class="dist-bar-fill" style="width:${pctT}%;background:var(--c-sc)"></div></div>
+        <div class="dist-bar"><div class="dist-bar-fill" style="width:${pctV}%;background:var(--cyan)"></div></div>
       </div>
     </div>`;
   }).join('');
+}
 
-  // Top pairs
-  const dexColors = { uniswap:'#ff007a', aerodrome:'#2563eb', fluid:'#7c3aed', curve:'#f59e0b', pancakeswap:'#f97316', prjx:'#06b6d4', velodrome:'#6366f1', sushiswap:'#e11d48' };
-  const getDexColor = p => dexColors[p?.toLowerCase()] || '#5a8197';
-  const maxPairVol = d.top_pairs?.[0]?.volume_usd || 1;
-  const pairsHtml = (d.top_pairs||[]).slice(0,8).map((p,i) => {
-    const pct = Math.round(p.volume_usd / maxPairVol * 100);
-    const dc = getDexColor(p.project);
+function _renderTopPairs(d) {
+  const maxV = d.top_pairs?.[0]?.volume_usd || 1;
+  return (d.top_pairs||[]).slice(0,8).map((p,i) => {
+    const pct = Math.round(p.volume_usd / maxV * 100);
+    const dc  = dexColor(p.project);
     return `<div style="padding:var(--s-3) 0;border-bottom:1px solid var(--border)">
       <div class="flex items-center justify-between mb-3 gap-2">
         <div class="flex items-center gap-2">
@@ -1114,158 +1121,158 @@ function renderPatterns(d) {
           <span class="font-mono fs-sm font-semibold" style="color:var(--text)">${p.pair}</span>
           <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:600;background:${dc}22;color:${dc};border:1px solid ${dc}44">${p.project}</span>
         </div>
-        <span class="font-semibold tabular-nums text-green fs-sm">${fmt(p.volume_usd)}</span>
+        <span class="font-semibold tabular-nums text-green fs-sm">${formatUSD(p.volume_usd)}</span>
       </div>
       <div class="flex items-center gap-2" style="padding-left:22px">
         <div class="dist-bar" style="flex:1"><div class="dist-bar-fill" style="width:${pct}%;background:${dc}"></div></div>
-        <span class="text-muted fs-xs tabular-nums">${fmtN(p.total_trades)} trades · avg ${fmt(p.avg_usd)}</span>
+        <span class="text-muted fs-xs tabular-nums">${fmtNum(p.total_trades)} trades · avg ${formatUSD(p.avg_usd)}</span>
       </div>
     </div>`;
   }).join('');
+}
 
-  // Top DEX
-  const maxDexVol = d.top_dexes?.[0]?.volume_usd || 1;
-  const dexHtml = (d.top_dexes||[]).slice(0,6).map((x,i) => {
-    const pct = Math.round(x.volume_usd / maxDexVol * 100);
-    const dc = getDexColor(x.project);
+function _renderTopDex(d) {
+  const maxV = d.top_dexes?.[0]?.volume_usd || 1;
+  return (d.top_dexes||[]).slice(0,6).map(x => {
+    const pct = Math.round(x.volume_usd / maxV * 100);
+    const dc  = dexColor(x.project);
     return `<div class="flex items-center gap-2 fs-sm" style="padding:6px 0">
       <span style="width:8px;height:8px;border-radius:50%;background:${dc};flex-shrink:0"></span>
       <span class="text-soft font-semibold" style="width:90px">${x.project}</span>
       <div class="dist-bar" style="flex:1;height:6px"><div class="dist-bar-fill" style="width:${pct}%;background:${dc};opacity:.85"></div></div>
-      <span class="text-soft tabular-nums" style="width:60px;text-align:right">${fmt(x.volume_usd)}</span>
+      <span class="text-soft tabular-nums" style="width:60px;text-align:right">${formatUSD(x.volume_usd)}</span>
       <span class="text-muted tabular-nums" style="width:28px;text-align:right">${x.wallet_count}w</span>
     </div>`;
   }).join('');
+}
 
-  // MEV price levels
-  const mev = d.mev_price_levels;
-  let mevHtml = '';
-  if (mev && mev.buy && mev.sell) {
-    const b = mev.buy, s = mev.sell;
-    const pMin = Math.min(b.p10, s.p10);
-    const pMax = Math.max(b.p90, s.p90);
-    const rng  = pMax - pMin || 1;
-    const toX  = v => Math.max(0, Math.min(100, ((v - pMin) / rng * 100))).toFixed(1);
-    const bW   = v => Math.max(1, ((v.p75 - v.p25) / rng * 100)).toFixed(1);
-    const spread = mev.spread_usd;
-    const spreadColor = spread >= 0 ? '#2ed4a8' : '#ff6b87';
-    const arrow = spread >= 0 ? '↑' : '↓';
+function _renderMevPriceBar(mev) {
+  if (!mev?.buy || !mev?.sell) return '';
+  const b = mev.buy, s = mev.sell;
+  const pMin = Math.min(b.p10, s.p10), pMax = Math.max(b.p90, s.p90);
+  const rng = pMax - pMin || 1;
+  const toX = v => Math.max(0, Math.min(100, ((v - pMin) / rng * 100))).toFixed(1);
+  const bW  = v => Math.max(1, ((v.p75 - v.p25) / rng * 100)).toFixed(1);
+  const spread = mev.spread_usd;
+  const spreadColor = spread >= 0 ? '#2ed4a8' : '#ff6b87';
+  const arrow = spread >= 0 ? '↑' : '↓';
 
-    const barRow = (side, data, col) => `
-      <div class="flex items-center gap-3 fs-sm">
-        <span style="width:36px;text-align:right;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${col};font-size:11px;flex-shrink:0">${side}</span>
-        <div style="flex:1;position:relative;height:24px">
-          <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border-2)"></div>
-          <div style="position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:${toX(data.p10)}%;width:${((data.p90-data.p10)/rng*100).toFixed(1)}%;background:${col}14;border:1px solid ${col}22"></div>
-          <div style="position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:${toX(data.p25)}%;width:${bW(data)}%;background:${col};opacity:.35"></div>
-          <div style="position:absolute;top:0;bottom:0;width:2px;border-radius:1px;left:${toX(data.median)}%;transform:translateX(-50%);background:${col}"></div>
-        </div>
-        <div class="flex items-center gap-2" style="flex-shrink:0;text-align:right">
-          <span id="mev-${side.toLowerCase()}-median" class="font-mono font-bold" style="color:${col}">${fmtP(data.median)}</span>
-          <span class="text-muted fs-xs">${fmtN(data.trade_count)} trades</span>
-        </div>
-      </div>`;
-
-    const buyRow  = barRow('BUY',  b, '#2ed4a8');
-    const sellRow = barRow('SELL', s, '#ff6b87');
-
-    _mevBuyMedian  = b.median;
-    _mevSellMedian = s.median;
-    _mevRefEth     = _analysisEthPrice || _prevPrices['eth-price'] || b.median;
-
-    const tickCount = 5;
-    const ticks = Array.from({length: tickCount}, (_,i) => {
-      const v = pMin + (rng * i / (tickCount-1));
-      return `<span style="left:${(i/(tickCount-1)*100).toFixed(1)}%;transform:translateX(-50%);position:absolute">${fmtP(v)}</span>`;
-    }).join('');
-
-    mevHtml = `
-    <div class="mt-5" style="padding-top:var(--s-5);border-top:1px solid var(--border)">
-      <div style="padding:var(--s-4);border-radius:var(--radius-md);background:rgba(255,198,87,.04);border:1px solid rgba(255,198,87,.18)">
-        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <p class="fs-xs uppercase tracking-wide font-semibold flex items-center gap-2" style="color:var(--c-sc)">
-            ${ICON.bolt} Prix d'entrée MEV
-            <span style="padding:2px 7px;border-radius:5px;font-family:'Fira Code',monospace;font-size:10px;font-weight:700;background:rgba(255,198,87,.15);color:var(--c-sc);border:1px solid rgba(255,198,87,.30)">WETH</span>
-            <span class="live-dot"></span>
-            <span style="text-transform:none;font-weight:400;color:var(--muted);font-size:10px">(wallets ≥200 trades/7j)</span>
-          </p>
-          <span class="fs-xs font-mono font-semibold" style="padding:2px 8px;border-radius:5px;color:${spreadColor};background:${spreadColor}18;border:1px solid ${spreadColor}33">spread ${arrow}${fmtP2(Math.abs(spread))} (${spread>=0?'+':''}${mev.spread_bps} bps)</span>
-        </div>
-        <div class="flex flex-col gap-3">
-          ${buyRow}
-          ${sellRow}
-          <div style="position:relative;font-size:9.5px;color:var(--muted-2);font-family:'Fira Code',monospace;height:16px;padding-left:40px;padding-right:90px">${ticks}</div>
-        </div>
-        <div class="flex items-center justify-between fs-xs mt-3" style="color:var(--muted)">
-          <span>Bande = P25–P75 · trait = médiane · fond = P10–P90</span>
-          <span>Δ buy→sell : <span class="font-mono" style="color:${spreadColor}">${spread>=0?'+':''}${fmtP2(spread)}</span></span>
-        </div>
+  const barRow = (side, data, col) => `
+    <div class="flex items-center gap-3 fs-sm">
+      <span style="width:36px;text-align:right;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${col};font-size:11px;flex-shrink:0">${side}</span>
+      <div style="flex:1;position:relative;height:24px">
+        <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border-2)"></div>
+        <div style="position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:${toX(data.p10)}%;width:${((data.p90-data.p10)/rng*100).toFixed(1)}%;background:${col}14;border:1px solid ${col}22"></div>
+        <div style="position:absolute;top:50%;transform:translateY(-50%);height:14px;border-radius:3px;left:${toX(data.p25)}%;width:${bW(data)}%;background:${col};opacity:.35"></div>
+        <div style="position:absolute;top:0;bottom:0;width:2px;border-radius:1px;left:${toX(data.median)}%;transform:translateX(-50%);background:${col}"></div>
+      </div>
+      <div class="flex items-center gap-2" style="flex-shrink:0;text-align:right">
+        <span id="mev-${side.toLowerCase()}-median" class="font-mono font-bold" style="color:${col}">${fmtP(data.median)}</span>
+        <span class="text-muted fs-xs">${fmtNum(data.trade_count)} trades</span>
       </div>
     </div>`;
-  }
 
-  // Hold time distribution
-  const holdDist = d.hold_time_distribution || [];
-  let holdHtml = '';
-  if (holdDist.length) {
-    const totalFlips = holdDist.reduce((s,r) => s + r.flip_count, 0);
-    const maxFlips   = Math.max(...holdDist.map(r => r.flip_count), 1);
-    const bucketColor = b => {
-      if (b.includes('bloc'))   return '#2ed4a8';
-      if (b.includes('1min'))   return '#4cd4ff';
-      if (b.includes('5min'))   return '#a3e635';
-      if (b.includes('1h'))     return '#ffc657';
-      if (b.includes('24h'))    return '#ff9663';
-      return '#ff6b87';
-    };
-    const fmtSec = s => {
-      if (s < 60)   return `${Math.round(s)}s`;
-      if (s < 3600) return `${Math.floor(s/60)}m${Math.round(s%60)}s`;
-      return `${Math.floor(s/3600)}h${Math.round((s%3600)/60)}m`;
-    };
-    const cumFast = holdDist.filter(r => r.avg_hold_sec <= 13).reduce((s,r) => s + r.pct, 0);
-    const barsHtml = holdDist.map(r => {
-      const pct  = Math.round(r.flip_count / maxFlips * 100);
-      const col  = bucketColor(r.bucket);
-      const med  = r.median_hold_sec > 0 ? `médiane ${fmtSec(r.median_hold_sec)}` : '';
-      return `<div class="flex items-center gap-2 fs-sm">
-        <span style="width:120px;text-align:right;color:var(--text-soft);font-weight:500;flex-shrink:0">${r.bucket}</span>
-        <div style="flex:1;position:relative;height:20px;display:flex;align-items:center">
-          <div style="position:absolute;top:0;bottom:0;left:0;border-radius:0 3px 3px 0;width:${pct}%;background:${col};opacity:.8;min-width:2px"></div>
-          <span style="position:relative;padding-left:8px;color:var(--text);font-weight:600">${fmtN(r.flip_count)}</span>
-        </div>
-        <span class="tabular-nums font-bold" style="width:32px;text-align:right;color:${col}">${r.pct}%</span>
-        <span class="text-muted tabular-nums" style="width:80px;text-align:right">${med}</span>
-      </div>`;
-    }).join('');
-    holdHtml = `
-    <div class="mt-4">
-      <div style="padding:var(--s-4);border-radius:var(--radius-md);background:rgba(182,117,238,.04);border:1px solid rgba(182,117,238,.18)">
-        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <p class="fs-xs uppercase tracking-wide font-semibold flex items-center gap-2" style="color:var(--c-mm)">
-            ${ICON.hourglass} Temps de détention MEV
-            <span style="padding:2px 7px;border-radius:5px;font-family:'Fira Code',monospace;font-size:10px;font-weight:700;background:rgba(255,198,87,.15);color:var(--c-sc);border:1px solid rgba(255,198,87,.30)">WETH buy→sell</span>
-            <span style="text-transform:none;font-weight:400;color:var(--muted);font-size:10px">(même wallet)</span>
-          </p>
-          <span class="fs-xs tabular-nums font-mono text-muted">${fmtN(totalFlips)} paires</span>
-        </div>
-        <div class="flex flex-col gap-3 mb-3">${barsHtml}</div>
-        <div class="flex items-center justify-between fs-xs">
-          <span class="text-muted"><span class="font-bold text-green">${cumFast.toFixed(0)}%</span> des flips dans le même bloc Ethereum <span style="opacity:.7">(sandwich pur)</span></span>
-          <span class="text-muted">1 bloc ≈ 12s</span>
-        </div>
+  // Side-effect: update live-MEV refs (utilisés par _setPriceEl)
+  _mevBuyMedian  = b.median;
+  _mevSellMedian = s.median;
+  _mevRefEth     = _analysisEthPrice || _prevPrices['eth-price'] || b.median;
+
+  const ticks = Array.from({length:5}, (_,i) => {
+    const v = pMin + (rng * i / 4);
+    return `<span style="left:${(i/4*100).toFixed(1)}%;transform:translateX(-50%);position:absolute">${fmtP(v)}</span>`;
+  }).join('');
+
+  return `
+  <div class="mt-5" style="padding-top:var(--s-5);border-top:1px solid var(--border)">
+    <div style="padding:var(--s-4);border-radius:var(--radius-md);background:rgba(255,198,87,.04);border:1px solid rgba(255,198,87,.18)">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <p class="fs-xs uppercase tracking-wide font-semibold flex items-center gap-2" style="color:var(--c-sc)">
+          ${ICON.bolt} Prix d'entrée MEV
+          <span style="padding:2px 7px;border-radius:5px;font-family:'Fira Code',monospace;font-size:10px;font-weight:700;background:rgba(255,198,87,.15);color:var(--c-sc);border:1px solid rgba(255,198,87,.30)">WETH</span>
+          <span class="live-dot"></span>
+          <span style="text-transform:none;font-weight:400;color:var(--muted);font-size:10px">(wallets ≥200 trades/7j)</span>
+        </p>
+        <span class="fs-xs font-mono font-semibold" style="padding:2px 8px;border-radius:5px;color:${spreadColor};background:${spreadColor}18;border:1px solid ${spreadColor}33">spread ${arrow}${fmtP2(Math.abs(spread))} (${spread>=0?'+':''}${mev.spread_bps} bps)</span>
       </div>
-    </div>`;
-  }
+      <div class="flex flex-col gap-3">
+        ${barRow('BUY',  b, '#2ed4a8')}
+        ${barRow('SELL', s, '#ff6b87')}
+        <div style="position:relative;font-size:9.5px;color:var(--muted-2);font-family:'Fira Code',monospace;height:16px;padding-left:40px;padding-right:90px">${ticks}</div>
+      </div>
+      <div class="flex items-center justify-between fs-xs mt-3" style="color:var(--muted)">
+        <span>Bande = P25–P75 · trait = médiane · fond = P10–P90</span>
+        <span>Δ buy→sell : <span class="font-mono" style="color:${spreadColor}">${spread>=0?'+':''}${fmtP2(spread)}</span></span>
+      </div>
+    </div>
+  </div>`;
+}
 
-  // Signal count badge
+function _renderHoldTime(d) {
+  const dist = d.hold_time_distribution || [];
+  if (!dist.length) return '';
+  const totalFlips = dist.reduce((s,r) => s + r.flip_count, 0);
+  const maxFlips   = Math.max(...dist.map(r => r.flip_count), 1);
+  const cumFast    = dist.filter(r => r.avg_hold_sec <= 13).reduce((s,r) => s + r.pct, 0);
+  const bucketColor = b =>
+    b.includes('bloc') ? '#2ed4a8' : b.includes('1min') ? '#4cd4ff' :
+    b.includes('5min') ? '#a3e635' : b.includes('1h')   ? '#ffc657' :
+    b.includes('24h')  ? '#ff9663' : '#ff6b87';
+  const fmtSec = s =>
+    s < 60   ? `${Math.round(s)}s` :
+    s < 3600 ? `${Math.floor(s/60)}m${Math.round(s%60)}s` :
+               `${Math.floor(s/3600)}h${Math.round((s%3600)/60)}m`;
+  const bars = dist.map(r => {
+    const pct = Math.round(r.flip_count / maxFlips * 100);
+    const col = bucketColor(r.bucket);
+    const med = r.median_hold_sec > 0 ? `médiane ${fmtSec(r.median_hold_sec)}` : '';
+    return `<div class="flex items-center gap-2 fs-sm">
+      <span style="width:120px;text-align:right;color:var(--text-soft);font-weight:500;flex-shrink:0">${r.bucket}</span>
+      <div style="flex:1;position:relative;height:20px;display:flex;align-items:center">
+        <div style="position:absolute;top:0;bottom:0;left:0;border-radius:0 3px 3px 0;width:${pct}%;background:${col};opacity:.8;min-width:2px"></div>
+        <span style="position:relative;padding-left:8px;color:var(--text);font-weight:600">${fmtNum(r.flip_count)}</span>
+      </div>
+      <span class="tabular-nums font-bold" style="width:32px;text-align:right;color:${col}">${r.pct}%</span>
+      <span class="text-muted tabular-nums" style="width:80px;text-align:right">${med}</span>
+    </div>`;
+  }).join('');
+  return `
+  <div class="mt-4">
+    <div style="padding:var(--s-4);border-radius:var(--radius-md);background:rgba(182,117,238,.04);border:1px solid rgba(182,117,238,.18)">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <p class="fs-xs uppercase tracking-wide font-semibold flex items-center gap-2" style="color:var(--c-mm)">
+          ${ICON.hourglass} Temps de détention MEV
+          <span style="padding:2px 7px;border-radius:5px;font-family:'Fira Code',monospace;font-size:10px;font-weight:700;background:rgba(255,198,87,.15);color:var(--c-sc);border:1px solid rgba(255,198,87,.30)">WETH buy→sell</span>
+          <span style="text-transform:none;font-weight:400;color:var(--muted);font-size:10px">(même wallet)</span>
+        </p>
+        <span class="fs-xs tabular-nums font-mono text-muted">${fmtNum(totalFlips)} paires</span>
+      </div>
+      <div class="flex flex-col gap-3 mb-3">${bars}</div>
+      <div class="flex items-center justify-between fs-xs">
+        <span class="text-muted"><span class="font-bold text-green">${cumFast.toFixed(0)}%</span> des flips dans le même bloc Ethereum <span style="opacity:.7">(sandwich pur)</span></span>
+        <span class="text-muted">1 bloc ≈ 12s</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderPatterns(d) {
+  // ── Rendu en helpers ciblés ──
+  const insightsHtml = _renderInsights(d);
+  const { html: hours, peak: peakHour } = _renderHourlyHeatmap(d);
+  const bucketsHtml = _renderSizeBuckets(d);
+  const mevHtml     = _renderMevPriceBar(d.mev_price_levels);
+  const holdHtml    = _renderHoldTime(d);
+  const pairsHtml   = _renderTopPairs(d);
+  const dexHtml     = _renderTopDex(d);
+
+  // ── Badge nb signaux ──
   const sigCount = document.getElementById('patterns-signal-count');
-  if(sigCount && (d.insights||[]).length){
+  if (sigCount && (d.insights||[]).length) {
     sigCount.textContent = `${d.insights.length} signaux`;
     sigCount.classList.remove('hidden');
   }
 
-  // Assemble
+  // ── Assemblage ──
   document.getElementById('patterns-body').innerHTML = `
     <div class="patterns-grid">
       <div>
@@ -1276,7 +1283,7 @@ function renderPatterns(d) {
         <div style="padding:var(--s-3);border-radius:var(--radius-md);background:rgba(59,166,255,.04);border:1px solid rgba(59,166,255,.15)">
           <div class="flex items-center justify-between mb-3">
             <p class="fs-xs uppercase tracking-wide font-semibold text-soft">Activité UTC</p>
-            <span class="fs-xs font-semibold text-green">▲ pic ${peakHour.hour}h · ${fmtN(peakHour.trades)}</span>
+            <span class="fs-xs font-semibold text-green">▲ pic ${peakHour.hour}h · ${fmtNum(peakHour.trades)}</span>
           </div>
           <div class="flex items-end gap-1" style="width:100%">${hours}</div>
         </div>
@@ -1764,16 +1771,12 @@ async function triggerRefresh(){
   btn.disabled=true;
   document.getElementById('refresh-icon').classList.add('spin');
   try{
-    // Lance EN PARALLÈLE l'analyse wallets ET le calcul patterns whales
-    // (deux pipelines indépendants côté serveur)
-    const [r] = await Promise.all([
-      fetch('/api/refresh', { method: 'POST' }),
-      fetch('/api/patterns/refresh?n=100&days=7', { method: 'POST' }).catch(()=>null)
-    ]);
-    const d=await r.json();
-    if(d.status==='running'||d.message==='Analyse lancée') startPoll();
+    // /api/refresh enchaîne wallets + patterns (cf. _run_analysis.py)
+    const r = await fetch('/api/refresh', { method: 'POST' });
+    const d = await r.json();
+    if(d.status==='running' || d.message==='Analyse lancée') startPoll();
     else{ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
-    // Poll patterns en arrière-plan (le calcul Dune patterns prend 60-120s)
+    // Les patterns arrivent à la fin du pipeline — poll discret en parallèle
     _pollPatternsUntilReady();
   }catch(e){ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
 }
