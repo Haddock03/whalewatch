@@ -72,6 +72,11 @@ elif path.startswith("/static/"):
             mime = {"css": "text/css", "js": "application/javascript", "html": "text/html"}.get(ext, "application/octet-stream")
             self._serve_file(file_path, mime)
 
+        elif path.startswith("/static/"):
+            file_path = os.path.join(BASE_DIR, path.lstrip("/"))
+            ext = path.split(".")[-1]
+            mime = {"css": "text/css", "js": "application/javascript", "html": "text/html"}.get(ext, "application/octet-stream")
+            self._serve_file(file_path, mime)
         elif path == "/api/status":
             with _lock:
                 self._json(_state)
