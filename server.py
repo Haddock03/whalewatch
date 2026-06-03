@@ -66,16 +66,21 @@ def load_json(path, default=None):
         return default
 
 
-def run_analysis():
-    """Lance _run_analysis.py en subprocess en streamant le progress."""
+def run_analysis(n_wallets: int = 100, days: int = 7):
+    """Lance _run_analysis.py en subprocess en streamant le progress.
+
+    n_wallets/days sont passés via env vars (WW_N_WALLETS, WW_DAYS) —
+    plus simples que des args CLI pour la composition avec subprocess.Popen.
+    """
     set_state(status="running", progress="Lancement de l'analyse...", error=None,
               started_at=_utc_now_iso())
     try:
         script = os.path.join(BASE_DIR, "_run_analysis.py")
+        env = {**os.environ, "WW_N_WALLETS": str(n_wallets), "WW_DAYS": str(days)}
         proc = subprocess.Popen(
             [sys.executable, script],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, cwd=BASE_DIR
+            text=True, cwd=BASE_DIR, env=env
         )
         for line in proc.stdout:
             line = line.strip()
@@ -188,8 +193,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 running = _state["status"] == "running"
             if running:
                 return self._json({"message": "Analyse déjà en cours", "status": "running"})
-            threading.Thread(target=run_analysis, daemon=True).start()
-            return self._json({"message": "Analyse lancée", "status": "running"})
+            qs = parse_qs(parsed.query)
+            n    = int(qs.get("n",    ["100"])[0])
+            days = int(qs.get("days", ["7"])[0])
+            threading.Thread(target=run_analysis, args=(n, days), daemon=True).start()
+            return self._json({"message": f"Analyse lancée ({n} wallets, {days}j)",
+                               "status": "running"})
 
         if path == "/api/patterns/refresh":
             qs = parse_qs(parsed.query)

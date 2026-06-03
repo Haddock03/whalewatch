@@ -19,7 +19,12 @@
   // Tag les <style> inline initiaux pour qu'ils soient remplacés à la
   // 1ère navigation (sinon on se retrouve avec les styles du dashboard
   // ET ceux de /why simultanément).
-  document.head.querySelectorAll('style').forEach(s => s.setAttribute('data-page-style', ''));
+  // NB : snapshot au boot — si une lib (Chart.js etc.) injecte un <style>
+  // runtime APRÈS app.js, il ne sera pas tagué donc préservé. Pour opt-out
+  // explicite, ajouter `data-keep` sur le <style> côté HTML.
+  document.head.querySelectorAll('style:not([data-keep])').forEach(s =>
+    s.setAttribute('data-page-style', '')
+  );
 
   async function softNavigate(href, push = true) {
     if (_navigating) return;
@@ -133,10 +138,11 @@
 
   // ── Auto-refresh des données dashboard ───────────────────────────────
   // Le dashboard expose loadData() et loadPatterns() via window.
-  // On tick toutes les 60s pour wallets, toutes les 5min pour patterns
-  // (les patterns sont coûteux côté Dune, inutile d'aller plus vite).
-  const WALLETS_INTERVAL_MS  = 60_000;
-  const PATTERNS_INTERVAL_MS = 5 * 60_000;
+  // Intervalles lus depuis WW_CONFIG (défini dans index.html, exposé global).
+  // Fallbacks si app.js charge avant ou hors du dashboard.
+  const CFG = window.WW_CONFIG || {};
+  const WALLETS_INTERVAL_MS  = CFG.WALLETS_REFRESH_MS  || 60_000;
+  const PATTERNS_INTERVAL_MS = CFG.PATTERNS_REFRESH_MS || 5 * 60_000;
 
   let _walletsTimer  = null;
   let _patternsTimer = null;

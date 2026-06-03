@@ -615,6 +615,25 @@ window.addEventListener('scroll',()=>{
 },{passive:true});
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Config — tous les intervalles & seuils centralisés (lus aussi par app.js)
+// ═════════════════════════════════════════════════════════════════════════════
+const WW_CONFIG = Object.freeze({
+  // Rafraîchissement données (ms)
+  PRICE_REFRESH_MS:      30_000,        // CoinGecko ETH/BTC
+  WALLETS_REFRESH_MS:    60_000,        // /api/wallets (light, JSON cache)
+  PATTERNS_REFRESH_MS:   5 * 60_000,    // /api/patterns (heavy, Dune)
+  STATUS_POLL_MS:        2_500,         // /api/status pendant analyse
+  AUTO_REFRESH_MS:       5 * 60_000,    // Auto re-Sonar (full pipeline)
+  // Polling patterns en attente
+  PATTERNS_POLL_MS:      5_000,
+  PATTERNS_POLL_MAX:     60,            // 60 × 5s = 5min
+  // Fraîcheur Trading Zones (heures)
+  FRESHNESS_OK_H:        6,             // < 6h  → vert
+  FRESHNESS_WARN_H:      24,            // 6-24h → orange ; > 24h → stale rouge
+});
+window.WW_CONFIG = WW_CONFIG;
+
+// ═════════════════════════════════════════════════════════════════════════════
 // State
 // ═════════════════════════════════════════════════════════════════════════════
 let allWallets=[], filtered=[], maxVol=0;
@@ -958,6 +977,11 @@ const ICON = {
 // ═════════════════════════════════════════════════════════════════════════════
 // Patterns
 // ═════════════════════════════════════════════════════════════════════════════
+// loadPatterns = fast-path patterns-only (n configurable depuis le dropdown).
+// Sonar (triggerRefresh) lance le pipeline complet (wallets + patterns).
+// Coexistence intentionnelle : permettre de re-calculer juste les patterns avec
+// un n différent (100/300/500) sans relancer toute l'analyse Etherscan.
+// ═════════════════════════════════════════════════════════════════════════════
 async function loadPatterns(forceRefresh=false){
   const btn  = document.getElementById('btn-patterns');
   const body = document.getElementById('patterns-body');
@@ -1066,6 +1090,7 @@ function _renderInsights(d) {
 
 function _renderHourlyHeatmap(d) {
   const data = d.hourly_activity || [];
+  // max=1 et min=0 : guards pour data vide (évite -Infinity/+Infinity dans la normalisation)
   const maxT = Math.max(...data.map(h=>h.trades), 1);
   const minT = Math.min(...data.map(h=>h.trades), 0);
   const peak = data.reduce((a,b)=>b.trades>a.trades?b:a, {trades:0,hour:0});
@@ -1146,6 +1171,14 @@ function _renderTopDex(d) {
   }).join('');
 }
 
+// Met à jour les globals live-MEV (consommés par _setPriceEl à chaque tick CoinGecko)
+function _updateMevRefs(mev) {
+  if (!mev?.buy || !mev?.sell) return;
+  _mevBuyMedian  = mev.buy.median;
+  _mevSellMedian = mev.sell.median;
+  _mevRefEth     = _analysisEthPrice || _prevPrices['eth-price'] || mev.buy.median;
+}
+
 function _renderMevPriceBar(mev) {
   if (!mev?.buy || !mev?.sell) return '';
   const b = mev.buy, s = mev.sell;
@@ -1171,11 +1204,6 @@ function _renderMevPriceBar(mev) {
         <span class="text-muted fs-xs">${fmtNum(data.trade_count)} trades</span>
       </div>
     </div>`;
-
-  // Side-effect: update live-MEV refs (utilisés par _setPriceEl)
-  _mevBuyMedian  = b.median;
-  _mevSellMedian = s.median;
-  _mevRefEth     = _analysisEthPrice || _prevPrices['eth-price'] || b.median;
 
   const ticks = Array.from({length:5}, (_,i) => {
     const v = pMin + (rng * i / 4);
@@ -1256,7 +1284,10 @@ function _renderHoldTime(d) {
 }
 
 function renderPatterns(d) {
-  // ── Rendu en helpers ciblés ──
+  // ── Effet de bord explicite : sync les refs live MEV ──
+  _updateMevRefs(d.mev_price_levels);
+
+  // ── Rendu pur en helpers ciblés ──
   const insightsHtml = _renderInsights(d);
   const { html: hours, peak: peakHour } = _renderHourlyHeatmap(d);
   const bucketsHtml = _renderSizeBuckets(d);
@@ -1321,9 +1352,9 @@ function renderPatterns(d) {
 // Trading zones
 // ═════════════════════════════════════════════════════════════════════════════
 let _lastPatterns = null;
-// Seuils de fraîcheur (heures)
-const FRESHNESS_OK_H   = 6;   // < 6h  → vert
-const FRESHNESS_WARN_H = 24;  // 6-24h → orange ; > 24h → stale rouge
+// Alias raccourcis pour la lisibilité (cf. WW_CONFIG)
+const FRESHNESS_OK_H   = WW_CONFIG.FRESHNESS_OK_H;
+const FRESHNESS_WARN_H = WW_CONFIG.FRESHNESS_WARN_H;
 
 function _ageOfPatterns(d){
   const ts = d?.generated_at;
@@ -1467,7 +1498,7 @@ async function fetchLivePrices(){
 let _lastUpdatedAt = null;
 let _autoTimer = null;
 let _nextRefreshAt = null;
-const AUTO_REFRESH_MS = 5 * 60 * 1000;
+const AUTO_REFRESH_MS = WW_CONFIG.AUTO_REFRESH_MS;
 
 function _scheduleAutoRefresh(){
   if(_autoTimer) clearTimeout(_autoTimer);
@@ -1498,7 +1529,7 @@ function _startLiveCounter(){
   }, 1000);
 }
 
-function _startPriceRefresh(){ setInterval(fetchLivePrices, 30_000); }
+function _startPriceRefresh(){ setInterval(fetchLivePrices, WW_CONFIG.PRICE_REFRESH_MS); }
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Filters / sort / pagination
@@ -1786,7 +1817,7 @@ async function triggerRefresh(){
 let _patternsPoll = null;
 function _pollPatternsUntilReady(){
   if(_patternsPoll) clearInterval(_patternsPoll);
-  let tries = 0, maxTries = 60; // 60 × 5s = 5min max
+  let tries = 0, maxTries = WW_CONFIG.PATTERNS_POLL_MAX;
   // myId : capture locale pour détecter une obsolescence (un nouveau poll a remplacé celui-ci).
   // Sans ça, un poll en plein await peut accidentellement clearInterval le nouveau poll.
   let myId;
@@ -1815,14 +1846,14 @@ function _pollPatternsUntilReady(){
       clearInterval(myId); if(myId === _patternsPoll) _patternsPoll = null;
       showToast('Patterns whales mis à jour — Zones d\'entrée/sortie actives', 'success');
     }catch(e){}
-  }, 5000);
+  }, WW_CONFIG.PATTERNS_POLL_MS);
 }
 
 function startPoll(){
   if(poll)clearInterval(poll);
   document.getElementById('status-bar').classList.remove('hidden');
   document.getElementById('progress-line').classList.remove('hidden');
-  poll=setInterval(doPoll,2500);
+  poll=setInterval(doPoll, WW_CONFIG.STATUS_POLL_MS);
 }
 
 async function doPoll(){

@@ -49,4 +49,7 @@ def main(n_wallets: int = 100, pattern_days: int = 7):
 
 
 if __name__ == "__main__":
-    main()
+    # Paramètres injectés via env par server.run_analysis() ; fallbacks safe.
+    n    = int(os.environ.get("WW_N_WALLETS", "100"))
+    days = int(os.environ.get("WW_DAYS", "7"))
+    main(n_wallets=n, pattern_days=days)
