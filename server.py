@@ -10,8 +10,11 @@ import os
 import subprocess
 import sys
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse, parse_qs
+
+def _utc_now_iso():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -66,7 +69,7 @@ def load_json(path, default=None):
 def run_analysis():
     """Lance _run_analysis.py en subprocess en streamant le progress."""
     set_state(status="running", progress="Lancement de l'analyse...", error=None,
-              started_at=datetime.utcnow().isoformat() + "Z")
+              started_at=_utc_now_iso())
     try:
         script = os.path.join(BASE_DIR, "_run_analysis.py")
         proc = subprocess.Popen(
@@ -82,7 +85,7 @@ def run_analysis():
         proc.wait()
         if proc.returncode == 0:
             set_state(status="completed", progress="Analyse terminée.",
-                      last_run=datetime.utcnow().isoformat() + "Z")
+                      last_run=_utc_now_iso())
         else:
             set_state(status="error",
                       error=f"Process exited with code {proc.returncode}")
@@ -105,16 +108,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
     # ── Helpers de réponse ──────────────────────────────────────────────
-    def _send(self, body: bytes, content_type: str, status: int = 200):
+    def _send(self, body: bytes, content_type: str, status: int = 200, extra_headers=None):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
-    def _json(self, data, status: int = 200):
-        self._send(json.dumps(data).encode(), "application/json", status)
+    def _json(self, data, status: int = 200, extra_headers=None):
+        self._send(json.dumps(data).encode(), "application/json", status, extra_headers)
 
     def _serve_file(self, path: str, content_type: str):
         try:
@@ -168,7 +173,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json({"error": "Wallet non trouvé"}, 404)
 
         if path == "/api/patterns/refresh":
-            return self._json({"error": "use POST"}, 405)
+            return self._json({"error": "Method Not Allowed", "expected": "POST"},
+                              405, {"Allow": "POST"})
 
         return self._json({"error": "Not found"}, 404)
 

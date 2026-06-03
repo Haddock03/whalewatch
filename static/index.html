@@ -1313,6 +1313,7 @@ function renderPatterns(d) {
     </div>`;
 
   _lastPatterns = d;
+  window._lastPatterns = d;   // expose pour app.js (auto-refresh tick)
   renderTradingZones();
 }
 
@@ -1786,18 +1787,32 @@ let _patternsPoll = null;
 function _pollPatternsUntilReady(){
   if(_patternsPoll) clearInterval(_patternsPoll);
   let tries = 0, maxTries = 60; // 60 × 5s = 5min max
-  _patternsPoll = setInterval(async () => {
-    if(++tries > maxTries){ clearInterval(_patternsPoll); _patternsPoll = null; return; }
+  // myId : capture locale pour détecter une obsolescence (un nouveau poll a remplacé celui-ci).
+  // Sans ça, un poll en plein await peut accidentellement clearInterval le nouveau poll.
+  let myId;
+  myId = _patternsPoll = setInterval(async () => {
+    if(myId !== _patternsPoll) return;                       // remplacé par un poll plus récent
+    if(++tries > maxTries){
+      clearInterval(myId); if(myId === _patternsPoll) _patternsPoll = null;
+      // Feedback utilisateur sur échec timeout (silent return = bug #3)
+      const st = await fetch('/api/status').then(r=>r.json()).catch(()=>null);
+      const msg = st?.error
+        ? `Patterns : ${st.error}`
+        : 'Patterns whales : calcul trop long — réessaie via Sonar';
+      showToast(msg, 'error', 4200);
+      return;
+    }
     try{
       const r = await fetch('/api/patterns');
-      if(!r.ok) return;                // 404 = pas encore prêt
+      if(myId !== _patternsPoll) return;                     // remplacé pendant le await
+      if(!r.ok) return;
       const d = await r.json();
+      if(myId !== _patternsPoll) return;                     // idem
       if(!d || d.error) return;
-      // Patterns dispo → render + arrêt du poll
       renderPatterns(d);
       _setPatternsMeta(d);
       _resetPatternsBtn();
-      clearInterval(_patternsPoll); _patternsPoll = null;
+      clearInterval(myId); if(myId === _patternsPoll) _patternsPoll = null;
       showToast('Patterns whales mis à jour — Zones d\'entrée/sortie actives', 'success');
     }catch(e){}
   }, 5000);
@@ -1882,22 +1897,38 @@ function copyAddr(e,addr){
 // ═════════════════════════════════════════════════════════════════════════════
 // Boot
 // ═════════════════════════════════════════════════════════════════════════════
-initCharts();
-loadData();
-fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
-// Charge patterns si dispo, sinon poll en arrière-plan jusqu'à dispo
-// (cas typique : 1er chargement après deploy, ou patterns en cours de calcul)
-fetch('/api/patterns').then(r=>r.ok?r.json():null).then(d=>{
-  if(d && !d.error){
-    renderPatterns(d); _setPatternsMeta(d); _resetPatternsBtn();
-  } else {
-    // Pas de patterns → on poll discrètement, ça apparaîtra dès que prêt
-    _pollPatternsUntilReady();
+// ─── Boot — guarded pour soft-nav (évite l'accumulation de setIntervals) ───
+// La 1ère fois : initialise charts, timers, fetch initial.
+// Les soft-nav retours sur / : ne RE-init pas (timers déjà actifs depuis app.js)
+// mais reload juste les données pour rafraîchir l'affichage.
+if (!window.__wwBodyInit) {
+  window.__wwBodyInit = true;
+  initCharts();
+  loadData();
+  fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
+  fetch('/api/patterns').then(r=>r.ok?r.json():null).then(d=>{
+    if(d && !d.error){
+      renderPatterns(d); _setPatternsMeta(d); _resetPatternsBtn();
+    } else {
+      _pollPatternsUntilReady();
+    }
+  }).catch(()=>{ _pollPatternsUntilReady(); });
+  _startLiveCounter();
+  _startPriceRefresh();
+  _scheduleAutoRefresh();
+} else {
+  // Soft-nav re-entry : <main> a été swappé donc :
+  //  - les <canvas> sont neufs → rebinder les charts (anciens references = stale)
+  //  - le tbody/patterns-body sont vides → re-render
+  //  - mais on NE recrée PAS les setInterval/setTimeout (déjà actifs en global)
+  initCharts();
+  loadData();
+  if (window._lastPatterns) {
+    renderPatterns(window._lastPatterns);
+    _setPatternsMeta(window._lastPatterns);
+    _resetPatternsBtn();
   }
-}).catch(()=>{ _pollPatternsUntilReady(); });
-_startLiveCounter();
-_startPriceRefresh();
-_scheduleAutoRefresh();   // 1er auto-refresh dans AUTO_REFRESH_MS
+}
 </script>
 <script src="/static/assets/app.js" defer></script>
 </body>
