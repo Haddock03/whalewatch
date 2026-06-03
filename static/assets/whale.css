@@ -159,6 +159,30 @@ main { position: relative; z-index: 1; }
 /* ── Cross-document view transitions (header stays put on Chrome 126+) ─ */
 @view-transition { navigation: auto; }
 
+/* ── Freshness chip (Trading Zones data age) ───────────────────────── */
+.freshness-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-left: var(--s-2);
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; font-family: var(--font-mono);
+  letter-spacing: .02em; line-height: 1;
+  background: rgba(46,212,168,.10); color: var(--green);
+  border: 1px solid rgba(46,212,168,.30);
+  white-space: nowrap;
+}
+.freshness-chip.is-warn  { background: rgba(255,198,87,.10); color: var(--c-sc); border-color: rgba(255,198,87,.30); }
+.freshness-chip.is-stale { background: rgba(232,77,109,.10); color: var(--c-pn); border-color: rgba(232,77,109,.35); animation: stale-pulse 2.4s ease-in-out infinite; }
+@keyframes stale-pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+/* Carte zones en mode données obsolètes : prix et bandes grisés */
+#zones-card.is-stale-data .zone-card,
+#zones-card.is-stale-data #price-ladder,
+#zones-card.is-stale-data #zones-current { filter: grayscale(.55) opacity(.65); }
+#zones-card.is-stale-data #zones-reco {
+  background: rgba(232,77,109,.08);
+  border-color: rgba(232,77,109,.30);
+}
+
 /* ── Header ─────────────────────────────────────────────────────────── */
 .site-header{
   position: fixed; top: 0; left: 0; right: 0;

@@ -383,6 +383,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
         Zones d'entrée &amp; sortie
         <span class="live-dot"></span>
+        <span id="zones-freshness" class="freshness-chip" title="Âge des données whales (Dune)" hidden>—</span>
       </h2>
       <div class="flex items-center gap-2 fs-xs text-muted flex-wrap">
         <span>Prix live ETH :</span>
@@ -1314,6 +1315,26 @@ function renderPatterns(d) {
 // Trading zones
 // ═════════════════════════════════════════════════════════════════════════════
 let _lastPatterns = null;
+// Seuils de fraîcheur (heures)
+const FRESHNESS_OK_H   = 6;   // < 6h  → vert
+const FRESHNESS_WARN_H = 24;  // 6-24h → orange ; > 24h → stale rouge
+
+function _ageOfPatterns(d){
+  const ts = d?.generated_at;
+  if(!ts) return { hours: Infinity, label: 'inconnu', state: 'stale' };
+  const ms = Date.now() - new Date(ts).getTime();
+  if(!isFinite(ms) || ms < 0) return { hours: Infinity, label: 'inconnu', state: 'stale' };
+  const mins = ms / 60000, hours = mins / 60, days = hours / 24;
+  const label = mins < 60   ? `il y a ${Math.round(mins)}min`
+              : hours < 24  ? `il y a ${Math.round(hours)}h`
+              : days  < 30  ? `il y a ${Math.round(days)}j`
+              :                'obsolète';
+  const state = hours < FRESHNESS_OK_H   ? 'ok'
+              : hours < FRESHNESS_WARN_H ? 'warn'
+              :                            'stale';
+  return { hours, label, state };
+}
+
 function renderTradingZones(){
   const card = document.getElementById('zones-card');
   if(!card) return;
@@ -1321,8 +1342,22 @@ function renderTradingZones(){
   if(!mev?.buy || !mev?.sell){ card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
 
-  const live  = _prevPrices['eth-price'] || _analysisEthPrice || mev.buy.median;
   const $ = id => document.getElementById(id);
+
+  // ── Freshness chip ──
+  const age = _ageOfPatterns(_lastPatterns);
+  const chip = $('zones-freshness');
+  if(chip){
+    chip.hidden = false;
+    chip.textContent = age.label;
+    chip.classList.remove('is-warn','is-stale');
+    if(age.state === 'warn')  chip.classList.add('is-warn');
+    if(age.state === 'stale') chip.classList.add('is-stale');
+  }
+  const isStale = age.state === 'stale';
+  card.classList.toggle('is-stale-data', isStale);
+
+  const live  = _prevPrices['eth-price'] || _analysisEthPrice || mev.buy.median;
 
   const buy = mev.buy, sell = mev.sell;
   const setSide = (prefix, q) => {
@@ -1341,7 +1376,12 @@ function renderTradingZones(){
   const pctVsSell = ((live - sMed) / sMed) * 100;
 
   let color, tag, title, detail, alertCls;
-  if (live < bP25)        { color='#2ed4a8'; alertCls='alert--success'; tag='STRONG BUY';  title="Sous la zone d'accumulation whale";        detail=`Live ${fmtP(live)} sous P25 BUY ${fmtP(bP25)} — opportunité rare, ${fmtPct(pctVsBuy)} vs médiane whale`; }
+  if (isStale) {
+    color='#ff6b87'; alertCls='alert--danger'; tag='OBSOLÈTE';
+    title='Données whales trop anciennes — signal désactivé';
+    detail=`Dernière analyse Dune ${age.label}. Clique « Sonar » pour rafraîchir les niveaux BUY/SELL avant de trader.`;
+  }
+  else if (live < bP25)   { color='#2ed4a8'; alertCls='alert--success'; tag='STRONG BUY';  title="Sous la zone d'accumulation whale";        detail=`Live ${fmtP(live)} sous P25 BUY ${fmtP(bP25)} — opportunité rare, ${fmtPct(pctVsBuy)} vs médiane whale`; }
   else if (live <= bP75)  { color='#2ed4a8'; alertCls='alert--success'; tag='BUY ZONE';    title="Dans la zone d'accumulation whale";        detail=`Live ${fmtP(live)} entre P25 ${fmtP(bP25)} et P75 ${fmtP(bP75)} — c'est ici que les bots entrent`; }
   else if (live < sP25)   { color='#ffc657'; alertCls='alert--warn';    tag='NEUTRAL';     title="Au-dessus du BUY, sous le SELL — attendre"; detail=`${fmtPct(pctVsBuy)} vs médiane BUY · ${fmtPct(pctVsSell)} vs médiane SELL`; }
   else if (live <= sP75)  { color='#ff6b87'; alertCls='alert--danger';  tag='SELL ZONE';   title='Dans la zone de distribution whale';       detail=`Live ${fmtP(live)} entre P25 ${fmtP(sP25)} et P75 ${fmtP(sP75)} — les bots vendent ici`; }
