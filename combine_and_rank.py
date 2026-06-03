@@ -201,9 +201,9 @@ def merge_and_rank(df_dune=None, dune_csv_path=None, additional_wallets=None, pr
     df["volume_display"] = df["total_volume_usd"].apply(fmt_volume)
     df["dune_volume_display"] = df["dune_volume_usd"].apply(fmt_volume)
 
-    # Sauvegarde CSV
-    os.makedirs("cache", exist_ok=True)
-    csv_path = "top_wallets_final.csv"
+    # Sauvegarde CSV (dans cache/ — seul dossier writable en prod conteneurisé)
+    os.makedirs(os.path.join(os.path.dirname(__file__), "cache"), exist_ok=True)
+    csv_path = os.path.join(os.path.dirname(__file__), "cache", "top_wallets_final.csv")
     export_cols = ["rank", "address", "label", "category", "is_contract", "contract_name",
                    "total_volume_usd", "volume_display", "dune_volume_usd", "dune_nb_trades",
                    "total_tx_count", "token_transfer_count", "unique_tokens_traded",

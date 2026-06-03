@@ -25,8 +25,7 @@ env/
 cache/results.json
 cache/patterns.json
 cache/*.csv
-
-# CSV générés
+# Anciens emplacements (au cas où)
 top_wallets_final.csv
 
 # Logs
