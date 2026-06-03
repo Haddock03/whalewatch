@@ -16,6 +16,11 @@
                           '/why.html', '/guide.html', '/bot.html']);
   let _navigating = false;
 
+  // Tag les <style> inline initiaux pour qu'ils soient remplacés à la
+  // 1ère navigation (sinon on se retrouve avec les styles du dashboard
+  // ET ceux de /why simultanément).
+  document.head.querySelectorAll('style').forEach(s => s.setAttribute('data-page-style', ''));
+
   async function softNavigate(href, push = true) {
     if (_navigating) return;
     if (!ROUTES.has(href)) { location.href = href; return; }
@@ -36,16 +41,36 @@
       // Swap function (utilisée avec ou sans view-transition)
       const swap = () => {
         document.title = doc.title || document.title;
+
+        // 1. Remplace les <style> page-spécifiques :
+        // chaque page a son <style> inline dans <head> qui définit ses
+        // composants (icônes, cards…). Sans ça, les SVGs s'affichent
+        // à leur taille SVG par défaut (gros).
+        document.head.querySelectorAll('style[data-page-style]').forEach(s => s.remove());
+        const newStyles = doc.head.querySelectorAll('style');
+        newStyles.forEach(orig => {
+          const code = orig.textContent || '';
+          if (!code.trim()) return;
+          const s = document.createElement('style');
+          s.setAttribute('data-page-style', '');
+          s.textContent = code;
+          document.head.appendChild(s);
+        });
+
+        // 2. Swap du <main>
         oldMain.replaceWith(newMain);
         newMain.style.opacity = '';
 
-        // Maj active state des nav-links
+        // 3. Maj active state des nav-links
         document.querySelectorAll('.nav .nav-link').forEach(a => {
           const ah = a.getAttribute('href');
           a.classList.toggle('is-active', ah === href || (href === '/' && ah === '/'));
         });
 
-        // Re-exécute les <script> trouvés dans le nouveau <main>
+        // 4. Nettoie les anciens scripts page-spécifiques avant d'en ajouter
+        document.querySelectorAll('script[data-page-script]').forEach(s => s.remove());
+
+        // 5. Re-exécute les <script> trouvés dans le nouveau <main>
         // ou en bas du body de la page cible.
         const scripts = [
           ...newMain.querySelectorAll('script'),
@@ -56,15 +81,17 @@
           if (orig.src) {
             if ([...document.scripts].some(s => s.src === orig.src)) return;
             const s = document.createElement('script');
+            s.setAttribute('data-page-script', '');
             s.src = orig.src; s.async = false;
             document.body.appendChild(s);
             return;
           }
-          // Pour les inline scripts : on les wrap en IIFE pour isoler
-          // leur scope (évite "redeclaration of const X" entre pages)
+          // Inline : wrap en IIFE pour isoler le scope
+          // (évite "redeclaration of const X" entre pages)
           const code = orig.textContent || '';
           if (!code.trim()) return;
           const s = document.createElement('script');
+          s.setAttribute('data-page-script', '');
           s.textContent = `(function(){\ntry{\n${code}\n}catch(e){console.warn('[soft-nav script]', e)}\n})();`;
           document.body.appendChild(s);
         });
