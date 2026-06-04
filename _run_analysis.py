@@ -12,9 +12,11 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from dune_top_wallets import fetch_top_wallets
-from combine_and_rank import merge_and_rank, KNOWN_LABELS
-from dune_patterns    import analyze_patterns
+from dune_top_wallets    import fetch_top_wallets
+from combine_and_rank    import merge_and_rank, KNOWN_LABELS
+from dune_patterns       import analyze_patterns
+from smart_score_enrich  import enrich_results_with_smart_score
+from alerts              import archive_snapshot, recompute_alerts
 
 
 def log(msg):
@@ -25,19 +27,29 @@ def main(n_wallets: int = 100, pattern_days: int = 7):
     log("=== Démarrage de l'analyse ===")
 
     # 1. Top wallets via Dune
-    log("Étape 1/3 — Récupération top wallets Dune…")
+    log("Étape 1/4 — Récupération top wallets Dune…")
     df_dune = fetch_top_wallets(progress_cb=log)
 
     # 2. Etherscan + ranking → cache/results.json
-    log("Étape 2/3 — Fusion Etherscan + ranking…")
+    log("Étape 2/4 — Fusion Etherscan + ranking…")
     merge_and_rank(
         df_dune=df_dune,
         additional_wallets=list(KNOWN_LABELS.keys()),
         progress_cb=log,
     )
 
+    # 2bis. Smart Money Score (back-end) + alertes — coût Dune ≈1 query supplémentaire
+    log("Étape 2bis — Smart Money Score + alertes…")
+    try:
+        enrich_results_with_smart_score(top_n=n_wallets, days=pattern_days, progress_cb=log)
+        archive_snapshot()
+        recompute_alerts(progress_cb=log)
+        log("✓ Smart score + alertes générés")
+    except Exception as e:
+        log(f"⚠ Smart score/alertes échoués : {e}")
+
     # 3. Patterns whales → cache/patterns.json
-    log(f"Étape 3/3 — Analyse patterns whales ({n_wallets} wallets, {pattern_days}j)…")
+    log(f"Étape 3/4 — Analyse patterns whales ({n_wallets} wallets, {pattern_days}j)…")
     try:
         analyze_patterns(n_wallets=n_wallets, days=pattern_days)
         log("✓ Patterns générés")

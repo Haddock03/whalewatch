@@ -285,6 +285,53 @@ main { view-transition-name: page-main; transition: opacity .18s ease; }
 }
 .nav-link svg { width: 14px; height: 14px; }
 
+/* Pro link : highlight or/rose distinctif, partagé entre toutes les pages */
+.nav-link--pro {
+  position: relative;
+  background: linear-gradient(90deg, rgba(255,198,87,.10), rgba(255,107,135,.08));
+  border: 1px solid rgba(255,198,87,.28);
+  color: var(--c-sc) !important;
+}
+.nav-link--pro:hover {
+  background: linear-gradient(90deg, rgba(255,198,87,.18), rgba(255,107,135,.14));
+}
+.nav-link--pro.is-active {
+  background: linear-gradient(90deg, rgba(255,198,87,.22), rgba(255,107,135,.16));
+  border-color: rgba(255,198,87,.55);
+  box-shadow: 0 0 0 1px rgba(255,198,87,.25), 0 4px 18px rgba(255,198,87,.18);
+}
+
+/* Pro sub-nav : Overview / Backtest / Watchlist (partagée entre les 3 sous-pages) */
+.pro-subnav {
+  display: flex; gap: var(--s-2); flex-wrap: wrap;
+  padding: var(--s-3);
+  background: rgba(8,42,72,.40);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--s-5);
+}
+.pro-subnav-link {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all .18s ease;
+}
+.pro-subnav-link:hover {
+  color: var(--text);
+  background: rgba(0,226,255,.06);
+  border-color: rgba(0,226,255,.18);
+}
+.pro-subnav-link.is-active {
+  color: var(--c-sc);
+  background: linear-gradient(90deg, rgba(255,198,87,.14), rgba(255,107,135,.10));
+  border-color: rgba(255,198,87,.40);
+  box-shadow: 0 0 0 1px rgba(255,198,87,.18);
+}
+
 .header-prices{
   display: flex; align-items: center; gap: var(--s-3);
   font-family: 'JetBrains Mono', monospace;

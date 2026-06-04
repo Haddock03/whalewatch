@@ -27,10 +27,15 @@ sys.path.insert(0, BASE_DIR)
 
 # Routes statiques → fichiers HTML
 PAGES = {
-    "/":            "index.html", "/index.html": "index.html",
-    "/why":         "why.html",   "/why.html":   "why.html",
-    "/guide":       "guide.html", "/guide.html": "guide.html",
-    "/bot":         "bot.html",   "/bot.html":   "bot.html",
+    "/":              "index.html",       "/index.html":       "index.html",
+    "/why":           "why.html",         "/why.html":         "why.html",
+    "/guide":         "guide.html",       "/guide.html":       "guide.html",
+    "/bot":           "bot.html",         "/bot.html":         "bot.html",
+    "/pro":           "pro.html",         "/pro.html":         "pro.html",
+    "/pro/live":      "pro_live.html",
+    "/pro/backtest":  "pro_backtest.html",
+    "/pro/watchlist": "pro_watchlist.html",
+    "/pro/guide":     "pro_guide.html",
 }
 
 MIME = {
@@ -159,6 +164,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == "/api/patterns":
             # Renvoie 200 + null si pas encore prêt → le frontend gère la fallback
             return self._json(load_json(PATTERNS_FILE))
+
+        if path == "/api/alerts":
+            try:
+                from alerts import read_alerts
+                return self._json(read_alerts())
+            except Exception as e:
+                return self._json({"error": str(e), "alerts": []}, 200)
 
         if path.startswith("/api/wallet/") and path.endswith("/trades"):
             addr = path[len("/api/wallet/"):-len("/trades")]

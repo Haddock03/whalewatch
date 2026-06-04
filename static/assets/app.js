@@ -12,8 +12,11 @@
   'use strict';
 
   // ── Soft navigation ───────────────────────────────────────────────────
-  const ROUTES = new Set(['/', '/why', '/guide', '/bot', '/index.html',
-                          '/why.html', '/guide.html', '/bot.html']);
+  const ROUTES = new Set(['/', '/pro', '/pro/live', '/pro/backtest',
+                          '/pro/watchlist', '/pro/guide',
+                          '/why', '/guide', '/bot',
+                          '/index.html', '/pro.html', '/why.html',
+                          '/guide.html', '/bot.html']);
   let _navigating = false;
 
   // Tag les <style> inline initiaux pour qu'ils soient remplacés à la
@@ -182,6 +185,44 @@
       _tickWallets();   // refresh immédiat au retour
     }
   });
+
+  // ── Live ETH/BTC prices (CoinGecko) ──────────────────────────────────
+  // Auto-fire si la page contient #eth-price ou #btc-price.
+  // Utilisé par les pages Pro qui ont leur header simplifié sans le code
+  // _setPriceEl du dashboard (qui fait + de choses, dont MEV refs).
+  let _ethBtcTimer = null;
+  const fmtUSD = v => v ? '$' + Math.round(v).toLocaleString('en-US') : '—';
+
+  async function _fetchEthBtc() {
+    const ethEl = document.getElementById('eth-price');
+    const btcEl = document.getElementById('btc-price');
+    if (!ethEl && !btcEl) return;
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin&vs_currencies=usd');
+      if (!r.ok) return;
+      const d = await r.json();
+      // N'écrase pas le contenu si le dashboard (index.html) gère déjà via _setPriceEl
+      if (ethEl && !window._prevPrices && d?.ethereum?.usd) ethEl.textContent = fmtUSD(d.ethereum.usd);
+      if (btcEl && !window._prevPrices && d?.bitcoin ?.usd) btcEl.textContent = fmtUSD(d.bitcoin.usd);
+    } catch {}
+  }
+
+  function startEthBtcPolling() {
+    _fetchEthBtc();
+    if (_ethBtcTimer) clearInterval(_ethBtcTimer);
+    const ms = (CFG.PRICE_REFRESH_MS || 30_000);
+    _ethBtcTimer = setInterval(_fetchEthBtc, ms);
+  }
+  startEthBtcPolling();
+
+  // ── Horloge live UTC dans le header (#header-clock) ──────────────────
+  function _tickClock() {
+    const el = document.getElementById('header-clock');
+    if (!el) return;
+    const d = new Date();
+    el.textContent = d.toISOString().slice(11, 19) + ' UTC';
+  }
+  setInterval(_tickClock, 1000); _tickClock();
 
   // Exposer pour debug + démarrer
   window.WhaleWatch = window.WhaleWatch || {};

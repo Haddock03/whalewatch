@@ -244,6 +244,167 @@
       animation: progress-shimmer 1.5s linear infinite;
     }
     @keyframes progress-shimmer { to { background-position: -200% 0; } }
+
+    /* ═══ PRO MODE ═══════════════════════════════════════════════════════════ */
+    .pro-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(2,12,27,.55);
+      color: var(--muted);
+      font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      cursor: pointer;
+      transition: all .18s ease;
+      margin-left: 10px;
+    }
+    .pro-toggle:hover { border-color: var(--c-sc); color: var(--c-sc); }
+    .pro-toggle-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 0 0 0 currentColor;
+    }
+    body.is-pro .pro-toggle {
+      border-color: rgba(255,198,87,.55);
+      background: linear-gradient(90deg, rgba(255,198,87,.16), rgba(255,107,135,.10));
+      color: var(--c-sc);
+      box-shadow: 0 0 18px rgba(255,198,87,.18);
+    }
+    body.is-pro .pro-toggle-dot {
+      background: var(--c-sc);
+      box-shadow: 0 0 10px var(--c-sc);
+      animation: pro-pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pro-pulse {
+      0%,100% { transform: scale(1);   opacity: 1;   }
+      50%     { transform: scale(1.3); opacity: .65; }
+    }
+
+    .nav-link--pro {
+      position: relative;
+      background: linear-gradient(90deg, rgba(255,198,87,.10), rgba(255,107,135,.08));
+      border: 1px solid rgba(255,198,87,.28);
+      color: var(--c-sc) !important;
+    }
+    .nav-link--pro:hover { background: linear-gradient(90deg, rgba(255,198,87,.18), rgba(255,107,135,.14)); }
+
+    /* Smart score column */
+    .smart-col, .smart-th { display: none; }
+    body.is-pro .smart-col, body.is-pro .smart-th { display: table-cell; }
+
+    .smart-score {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'JetBrains Mono', monospace; font-weight: 700;
+      font-size: 12px;
+    }
+    .smart-bar {
+      position: relative;
+      width: 48px; height: 5px; border-radius: 3px;
+      background: var(--border); overflow: hidden;
+    }
+    .smart-bar-fill {
+      position: absolute; inset: 0; right: auto;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--c-mev), var(--c-sc), var(--green));
+    }
+    .smart-score--hi { color: var(--green); }
+    .smart-score--mid{ color: var(--c-sc); }
+    .smart-score--lo { color: var(--muted); }
+
+    /* Smart Money filter chip (always visible but emphasized in Pro) */
+    .chip--smart {
+      border-color: rgba(255,198,87,.35);
+      color: var(--c-sc);
+    }
+    body.is-pro .chip--smart.is-active {
+      background: linear-gradient(90deg, rgba(255,198,87,.22), rgba(46,212,168,.18));
+      box-shadow: 0 0 14px rgba(255,198,87,.22);
+    }
+
+    /* Pro section (locked card on dashboard) */
+    .pro-card {
+      position: relative;
+      border: 1px solid rgba(255,198,87,.28);
+      background: linear-gradient(180deg, rgba(255,198,87,.06), rgba(2,12,27,.55) 60%);
+      border-radius: var(--radius-lg);
+      padding: var(--s-5);
+      margin-bottom: var(--s-5);
+      overflow: hidden;
+    }
+    .pro-card-head {
+      display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-4);
+    }
+    .pro-card-badge {
+      font-size: 10px; font-weight: 800; letter-spacing: .18em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--c-sc); color: #0a0a14;
+    }
+    .pro-card-title { color: #fff; font-weight: 700; font-size: var(--fs-md); }
+    .pro-card-sub   { color: var(--muted); font-size: var(--fs-xs); }
+
+    .pro-locked-body {
+      position: relative;
+      filter: blur(6px) saturate(.6);
+      pointer-events: none;
+      user-select: none;
+    }
+    .pro-locked-overlay {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      background: radial-gradient(ellipse at center, rgba(2,12,27,.55), rgba(2,12,27,.85));
+      z-index: 5;
+    }
+    .pro-locked-cta {
+      display: flex; flex-direction: column; align-items: center; gap: var(--s-3);
+      padding: var(--s-5);
+      text-align: center;
+    }
+    .pro-locked-cta .pro-lock-icon {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: rgba(255,198,87,.14);
+      color: var(--c-sc);
+    }
+    .pro-locked-cta h4 {
+      color: #fff; font-weight: 700; font-size: var(--fs-md);
+    }
+    .pro-locked-cta p { color: var(--muted); font-size: var(--fs-sm); max-width: 380px; }
+    .pro-locked-cta button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--c-sc);
+      background: linear-gradient(90deg, rgba(255,198,87,.18), rgba(255,107,135,.10));
+      color: var(--c-sc);
+      font-weight: 700; letter-spacing: .08em; font-size: 11px;
+      cursor: pointer;
+    }
+    .pro-locked-cta button:hover { background: linear-gradient(90deg, rgba(255,198,87,.30), rgba(255,107,135,.18)); }
+
+    body.is-pro .pro-locked-body { filter: none; pointer-events: auto; user-select: auto; }
+    body.is-pro .pro-locked-overlay { display: none; }
+
+    /* Smart Money leaderboard rows (used in Pro card) */
+    .smart-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto auto auto;
+      align-items: center;
+      gap: var(--s-3);
+      padding: 8px var(--s-3);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      margin-bottom: 6px;
+      font-size: var(--fs-sm);
+    }
+    .smart-row + .smart-row { margin-top: 0; }
+    .smart-row .rank-pill {
+      width: 24px; height: 24px; border-radius: 6px;
+      display: grid; place-items: center;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+      background: rgba(255,198,87,.12); color: var(--c-sc);
+    }
+    .smart-row .addr { color: var(--blue); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .smart-row .vol  { color: var(--green); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -275,10 +436,17 @@
 
     <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
       <a href="/"      class="nav-link is-active">🏠 Dashboard</a>
+      <a href="/pro"   class="nav-link nav-link--pro">⚡ Pro</a>
       <a href="/why"   class="nav-link">🌊 Why</a>
       <a href="/bot"   class="nav-link">🤖 Bot</a>
       <a href="/guide" class="nav-link">📘 Guide</a>
     </nav>
+
+    <!-- Pro / Free toggle -->
+    <button id="pro-toggle" class="pro-toggle" onclick="toggleProMode()" title="Activer le mode Pro" aria-pressed="false">
+      <span class="pro-toggle-dot"></span>
+      <span class="pro-toggle-label">FREE</span>
+    </button>
 
     <!-- Center status (transient) -->
     <div id="status-bar" class="hidden flex items-center gap-2" style="font-size:var(--fs-xs);color:var(--aqua)">
@@ -503,6 +671,37 @@
     </div>
   </section>
 
+  <!-- ═══ PRO · SMART MONEY LEADERBOARD ════════════════════════════════════ -->
+  <section class="pro-card">
+    <div class="pro-card-head">
+      <span class="pro-card-badge">PRO</span>
+      <div style="flex:1">
+        <div class="pro-card-title">⚡ Smart Money Leaderboard</div>
+        <div class="pro-card-sub">Top wallets non-MEV avec un score d'alpha élevé — candidats au copy-trading</div>
+      </div>
+      <a href="/pro" class="btn btn-ghost btn-sm">Voir tout →</a>
+    </div>
+    <div class="pro-locked-body">
+      <div id="smart-leaderboard">
+        <div class="smart-row"><span class="rank-pill">1</span><span class="addr">0xabc…1234</span><span class="vol">$184.2M</span><span class="smart-score smart-score--hi">92</span><span class="tag tag--unk">EOA</span></div>
+        <div class="smart-row"><span class="rank-pill">2</span><span class="addr">0xdef…5678</span><span class="vol">$142.7M</span><span class="smart-score smart-score--hi">88</span><span class="tag tag--unk">EOA</span></div>
+        <div class="smart-row"><span class="rank-pill">3</span><span class="addr">0x123…9abc</span><span class="vol">$98.3M</span><span class="smart-score smart-score--mid">81</span><span class="tag tag--unk">EOA</span></div>
+        <div class="smart-row"><span class="rank-pill">4</span><span class="addr">0x456…def0</span><span class="vol">$76.1M</span><span class="smart-score smart-score--mid">74</span><span class="tag tag--unk">EOA</span></div>
+        <div class="smart-row"><span class="rank-pill">5</span><span class="addr">0x789…1357</span><span class="vol">$54.8M</span><span class="smart-score smart-score--mid">71</span><span class="tag tag--unk">EOA</span></div>
+      </div>
+    </div>
+    <div class="pro-locked-overlay">
+      <div class="pro-locked-cta">
+        <div class="pro-lock-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h4>Débloque le Smart Money Leaderboard</h4>
+        <p>Score d'alpha calculé par wallet (volume × diversité × non-MEV) + copy-trade picks + alertes temps réel.</p>
+        <button onclick="toggleProMode()">⚡ Activer le mode Pro</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ TABLE ════════════════════════════════════════════════════════════ -->
   <section class="card mb-5">
     <div class="toolbar">
@@ -513,6 +712,7 @@
       <input id="search-input" type="text" placeholder="Adresse, label…" oninput="onSearch()" class="input" style="min-width:200px"/>
       <div class="filters" id="filter-chips">
         <button class="chip is-active" data-cat="all"             onclick="setCat('all',this)">Tous</button>
+        <button class="chip chip--smart" data-cat="smart"         onclick="setCat('smart',this)">⚡ Smart Money</button>
         <button class="chip" data-cat="MEV Bot"                  onclick="setCat('MEV Bot',this)">Prédateurs</button>
         <button class="chip" data-cat="DEX Protocol"             onclick="setCat('DEX Protocol',this)">DEX</button>
         <button class="chip" data-cat="Market Maker"             onclick="setCat('Market Maker',this)">Market Maker</button>
@@ -534,13 +734,14 @@
             <th>Wallet</th>
             <th>Type · Label</th>
             <th class="sortable text-right" onclick="sortBy('total_volume_usd')">Volume <span id="si-total_volume_usd">↓</span></th>
+            <th class="smart-th sortable text-right" onclick="sortBy('smart_score')">Smart <span id="si-smart_score"></span></th>
             <th class="sortable text-right" onclick="sortBy('dune_nb_trades')">Trades <span id="si-dune_nb_trades"></span></th>
             <th class="sortable text-right" onclick="sortBy('avg_trade_usd')">Avg Trade <span id="si-avg_trade_usd"></span></th>
             <th class="text-right">Links</th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="7" class="empty-state">
+          <tr><td colspan="8" class="empty-state">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 6c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
             <p>Océan vide — cliquez <strong style="color:var(--text)">Sonar</strong> pour scanner</p>
           </td></tr>
@@ -678,6 +879,97 @@ function renderSentimentBadge(score){
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Pro mode — toggle (persisted in localStorage)
+// ═════════════════════════════════════════════════════════════════════════════
+function isProMode(){ return localStorage.getItem('ww_pro') === '1'; }
+function applyProMode(){
+  const on = isProMode();
+  document.body.classList.toggle('is-pro', on);
+  const btn = document.getElementById('pro-toggle');
+  if(btn){
+    btn.setAttribute('aria-pressed', String(on));
+    btn.title = on ? 'Désactiver le mode Pro' : 'Activer le mode Pro';
+    const lbl = btn.querySelector('.pro-toggle-label');
+    if(lbl) lbl.textContent = on ? 'PRO' : 'FREE';
+  }
+}
+function toggleProMode(){
+  const next = !isProMode();
+  localStorage.setItem('ww_pro', next ? '1' : '0');
+  applyProMode();
+  if(typeof allWallets !== 'undefined' && allWallets.length){
+    renderSmartLeaderboard(allWallets);
+    applyFilters();
+  }
+  if(typeof showToast === 'function'){
+    showToast(next ? '⚡ Mode Pro activé — Smart Money débloqué' : 'Mode Pro désactivé', next ? 'success' : '', 2200);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Smart Money score
+// Préfère le back-end (w.smart_score depuis results.json) sinon fallback JS
+// avec mêmes tiers que smart_score.py côté Python.
+// ═════════════════════════════════════════════════════════════════════════════
+function smartScoreLocal(w){
+  const vol   = w.total_volume_usd || 0;
+  const nb    = w.dune_nb_trades   || 0;
+  const avg   = nb > 0 ? vol / nb : 0;
+  const cat   = w.category || 'Unknown';
+  let volS = 0;
+  if(vol >= 1e9)      volS = 40;
+  else if(vol >= 1e8) volS = 32;
+  else if(vol >= 1e7) volS = 22;
+  else if(vol >= 1e6) volS = 12;
+  else if(vol >= 1e5) volS = 5;
+  let avgS = 0;
+  if(avg >= 5_000_000)     avgS = 10;
+  else if(avg >= 1_000_000)avgS = 16;
+  else if(avg >= 200_000)  avgS = 22;
+  else if(avg >= 50_000)   avgS = 18;
+  else if(avg >= 10_000)   avgS = 10;
+  else if(avg >= 1_000)    avgS = 4;
+  const mevP  = cat === 'MEV Bot' ? -45 : 0;
+  const eoaB  = w.is_contract === false ? 6 : 0;
+  const spamP = nb > 5000 ? -18 : (nb > 1500 ? -7 : 0);
+  const divB  = Math.min(5, (w.unique_tokens_traded || 0) * 0.3);
+  const raw = 8 + volS + avgS + mevP + eoaB + spamP + divB;
+  return Math.max(0, Math.min(100, Math.round(raw)));
+}
+function smartScore(w){ return (w && w.smart_score != null) ? w.smart_score : smartScoreLocal(w); }
+function smartTier(s){
+  if(s >= 75) return { cls: 'smart-score--hi',  label: 'Alpha' };
+  if(s >= 55) return { cls: 'smart-score--mid', label: 'Solid' };
+  return            { cls: 'smart-score--lo',  label: 'Low'   };
+}
+function renderSmartLeaderboard(wallets){
+  const host = document.getElementById('smart-leaderboard');
+  if(!host) return;
+  const ranked = wallets
+    .map(w => ({ ...w, _s: smartScore(w) }))
+    .filter(w => w.category !== 'MEV Bot' && w._s >= 40)
+    .sort((a,b) => b._s - a._s)
+    .slice(0, 8);
+  if(!ranked.length){
+    host.innerHTML = '<p class="text-muted fs-sm" style="padding:var(--s-4) 0;text-align:center">Pas encore de données — lance un Sonar.</p>';
+    return;
+  }
+  host.innerHTML = ranked.map((w, i) => {
+    const tier = smartTier(w._s);
+    const typeBadge = w.is_contract === false
+      ? '<span class="tag tag--unk">EOA</span>'
+      : '<span class="tag tag--sc">SC</span>';
+    return `<div class="smart-row" onclick="openModal('${w.address}')" style="cursor:pointer">
+      <span class="rank-pill">${i+1}</span>
+      <span class="addr">${truncAddr(w.address)}</span>
+      <span class="vol">${formatUSDShort(w.total_volume_usd||0)}</span>
+      <span class="smart-score ${tier.cls}">${w._s}</span>
+      ${typeBadge}
+    </div>`;
+  }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Whale tier — emojis restaurés (brand identity)
 // ═════════════════════════════════════════════════════════════════════════════
 function whaleTier(vol){
@@ -795,7 +1087,7 @@ function renderTable(wallets){
 
   if(!wallets.length){
     const q=search?`"${search}"`:catFilter!=='all'?`"${catFilter}"`:'';
-    tbody.innerHTML=`<tr><td colspan="7" class="empty-state">
+    tbody.innerHTML=`<tr><td colspan="8" class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <p style="font-weight:600;color:var(--text)">Aucun résultat${q?' pour '+q:''}</p>
       <p class="fs-xs mt-3">Essaie un autre filtre ou efface la recherche</p>
@@ -838,6 +1130,14 @@ function renderTable(wallets){
     const trades=w.dune_nb_trades
       ? `<span class="tabular-nums" style="color:var(--text-soft)">${fmtInt(w.dune_nb_trades)}</span>`
       : `<span style="color:var(--dim)">—</span>`;
+    const ss = w.smart_score ?? smartScore(w);
+    const sTier = smartTier(ss);
+    const smartCell = `<td class="smart-col text-right">
+      <div class="flex items-center justify-between gap-2" style="justify-content:flex-end">
+        <span class="smart-bar"><span class="smart-bar-fill" style="width:${ss}%"></span></span>
+        <span class="smart-score ${sTier.cls}">${ss}</span>
+      </div>
+    </td>`;
 
     return `<tr class="tbl-row" onclick="openModal('${w.address}')">
       <td>
@@ -867,6 +1167,7 @@ function renderTable(wallets){
           <span class="volbar"><span class="volbar-fill" style="width:${pct}%"></span></span>
         </div>
       </td>
+      ${smartCell}
       <td class="text-right">${trades}</td>
       <td class="text-right">${avgTradeCell}</td>
       <td class="text-right">
@@ -1545,7 +1846,12 @@ function setCat(cat,btn){
 function applyFilters(){
   page=1;
   filtered=allWallets.filter(w=>{
-    const mc=catFilter==='all'||(w.category||'Unknown')===catFilter;
+    let mc;
+    if(catFilter==='smart'){
+      mc = (w.category !== 'MEV Bot') && ((w.smart_score ?? smartScore(w)) >= 55);
+    } else {
+      mc = catFilter==='all' || (w.category||'Unknown')===catFilter;
+    }
     const ms=!search||w.address.toLowerCase().includes(search)||(w.label||'').toLowerCase().includes(search);
     return mc&&ms;
   });
@@ -1771,14 +2077,18 @@ async function loadData(){
   try{
     const r=await fetch('/api/wallets');
     const data=await r.json();
-    allWallets=(data.wallets||[]).map(w=>({
-      ...w,
-      avg_trade_usd:(w.dune_nb_trades&&w.dune_nb_trades>0)?(w.dune_volume_usd||0)/w.dune_nb_trades:0
-    }));
+    allWallets=(data.wallets||[]).map(w=>{
+      const avg=(w.dune_nb_trades&&w.dune_nb_trades>0)?(w.dune_volume_usd||0)/w.dune_nb_trades:0;
+      const enriched={...w, avg_trade_usd:avg};
+      // smart_score peut déjà venir du back-end ; sinon on calcule en JS
+      if(enriched.smart_score == null) enriched.smart_score = smartScoreLocal(enriched);
+      return enriched;
+    });
     if(allWallets.length){
       maxVol=Math.max(...allWallets.map(w=>w.total_volume_usd||0));
       updateStats(data);
       updateCharts(allWallets);
+      renderSmartLeaderboard(allWallets);
       applyFilters();
       updateFilterCounts(allWallets);
       renderSentimentBadge(computeSentiment(allWallets));
@@ -1934,6 +2244,7 @@ function copyAddr(e,addr){
 // mais reload juste les données pour rafraîchir l'affichage.
 if (!window.__wwBodyInit) {
   window.__wwBodyInit = true;
+  applyProMode();
   initCharts();
   loadData();
   fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
@@ -1952,6 +2263,7 @@ if (!window.__wwBodyInit) {
   //  - les <canvas> sont neufs → rebinder les charts (anciens references = stale)
   //  - le tbody/patterns-body sont vides → re-render
   //  - mais on NE recrée PAS les setInterval/setTimeout (déjà actifs en global)
+  applyProMode();
   initCharts();
   loadData();
   if (window._lastPatterns) {

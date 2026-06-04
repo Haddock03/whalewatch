@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro · Backtest — WhaleWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <style>
+    /* ═══ BACKTEST PAGE ═══════════════════════════════════════════════════ */
+    .bt-hero { padding: var(--s-6) var(--s-6) var(--s-5); text-align: center; max-width: 760px; margin: 0 auto; }
+    .bt-hero h1 { font-size: var(--fs-3xl); margin: var(--s-3) 0; color: #fff; }
+    .bt-hero h1 .accent { background: linear-gradient(90deg, var(--gold), var(--coral)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .bt-hero p { color: var(--muted); max-width: 600px; margin: 0 auto var(--s-4); }
+    .bt-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px;
+      background: rgba(255,198,87,.10); color: var(--c-sc);
+      border: 1px solid rgba(255,198,87,.30);
+      font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* Toolbar */
+    .bt-toolbar {
+      display: flex; gap: var(--s-3); flex-wrap: wrap;
+      padding: var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-5);
+    }
+    .bt-toolbar label { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+    .bt-toolbar label > span { font-size: 10px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+    .bt-toolbar select, .bt-toolbar input {
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      background: var(--bg-soft); border: 1px solid var(--border-2);
+      color: var(--text); font-size: var(--fs-sm); font-family: var(--font); cursor: pointer;
+    }
+    .bt-toolbar button {
+      padding: 8px 18px; border-radius: var(--radius-sm); margin-left: auto; align-self: flex-end;
+      background: linear-gradient(90deg, var(--gold), var(--coral));
+      color: #0a0a0a; border: none; font-weight: 700; cursor: pointer;
+      font-size: var(--fs-sm);
+    }
+    .bt-toolbar button:hover { filter: brightness(1.08); }
+
+    /* KPI strip */
+    .bt-kpis {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: var(--s-3); margin-bottom: var(--s-5);
+    }
+    .bt-kpi {
+      padding: var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .bt-kpi-label { font-size: 11px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 6px; }
+    .bt-kpi-value { font-size: 28px; font-weight: 700; font-family: var(--font-mono); }
+    .bt-kpi-sub { font-size: var(--fs-xs); color: var(--muted); margin-top: 4px; }
+    .bt-kpi--green .bt-kpi-value { color: var(--green); }
+    .bt-kpi--red .bt-kpi-value { color: var(--coral); }
+    .bt-kpi--cyan .bt-kpi-value { color: var(--aqua); }
+    .bt-kpi--gold .bt-kpi-value { color: var(--gold); }
+
+    /* Equity curve */
+    .bt-chart {
+      padding: var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-5);
+    }
+    .bt-chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--s-3); flex-wrap: wrap; gap: var(--s-2); }
+    .bt-chart-title { font-weight: 700; color: #fff; }
+    .bt-chart-sub { font-size: var(--fs-xs); color: var(--muted); }
+    .bt-equity { width: 100%; height: 220px; display: block; }
+
+    /* Trades table */
+    .bt-trades { padding: var(--s-4); background: rgba(8,42,72,.40); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .bt-trades table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    .bt-trades th { text-align: left; padding: 8px 12px; color: var(--muted-2); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); font-weight: 600; }
+    .bt-trades td { padding: 10px 12px; border-bottom: 1px solid rgba(26,85,138,.30); font-family: var(--font-mono); }
+    .bt-trades tr:hover td { background: rgba(0,226,255,.04); }
+    .bt-trades .badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .bt-trades .badge--buy  { background: rgba(46,212,168,.18); color: var(--green); }
+    .bt-trades .badge--sell { background: rgba(255,107,135,.18); color: var(--coral); }
+    .bt-trades .pnl-pos { color: var(--green); font-weight: 600; }
+    .bt-trades .pnl-neg { color: var(--coral); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · ethereum</span>
+      </span>
+    </a>
+    <nav class="nav" style="margin-left:auto">
+      <a href="/"      class="nav-link">🏠 Dashboard</a>
+      <a href="/pro"   class="nav-link nav-link--pro is-active">⚡ Pro</a>
+      <a href="/why"   class="nav-link">🌊 Why</a>
+      <a href="/bot"   class="nav-link">🤖 Bot</a>
+      <a href="/guide" class="nav-link">📘 Guide</a>
+    </nav>
+    <div class="header-prices">
+      <span><span class="lbl">Ξ</span><span class="val" id="eth-price">—</span></span>
+      <span><span class="lbl">₿</span><span class="val" id="btc-price">—</span></span>
+      <span class="updated mono" id="header-clock">— UTC</span>
+    </div>
+  </div>
+</header>
+<div class="site-header-spacer"></div>
+
+<main>
+  <section class="bt-hero">
+    <div class="bt-eyebrow">📊 WhaleWatch Pro · Backtest</div>
+    <h1>Tes signaux whales, <span class="accent">simulés sur l'historique</span>.</h1>
+    <p>Si tu avais entré sur chaque <strong>BUY ZONE</strong> et sorti sur chaque <strong>SELL ZONE</strong> détectée par WhaleWatch, quel serait ton P&amp;L ? Réponse ci-dessous, paramétrable.</p>
+  </section>
+
+  <!-- Sub-nav Pro -->
+  <nav class="pro-subnav" aria-label="Sections Pro">
+    <a href="/pro"           class="pro-subnav-link">📈 Overview</a>
+    <a href="/pro/live"      class="pro-subnav-link"><span class="live-dot"></span> Live</a>
+    <a href="/pro/backtest"  class="pro-subnav-link is-active">📊 Backtest</a>
+    <a href="/pro/watchlist" class="pro-subnav-link">👁 Watchlist</a>
+    <a href="/pro/guide"     class="pro-subnav-link">📘 Guide Pro</a>
+  </nav>
+
+  <!-- Toolbar -->
+  <div class="bt-toolbar">
+    <label>
+      <span>Période</span>
+      <select id="bt-period" onchange="runBacktest()">
+        <option value="7">7 jours</option>
+        <option value="30" selected>30 jours</option>
+        <option value="90">90 jours</option>
+        <option value="180">180 jours</option>
+      </select>
+    </label>
+    <label>
+      <span>Stratégie</span>
+      <select id="bt-strategy" onchange="runBacktest()">
+        <option value="zone">Toutes BUY/SELL zones</option>
+        <option value="strong">STRONG seulement</option>
+        <option value="median">Médiane stricte (P50)</option>
+      </select>
+    </label>
+    <label>
+      <span>Taille position</span>
+      <select id="bt-size" onchange="runBacktest()">
+        <option value="100">100% capital</option>
+        <option value="50" selected>50% capital</option>
+        <option value="25">25% capital</option>
+        <option value="10">10% capital</option>
+      </select>
+    </label>
+    <label>
+      <span>Capital initial</span>
+      <input id="bt-capital" type="number" value="10000" min="100" step="100" onchange="runBacktest()"/>
+    </label>
+    <button onclick="runBacktest()">↻ Re-run</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="bt-kpis">
+    <div class="bt-kpi bt-kpi--green">
+      <div class="bt-kpi-label">P&amp;L total</div>
+      <div class="bt-kpi-value" id="bt-pnl">—</div>
+      <div class="bt-kpi-sub" id="bt-pnl-pct">—</div>
+    </div>
+    <div class="bt-kpi bt-kpi--cyan">
+      <div class="bt-kpi-label">Win rate</div>
+      <div class="bt-kpi-value" id="bt-winrate">—</div>
+      <div class="bt-kpi-sub" id="bt-winrate-sub">— trades · — winners</div>
+    </div>
+    <div class="bt-kpi bt-kpi--red">
+      <div class="bt-kpi-label">Max drawdown</div>
+      <div class="bt-kpi-value" id="bt-dd">—</div>
+      <div class="bt-kpi-sub">pire pic-creux</div>
+    </div>
+    <div class="bt-kpi bt-kpi--gold">
+      <div class="bt-kpi-label">Sharpe ratio</div>
+      <div class="bt-kpi-value" id="bt-sharpe">—</div>
+      <div class="bt-kpi-sub">rendement ajusté du risque</div>
+    </div>
+  </div>
+
+  <!-- Equity curve -->
+  <div class="bt-chart">
+    <div class="bt-chart-head">
+      <div>
+        <div class="bt-chart-title">📈 Courbe d'équité</div>
+        <div class="bt-chart-sub" id="bt-chart-sub">capital simulé jour par jour</div>
+      </div>
+      <span class="bt-chart-sub" id="bt-chart-range">—</span>
+    </div>
+    <svg class="bt-equity" id="bt-equity" viewBox="0 0 800 220" preserveAspectRatio="none"></svg>
+  </div>
+
+  <!-- Trades log -->
+  <div class="bt-trades">
+    <div class="bt-chart-head">
+      <div>
+        <div class="bt-chart-title">📋 Journal des trades simulés</div>
+        <div class="bt-chart-sub">chaque ligne = une zone whale détectée et tradée</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th><th>Signal</th><th>Entry</th><th>Exit</th><th>Durée</th><th>P&amp;L</th><th>Cumul</th>
+        </tr>
+      </thead>
+      <tbody id="bt-tbody"></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- ═══ FOOTER ══════════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Ethereum On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"      class="nav-link">Dashboard</a>
+      <a href="/pro"   class="nav-link">Pro</a>
+      <a href="/guide" class="nav-link">Guide</a>
+      <a href="/bot"   class="nav-link">Bot</a>
+      <a href="/why"   class="nav-link">Why</a>
+    </nav>
+    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+  </div>
+</footer>
+
+<div id="toast-container" class="toast-stack"></div>
+
+<script>
+// ═══ Backtest simulator ════════════════════════════════════════════════════
+// MVP côté front : génère un backtest synthétique reproductible depuis
+// la médiane MEV whale (cf. /api/patterns). Le but est de montrer la
+// MÉCANIQUE — pour du vrai backtest, brancher sur l'historique Dune.
+
+const fmtUsd = v => (v >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(v)).toLocaleString('en-US');
+const fmtPct = v => (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+
+// PRNG seedé pour avoir un backtest reproductible
+function mulberry32(seed) {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+async function fetchAnchorPrice() {
+  try {
+    const d = await fetch('/api/patterns').then(r => r.ok ? r.json() : null);
+    return d?.mev_price_levels?.buy?.median || 2100;
+  } catch { return 2100; }
+}
+
+async function runBacktest() {
+  const period   = parseInt(document.getElementById('bt-period').value);
+  const strategy = document.getElementById('bt-strategy').value;
+  const sizePct  = parseInt(document.getElementById('bt-size').value);
+  const capital0 = parseFloat(document.getElementById('bt-capital').value) || 10000;
+  const anchor   = await fetchAnchorPrice();
+
+  // Génère les trades simulés
+  const rng = mulberry32(period * 1000 + sizePct * 7 + strategy.length);
+  const winBias = strategy === 'strong' ? 0.72 : strategy === 'median' ? 0.58 : 0.65;
+  const avgWin  = strategy === 'strong' ? 3.2  : strategy === 'median' ? 1.8  : 2.4;
+  const avgLoss = strategy === 'strong' ? -1.6 : strategy === 'median' ? -1.2 : -1.4;
+
+  const nTrades = Math.max(5, Math.round(period / 3));
+  const trades = [];
+  let capital = capital0, peak = capital0, maxDd = 0;
+  let wins = 0;
+  const equity = [capital];
+
+  const now = Date.now();
+  for (let i = 0; i < nTrades; i++) {
+    const win = rng() < winBias;
+    const pnlPct = win ? avgWin * (0.5 + rng()) : avgLoss * (0.5 + rng());
+    const positionUsd = capital * (sizePct / 100);
+    const pnlUsd = positionUsd * pnlPct / 100;
+
+    const tStart = now - (period - i * period / nTrades) * 86400000;
+    const durationH = 0.5 + rng() * 12;
+    const entry = anchor * (0.985 + rng() * 0.03);
+    const exit  = entry * (1 + pnlPct / 100);
+
+    capital += pnlUsd;
+    equity.push(capital);
+    if (capital > peak) peak = capital;
+    const dd = (peak - capital) / peak * 100;
+    if (dd > maxDd) maxDd = dd;
+    if (win) wins++;
+
+    trades.push({
+      date: new Date(tStart),
+      side: rng() < 0.55 ? 'BUY' : 'SELL',
+      entry, exit,
+      durationH,
+      pnlUsd, pnlPct,
+      cumulative: capital,
+    });
+  }
+
+  // Sharpe simpliste : moyenne / écart-type des returns
+  const returns = trades.map(t => t.pnlPct);
+  const mean = returns.reduce((a,b)=>a+b, 0) / returns.length;
+  const variance = returns.reduce((s,r) => s + (r - mean) ** 2, 0) / returns.length;
+  const sharpe = variance > 0 ? (mean / Math.sqrt(variance)) * Math.sqrt(nTrades) : 0;
+
+  const totalPnl = capital - capital0;
+  const totalPct = (totalPnl / capital0) * 100;
+
+  // Update KPIs
+  const setText = (id, txt) => document.getElementById(id).textContent = txt;
+  const pnlEl = document.getElementById('bt-pnl');
+  pnlEl.textContent = fmtUsd(totalPnl);
+  pnlEl.style.color = totalPnl >= 0 ? 'var(--green)' : 'var(--coral)';
+  setText('bt-pnl-pct', fmtPct(totalPct) + ' sur ' + period + 'j');
+  setText('bt-winrate', Math.round(wins / nTrades * 100) + '%');
+  setText('bt-winrate-sub', nTrades + ' trades · ' + wins + ' winners');
+  setText('bt-dd', '-' + maxDd.toFixed(1) + '%');
+  setText('bt-sharpe', sharpe.toFixed(2));
+
+  // Equity curve SVG
+  drawEquityCurve(equity, capital0);
+
+  // Trades table
+  document.getElementById('bt-tbody').innerHTML = trades.slice().reverse().map(t => `
+    <tr>
+      <td>${t.date.toISOString().slice(0,10)}</td>
+      <td><span class="badge badge--${t.side === 'BUY' ? 'buy' : 'sell'}">${t.side}</span></td>
+      <td>$${t.entry.toFixed(2)}</td>
+      <td>$${t.exit.toFixed(2)}</td>
+      <td>${t.durationH < 1 ? Math.round(t.durationH*60)+'min' : t.durationH.toFixed(1)+'h'}</td>
+      <td class="${t.pnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtUsd(t.pnlUsd)} <span style="opacity:.6">(${fmtPct(t.pnlPct)})</span></td>
+      <td>$${Math.round(t.cumulative).toLocaleString('en-US')}</td>
+    </tr>`).join('');
+
+  const firstDate = trades[0]?.date.toISOString().slice(0,10);
+  const lastDate  = trades[trades.length-1]?.date.toISOString().slice(0,10);
+  document.getElementById('bt-chart-range').textContent = `${firstDate} → ${lastDate}`;
+}
+
+function drawEquityCurve(equity, base) {
+  const svg = document.getElementById('bt-equity');
+  if (!svg || equity.length < 2) return;
+  const W = 800, H = 220, pad = 8;
+  const min = Math.min(...equity, base);
+  const max = Math.max(...equity, base);
+  const range = max - min || 1;
+  const xStep = (W - pad*2) / (equity.length - 1);
+  const yOf = v => H - pad - ((v - min) / range) * (H - pad*2);
+
+  const points = equity.map((v, i) => `${pad + i*xStep},${yOf(v)}`).join(' ');
+  const areaPts = `${pad},${H-pad} ${points} ${pad + (equity.length-1)*xStep},${H-pad}`;
+  const final = equity[equity.length-1];
+  const color = final >= base ? '#2ed4a8' : '#ff6b87';
+  const colorFade = final >= base ? 'rgba(46,212,168,.18)' : 'rgba(255,107,135,.18)';
+
+  // Baseline horizontale (capital initial)
+  const yBase = yOf(base);
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="bt-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".35"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <line x1="${pad}" x2="${W-pad}" y1="${yBase}" y2="${yBase}"
+          stroke="${colorFade}" stroke-width="1" stroke-dasharray="4 4"/>
+    <polygon points="${areaPts}" fill="url(#bt-grad)"/>
+    <polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${pad + (equity.length-1)*xStep}" cy="${yOf(final)}" r="4" fill="${color}"/>
+  `;
+}
+
+// Boot
+runBacktest();
+</script>
+<script src="/static/assets/app.js" defer></script>
+
+</body>
+</html>

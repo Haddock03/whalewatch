@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro — WhaleWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <style>
+    /* ═══ PRO PAGE ════════════════════════════════════════════════════════ */
+
+    .pro-hero {
+      padding: var(--s-7) 0 var(--s-6);
+      text-align: center;
+      background: radial-gradient(ellipse 800px 320px at 50% 0%, rgba(255,198,87,.12), transparent 70%);
+    }
+    .pro-hero h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 800; line-height: 1.1; letter-spacing: -.02em;
+      color: #fff; margin: 0 0 var(--s-3);
+    }
+    .pro-hero h1 .accent {
+      background: linear-gradient(90deg, var(--c-sc), #ff8a40 60%, var(--c-mev));
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .pro-hero p { color: var(--muted); font-size: var(--fs-lg); max-width: 600px; margin: 0 auto var(--s-5); }
+    .pro-eyebrow {
+      display: inline-flex; align-items: center; gap: var(--s-2);
+      font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 999px;
+      color: var(--c-sc); background: rgba(255,198,87,.08); border: 1px solid rgba(255,198,87,.32);
+      margin-bottom: var(--s-4);
+    }
+
+    .pro-status-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; letter-spacing: .12em;
+      border: 1px solid var(--border);
+      background: rgba(2,12,27,.55); color: var(--muted);
+    }
+    .pro-status-pill.is-active {
+      color: var(--c-sc); border-color: rgba(255,198,87,.5);
+      background: linear-gradient(90deg, rgba(255,198,87,.14), rgba(255,107,135,.08));
+    }
+    .pro-status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
+
+    .pro-grid {
+      display: grid; grid-template-columns: 2fr 1fr; gap: var(--s-5);
+      max-width: 1240px; margin: 0 auto;
+      padding: 0 var(--s-5) var(--s-8);
+    }
+    @media (max-width: 960px) { .pro-grid { grid-template-columns: 1fr; } }
+
+    .pro-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--s-5);
+      margin-bottom: var(--s-5);
+    }
+    .pro-section--gold {
+      border-color: rgba(255,198,87,.28);
+      background: linear-gradient(180deg, rgba(255,198,87,.05), var(--surface) 60%);
+    }
+    .pro-section-head {
+      display: flex; align-items: center; gap: var(--s-3);
+      margin-bottom: var(--s-4); flex-wrap: wrap;
+    }
+    .pro-section-title { color:#fff; font-weight:700; font-size: var(--fs-lg); flex:1; }
+    .pro-section-sub   { color: var(--muted); font-size: var(--fs-xs); margin-top: 2px; }
+
+    .pro-toolbar {
+      display: flex; gap: var(--s-2); flex-wrap: wrap;
+      padding-bottom: var(--s-3);
+      margin-bottom: var(--s-3);
+      border-bottom: 1px solid var(--border);
+    }
+    .pro-toolbar select, .pro-toolbar input {
+      background: var(--bg-soft); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 10px; font-size: var(--fs-sm);
+      font-family: inherit;
+    }
+    .pro-toolbar label {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--muted); font-size: 11px;
+    }
+
+    /* Leaderboard rows */
+    .leader-row {
+      display: grid;
+      grid-template-columns: 32px 1fr auto auto auto auto;
+      align-items: center; gap: var(--s-3);
+      padding: 10px var(--s-3);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all .14s ease;
+    }
+    .leader-row:hover { border-color: rgba(255,198,87,.4); background: rgba(255,198,87,.03); transform: translateX(2px); }
+    .leader-row .rk {
+      width: 26px; height: 26px; border-radius: 6px;
+      display: grid; place-items: center;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 800;
+      background: rgba(255,198,87,.14); color: var(--c-sc);
+    }
+    .leader-row .rk.top1 { background: rgba(255,198,87,.32); }
+    .leader-row .rk.top2 { background: rgba(255,198,87,.24); }
+    .leader-row .rk.top3 { background: rgba(255,198,87,.18); }
+    .leader-row .addr  { color: var(--blue); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .leader-row .vol   { color: var(--green); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; min-width: 78px; text-align: right; }
+    .leader-row .trade { color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-size: 12px; min-width: 78px; text-align: right; }
+    .leader-row .score {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 13px;
+      min-width: 90px; justify-content: flex-end;
+    }
+    .leader-row .score-bar { width: 48px; height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; position: relative; }
+    .leader-row .score-bar-fill { position: absolute; inset: 0; right: auto; border-radius: 3px; background: linear-gradient(90deg, var(--c-mev), var(--c-sc), var(--green)); }
+    .leader-row .score--hi  { color: var(--green); }
+    .leader-row .score--mid { color: var(--c-sc); }
+    .leader-row .score--lo  { color: var(--muted); }
+
+    /* Alerts feed */
+    .alert-feed { display: flex; flex-direction: column; gap: 8px; max-height: 540px; overflow-y: auto; padding-right: 4px; }
+    .alert-item {
+      display: flex; gap: var(--s-3); align-items: flex-start;
+      padding: 10px var(--s-3);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--c-accent, var(--cyan));
+      background: var(--bg-soft);
+      animation: alert-slide-in .35s ease;
+    }
+    @keyframes alert-slide-in {
+      from { opacity: 0; transform: translateX(8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .alert-item--whale  { --c-accent: var(--cyan);  }
+    .alert-item--smart  { --c-accent: var(--c-sc);  }
+    .alert-item--mev    { --c-accent: var(--c-mev); }
+    .alert-item--new    { --c-accent: var(--green); }
+    .alert-icon {
+      width: 28px; height: 28px; border-radius: 6px;
+      display: grid; place-items: center;
+      background: color-mix(in srgb, var(--c-accent) 14%, transparent);
+      color: var(--c-accent);
+      flex-shrink: 0;
+    }
+    .alert-body { flex: 1; min-width: 0; }
+    .alert-title { color: #fff; font-size: var(--fs-sm); font-weight: 600; line-height: 1.4; }
+    .alert-detail { color: var(--muted); font-size: 11px; margin-top: 2px; line-height: 1.4; }
+    .alert-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+    /* Stats grid */
+    .pro-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-3); margin-bottom: var(--s-4); }
+    @media (max-width: 640px) { .pro-stats { grid-template-columns: 1fr 1fr; } }
+    .pro-stat {
+      padding: var(--s-3);
+      border-radius: 8px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--c-accent, var(--cyan));
+    }
+    .pro-stat--gold  { --c-accent: var(--c-sc); }
+    .pro-stat--green { --c-accent: var(--green); }
+    .pro-stat--red   { --c-accent: var(--c-mev); }
+    .pro-stat-label  { font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+    .pro-stat-value  { color: #fff; font-weight: 700; font-size: 22px; font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+    .pro-stat-sub    { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+    /* Locked overlay (when not Pro) */
+    .pro-page-lock {
+      position: fixed; inset: 0; z-index: 80;
+      display: none;
+      align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(2,12,27,.85), rgba(2,12,27,.97));
+      backdrop-filter: blur(12px);
+      padding: var(--s-5);
+    }
+    body:not(.is-pro) .pro-page-lock { display: flex; }
+    body:not(.is-pro) main { filter: blur(8px) saturate(.5); pointer-events: none; user-select: none; }
+
+    .pro-lock-card {
+      max-width: 480px; width: 100%;
+      background: linear-gradient(180deg, rgba(255,198,87,.10), var(--surface) 60%);
+      border: 1px solid rgba(255,198,87,.32);
+      border-radius: var(--radius-lg);
+      padding: var(--s-7);
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,.5), 0 0 80px rgba(255,198,87,.10);
+    }
+    .pro-lock-card .icon-circle {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: grid; place-items: center; margin: 0 auto var(--s-4);
+      background: rgba(255,198,87,.14); color: var(--c-sc);
+    }
+    .pro-lock-card h2 { color: #fff; font-size: 22px; font-weight: 700; margin: 0 0 var(--s-3); }
+    .pro-lock-card p  { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 var(--s-4); }
+    .pro-features {
+      display: flex; flex-direction: column; gap: 8px;
+      text-align: left; margin: 0 0 var(--s-5);
+    }
+    .pro-feature {
+      display: flex; align-items: center; gap: var(--s-3);
+      color: var(--text-soft); font-size: 13px;
+    }
+    .pro-feature .check {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: grid; place-items: center; flex-shrink: 0;
+      background: rgba(46,212,168,.14); color: var(--green);
+    }
+    .pro-cta-btn {
+      width: 100%; padding: 12px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--c-sc);
+      background: linear-gradient(90deg, var(--c-sc), #ff9a3d);
+      color: #1a0d00;
+      font-weight: 800; letter-spacing: .08em; font-size: 12px; text-transform: uppercase;
+      cursor: pointer; transition: all .18s;
+    }
+    .pro-cta-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,198,87,.3); }
+    .pro-lock-card .small-note { color: var(--muted); font-size: 11px; margin-top: var(--s-3); }
+
+    .pro-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 999px;
+      border: 1px solid var(--border); background: rgba(2,12,27,.55);
+      color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      cursor: pointer; transition: all .18s ease; margin-left: 10px;
+    }
+    .pro-toggle:hover { border-color: var(--c-sc); color: var(--c-sc); }
+    .pro-toggle-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    body.is-pro .pro-toggle {
+      border-color: rgba(255,198,87,.55);
+      background: linear-gradient(90deg, rgba(255,198,87,.16), rgba(255,107,135,.10));
+      color: var(--c-sc);
+    }
+    body.is-pro .pro-toggle-dot { background: var(--c-sc); box-shadow: 0 0 10px var(--c-sc); }
+
+    .nav-link--pro {
+      background: linear-gradient(90deg, rgba(255,198,87,.10), rgba(255,107,135,.08));
+      border: 1px solid rgba(255,198,87,.28);
+      color: var(--c-sc) !important;
+    }
+
+    /* ═══ LIVE pulse on chip ═══ */
+    .live-pulse {
+      display: inline-block;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 0 currentColor;
+      margin-right: 5px; vertical-align: middle;
+      animation: live-pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes live-pulse {
+      0%, 100% { transform: scale(1);  opacity: 1;  }
+      50%      { transform: scale(1.4); opacity: .55; }
+    }
+
+    /* ═══ Alert severity dot + flash ═══ */
+    .alert-sev-dot {
+      display: inline-block;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--c-mev);
+      margin-left: 6px; vertical-align: middle;
+      animation: live-pulse 1.4s ease-in-out infinite;
+    }
+    .alert-item--new-flash {
+      animation: alert-slide-in .35s ease, new-flash 1.6s ease 1;
+    }
+    @keyframes new-flash {
+      0%   { box-shadow: 0 0 0 0 rgba(255,198,87,.6); }
+      100% { box-shadow: 0 0 0 8px rgba(255,198,87,0); }
+    }
+    .alert-item { cursor: default; transition: background .15s, transform .15s; }
+    .alert-item[onclick]:hover { background: rgba(255,255,255,.02); transform: translateX(2px); }
+
+    /* ═══ Score tooltip on hover (breakdown details) ═══ */
+    .score-tip {
+      position: relative;
+    }
+    .score-tip:hover::after {
+      content: attr(data-tip);
+      position: absolute; bottom: calc(100% + 8px); right: 0;
+      min-width: 240px; max-width: 320px;
+      padding: 8px 10px;
+      background: var(--bg); color: var(--text);
+      border: 1px solid rgba(255,198,87,.35);
+      border-radius: 6px;
+      font-size: 10.5px; font-family: 'JetBrains Mono', monospace; font-weight: 500;
+      line-height: 1.5;
+      white-space: normal;
+      z-index: 30;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+      pointer-events: none;
+    }
+
+    /* ═══ MEV Exposure Radar ═══ */
+    .mev-radar-head {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4);
+      align-items: center;
+      padding: var(--s-3);
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: var(--s-3);
+    }
+    @media (max-width: 600px) { .mev-radar-head { grid-template-columns: 1fr; } }
+    .mev-radar-gauge { display: flex; flex-direction: column; gap: 8px; }
+    .mev-radar-gauge-track {
+      position: relative;
+      width: 100%; height: 10px;
+      border-radius: 5px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .mev-radar-gauge-fill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      border-radius: 5px;
+      transition: width .4s ease;
+    }
+    .mev-radar-gauge-fill.score--hi  { background: linear-gradient(90deg, var(--c-mev) 0%, var(--c-sc) 40%, var(--green)); }
+    .mev-radar-gauge-fill.score--mid { background: linear-gradient(90deg, var(--c-mev), var(--c-sc)); }
+    .mev-radar-gauge-fill.score--lo  { background: var(--c-mev); }
+    .mev-radar-gauge-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .mev-radar-stats {
+      display: flex; justify-content: space-around; gap: var(--s-2);
+    }
+    .mev-radar-stats > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .mev-radar-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 16px; color: #fff; }
+    .mev-radar-lbl { font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+
+    .mev-radar-top { display: flex; flex-direction: column; gap: 4px; }
+    .mev-radar-row {
+      display: grid;
+      grid-template-columns: 22px 90px 1fr 78px;
+      align-items: center;
+      gap: var(--s-2);
+      padding: 6px var(--s-3);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background .14s;
+    }
+    .mev-radar-row:hover { background: rgba(255,107,135,.06); }
+    .mev-radar-rank {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+      color: var(--c-mev);
+    }
+    .mev-radar-row .addr { color: var(--blue); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .mev-bar { position: relative; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+    .mev-bar-fill {
+      position: absolute; inset: 0; right: auto;
+      background: linear-gradient(90deg, rgba(255,107,135,.5), var(--c-mev));
+      border-radius: 3px;
+    }
+    .mev-vol { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; color: var(--c-mev); text-align: right; }
+
+    /* ═══ Wallet Comparator ═══ */
+    .cmp-grid {
+      display: grid;
+      grid-template-columns: 1fr 36px 1fr;
+      align-items: stretch; gap: var(--s-3);
+    }
+    @media (max-width: 760px) {
+      .cmp-grid { grid-template-columns: 1fr; }
+      .cmp-vs { transform: rotate(90deg); justify-self: center; }
+    }
+    .cmp-toolbar {
+      display: flex; gap: 6px; margin-bottom: var(--s-2);
+    }
+    .cmp-toolbar input { flex: 1; }
+    .cmp-vs {
+      display: grid; place-items: center;
+      font-weight: 800; letter-spacing: .12em; color: var(--c-sc);
+      font-size: 12px;
+      writing-mode: vertical-rl; text-orientation: upright;
+    }
+    .cmp-slot {
+      min-height: 200px;
+      padding: var(--s-3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-soft);
+      display: flex; flex-direction: column;
+    }
+    .cmp-empty {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      color: var(--muted);
+    }
+    .cmp-empty p { font-size: var(--fs-sm); }
+    .cmp-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: var(--s-2);
+    }
+    .cmp-slot-tag {
+      font-size: 10px; font-weight: 800; letter-spacing: .14em; color: var(--c-sc);
+      text-transform: uppercase;
+    }
+    .cmp-addr { color: var(--blue); font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-bottom: 2px; }
+    .cmp-label { color: var(--text-soft); font-size: var(--fs-sm); margin-bottom: var(--s-3); }
+    .cmp-score {
+      font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 28px;
+      margin-bottom: var(--s-3);
+    }
+    .cmp-score.score--hi  { color: var(--green); }
+    .cmp-score.score--mid { color: var(--c-sc); }
+    .cmp-score.score--lo  { color: var(--muted); }
+    .cmp-score small { font-size: 11px; font-weight: 600; opacity: .7; margin-left: 6px; letter-spacing: .08em; }
+    .cmp-rows {
+      display: flex; flex-direction: column; gap: 6px;
+      font-size: var(--fs-sm);
+    }
+    .cmp-rows > div {
+      display: flex; justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .cmp-rows span { color: var(--muted); }
+    .cmp-rows b { color: var(--text); font-family: 'JetBrains Mono', monospace; }
+
+    /* ═══ Screener — saved filters ═══ */
+    .screener-saved {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      padding-top: var(--s-2);
+      margin-top: var(--s-2);
+      border-top: 1px dashed var(--border);
+    }
+    .screener-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      color: var(--text-soft);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .14s ease;
+    }
+    .screener-chip:hover { border-color: var(--c-sc); color: var(--c-sc); }
+    .screener-chip.is-active {
+      border-color: var(--c-sc);
+      background: linear-gradient(90deg, rgba(255,198,87,.16), rgba(255,107,135,.08));
+      color: var(--c-sc);
+    }
+    .screener-chip .x { opacity: .55; font-weight: 700; }
+    .screener-chip .x:hover { opacity: 1; color: var(--c-mev); }
+    .screener-save-btn {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px dashed var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .screener-save-btn:hover { color: var(--c-sc); border-color: var(--c-sc); }
+
+    /* ═══ Responsive tweaks ═══ */
+    @media (max-width: 960px) {
+      .pro-section { padding: var(--s-4); }
+      .leader-row { grid-template-columns: 28px 1fr auto auto; gap: var(--s-2); }
+      .leader-row .trade { display: none; }
+      .leader-row .score-bar { display: none; }
+    }
+    @media (max-width: 600px) {
+      .pro-hero h1 { font-size: 28px; }
+      .pro-stats { grid-template-columns: 1fr; }
+      .pro-toolbar { gap: 6px; }
+      .pro-toolbar label { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Ambient -->
+<div class="ocean-rays" aria-hidden="true"></div>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · ethereum</span>
+      </span>
+    </a>
+    <span class="live-chip" id="pro-status-chip">PRO · accès complet</span>
+    <nav class="nav" style="margin-left:auto">
+      <a href="/"      class="nav-link">🏠 Dashboard</a>
+      <a href="/pro"   class="nav-link nav-link--pro is-active">⚡ Pro</a>
+      <a href="/why"   class="nav-link">🌊 Why</a>
+      <a href="/bot"   class="nav-link">🤖 Bot</a>
+      <a href="/guide" class="nav-link">📘 Guide</a>
+    </nav>
+    <div class="header-prices">
+      <span><span class="lbl">Ξ</span><span class="val" id="eth-price">—</span></span>
+      <span><span class="lbl">₿</span><span class="val" id="btc-price">—</span></span>
+      <span class="updated mono" id="header-clock">— UTC</span>
+    </div>
+    <button id="pro-toggle" class="pro-toggle" onclick="toggleProMode()" title="Mode Pro">
+      <span class="pro-toggle-dot"></span>
+      <span class="pro-toggle-label">FREE</span>
+    </button>
+  </div>
+</header>
+<div class="site-header-spacer"></div>
+
+<main>
+
+  <!-- ═══ HERO ═══════════════════════════════════════════════════════════ -->
+  <section class="pro-hero">
+    <div class="pro-eyebrow">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      WhaleWatch Pro
+    </div>
+    <h1>L'<span class="accent">alpha</span> des baleines, débloqué.</h1>
+    <p>Score Smart Money, alertes temps réel, copy-trade picks et radar MEV — tout ce qu'il faut pour suivre les wallets qui font bouger le marché.</p>
+    <span id="pro-hero-status" class="pro-status-pill"><span class="dot"></span>Mode Free — découvrez les features Pro ci-dessous</span>
+  </section>
+
+  <!-- ═══ SUB-NAV PRO ═════════════════════════════════════════════════════ -->
+  <nav class="pro-subnav" aria-label="Sections Pro">
+    <a href="/pro"           class="pro-subnav-link is-active">📈 Overview</a>
+    <a href="/pro/live"      class="pro-subnav-link"><span class="live-dot"></span> Live</a>
+    <a href="/pro/backtest"  class="pro-subnav-link">📊 Backtest</a>
+    <a href="/pro/watchlist" class="pro-subnav-link">👁 Watchlist</a>
+    <a href="/pro/guide"     class="pro-subnav-link">📘 Guide Pro</a>
+  </nav>
+
+  <div class="pro-grid">
+
+    <!-- ═══ COL GAUCHE ════════════════════════════════════════════════════ -->
+    <div>
+
+      <!-- Pro stats -->
+      <section class="pro-section pro-section--gold">
+        <div class="pro-section-head">
+          <div style="flex:1">
+            <div class="pro-section-title">📈 Smart Money — vue d'ensemble</div>
+            <div class="pro-section-sub">Snapshot calculé sur le top wallets actuel</div>
+          </div>
+        </div>
+        <div class="pro-stats">
+          <div class="pro-stat pro-stat--gold">
+            <div class="pro-stat-label">Smart wallets</div>
+            <div class="pro-stat-value" id="pro-stat-alpha">—</div>
+            <div class="pro-stat-sub">Score ≥ 55 · non-MEV</div>
+          </div>
+          <div class="pro-stat pro-stat--green">
+            <div class="pro-stat-label">Volume Smart</div>
+            <div class="pro-stat-value" id="pro-stat-vol">—</div>
+            <div class="pro-stat-sub">Cumulé sur 7j</div>
+          </div>
+          <div class="pro-stat pro-stat--red">
+            <div class="pro-stat-label">MEV pressure</div>
+            <div class="pro-stat-value" id="pro-stat-mev">—</div>
+            <div class="pro-stat-sub">Part du flux total</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Leaderboard -->
+      <section class="pro-section">
+        <div class="pro-section-head">
+          <div style="flex:1">
+            <div class="pro-section-title">⚡ Smart Money Leaderboard</div>
+            <div class="pro-section-sub">Top 20 wallets non-MEV avec un score d'alpha élevé</div>
+          </div>
+          <span id="leader-meta" class="fs-xs text-muted"></span>
+        </div>
+
+        <div class="pro-toolbar">
+          <label>Min score
+            <select id="filter-score" onchange="onFiltersChange()">
+              <option value="40">≥ 40</option>
+              <option value="55" selected>≥ 55</option>
+              <option value="70">≥ 70</option>
+              <option value="80">≥ 80</option>
+            </select>
+          </label>
+          <label>Min volume
+            <select id="filter-vol" onchange="onFiltersChange()">
+              <option value="0">Tous</option>
+              <option value="1000000">≥ $1M</option>
+              <option value="10000000" selected>≥ $10M</option>
+              <option value="100000000">≥ $100M</option>
+            </select>
+          </label>
+          <label>Type
+            <select id="filter-type" onchange="onFiltersChange()">
+              <option value="all">Tous</option>
+              <option value="eoa">EOA seulement</option>
+              <option value="sc">Smart Contracts</option>
+            </select>
+          </label>
+          <label>Tri
+            <select id="filter-sort" onchange="onFiltersChange()">
+              <option value="score" selected>Score Alpha</option>
+              <option value="vol">Volume</option>
+              <option value="avg">Avg trade</option>
+            </select>
+          </label>
+        </div>
+        <div id="screener-saved" class="screener-saved">
+          <button class="screener-save-btn" onclick="saveCurrentFilter()">+ Sauver ce filtre</button>
+        </div>
+
+        <div id="leaderboard">
+          <p class="text-muted text-center fs-sm" style="padding:var(--s-5) 0">Chargement…</p>
+        </div>
+      </section>
+
+      <!-- MEV Exposure Radar -->
+      <section class="pro-section">
+        <div class="pro-section-head">
+          <div style="flex:1">
+            <div class="pro-section-title">🦈 MEV Exposure Radar</div>
+            <div class="pro-section-sub">Part du flux extraite par les bots MEV + top extracteurs</div>
+          </div>
+        </div>
+        <div id="mev-radar">
+          <p class="text-muted text-center fs-sm" style="padding:var(--s-4) 0">Chargement…</p>
+        </div>
+      </section>
+
+      <!-- Wallet Comparator -->
+      <section class="pro-section">
+        <div class="pro-section-head">
+          <div style="flex:1">
+            <div class="pro-section-title">🆚 Wallet Comparator</div>
+            <div class="pro-section-sub">Compare 2 wallets côte à côte — colle leurs adresses</div>
+          </div>
+        </div>
+        <datalist id="cmp-datalist"></datalist>
+        <div class="cmp-grid">
+          <div>
+            <div class="cmp-toolbar">
+              <input id="cmp-input-A" class="input" list="cmp-datalist" placeholder="Wallet A · 0x… ou label"/>
+              <button class="btn btn-ghost btn-sm" onclick="pickCmp('A')">+</button>
+            </div>
+            <div id="cmp-slot-A" class="cmp-slot"></div>
+          </div>
+          <div class="cmp-vs">VS</div>
+          <div>
+            <div class="cmp-toolbar">
+              <input id="cmp-input-B" class="input" list="cmp-datalist" placeholder="Wallet B · 0x… ou label"/>
+              <button class="btn btn-ghost btn-sm" onclick="pickCmp('B')">+</button>
+            </div>
+            <div id="cmp-slot-B" class="cmp-slot"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ═══ COL DROITE ════════════════════════════════════════════════════ -->
+    <div>
+
+      <!-- Real-time alerts -->
+      <section class="pro-section">
+        <div class="pro-section-head">
+          <div style="flex:1">
+            <div class="pro-section-title">🔔 Alertes temps réel</div>
+            <div class="pro-section-sub">Whale moves, MEV spikes, nouveaux wallets <span id="alerts-meta" class="text-muted fs-xs"></span></div>
+          </div>
+          <span class="live-chip" style="font-size:9px"><span class="live-pulse"></span>LIVE</span>
+        </div>
+        <div id="alert-feed" class="alert-feed">
+          <p class="text-muted text-center fs-sm" style="padding:var(--s-5) 0">En attente de données…</p>
+        </div>
+      </section>
+
+      <!-- Copy-trade picks -->
+      <section class="pro-section pro-section--gold">
+        <div class="pro-section-head">
+          <div style="flex:1">
+            <div class="pro-section-title">🎯 Copy-trade picks</div>
+            <div class="pro-section-sub">3 wallets recommandés à suivre cette semaine</div>
+          </div>
+        </div>
+        <div id="copy-picks">
+          <p class="text-muted text-center fs-sm" style="padding:var(--s-4) 0">Chargement…</p>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ═══ LOCKED OVERLAY ══════════════════════════════════════════════════════ -->
+<div class="pro-page-lock">
+  <div class="pro-lock-card">
+    <div class="icon-circle">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <h2>⚡ Active WhaleWatch Pro</h2>
+    <p>Débloque l'alpha des baleines avec des features avancées.</p>
+    <div class="pro-features">
+      <div class="pro-feature"><span class="check">✓</span> Smart Money Score sur chaque wallet</div>
+      <div class="pro-feature"><span class="check">✓</span> Leaderboard filtré (volume, type, score)</div>
+      <div class="pro-feature"><span class="check">✓</span> Alertes temps réel (whale moves, MEV)</div>
+      <div class="pro-feature"><span class="check">✓</span> Copy-trade picks hebdomadaires</div>
+      <div class="pro-feature"><span class="check">✓</span> Filtres avancés sur le dashboard</div>
+    </div>
+    <button class="pro-cta-btn" onclick="toggleProMode()">⚡ Activer le mode Pro</button>
+    <p class="small-note">Démo gratuite · Pas de carte requise</p>
+  </div>
+</div>
+
+<!-- ═══ FOOTER ══════════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Ethereum On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"      class="nav-link">Dashboard</a>
+      <a href="/pro"   class="nav-link">Pro</a>
+      <a href="/guide" class="nav-link">Guide</a>
+      <a href="/bot"   class="nav-link">Bot</a>
+      <a href="/why"   class="nav-link">Why</a>
+    </nav>
+    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+  </div>
+</footer>
+
+<div id="toast-container" class="toast-stack"></div>
+
+<script>
+// ═════════════════════════════════════════════════════════════════════════════
+// Pro mode toggle
+// ═════════════════════════════════════════════════════════════════════════════
+function isProMode(){ return localStorage.getItem('ww_pro') === '1'; }
+function applyProMode(){
+  const on = isProMode();
+  document.body.classList.toggle('is-pro', on);
+  const btn = document.getElementById('pro-toggle');
+  if(btn){
+    btn.setAttribute('aria-pressed', String(on));
+    btn.querySelector('.pro-toggle-label').textContent = on ? 'PRO' : 'FREE';
+  }
+  const pill = document.getElementById('pro-hero-status');
+  if(pill){
+    pill.classList.toggle('is-active', on);
+    pill.innerHTML = on
+      ? '<span class="dot"></span>Mode Pro actif — accès complet'
+      : '<span class="dot"></span>Mode Free — découvrez les features Pro ci-dessous';
+  }
+  const chip = document.getElementById('pro-status-chip');
+  if(chip) chip.textContent = on ? 'PRO · accès complet' : 'PRO · démo';
+}
+function toggleProMode(){
+  const next = !isProMode();
+  localStorage.setItem('ww_pro', next ? '1' : '0');
+  applyProMode();
+  showToast(next ? '⚡ Mode Pro activé' : 'Mode Pro désactivé', next ? 'success' : '', 2200);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Toast
+// ═════════════════════════════════════════════════════════════════════════════
+function showToast(msg, type='', duration=2400){
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' toast--' + type : '');
+  el.textContent = msg;
+  const c = document.getElementById('toast-container');
+  if(c){ c.appendChild(el); setTimeout(()=>el.remove(), duration + 300); }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Format helpers
+// ═════════════════════════════════════════════════════════════════════════════
+function fmtUSD(v){
+  if(!v) return '$0';
+  if(v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+  if(v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+  if(v >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
+  return '$' + Math.round(v);
+}
+function fmtInt(n){ return (n||0).toLocaleString('en-US').replace(/,/g,' '); }
+function truncAddr(a){ return a ? a.slice(0,6) + '…' + a.slice(-4) : ''; }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Smart Money score — préfère le back-end (w.smart_score) sinon fallback JS
+// (Même heuristique de fallback que index.html — synchronisée par convention.)
+// ═════════════════════════════════════════════════════════════════════════════
+function smartScoreLocal(w){
+  const vol = w.total_volume_usd || 0;
+  const nb  = w.dune_nb_trades   || 0;
+  const avg = nb > 0 ? vol / nb : 0;
+  const cat = w.category || 'Unknown';
+  let volS = 0;
+  if(vol >= 1e9)      volS = 40;
+  else if(vol >= 1e8) volS = 32;
+  else if(vol >= 1e7) volS = 22;
+  else if(vol >= 1e6) volS = 12;
+  else if(vol >= 1e5) volS = 5;
+  let avgS = 0;
+  if(avg >= 5_000_000)     avgS = 10;
+  else if(avg >= 1_000_000)avgS = 16;
+  else if(avg >= 200_000)  avgS = 22;
+  else if(avg >= 50_000)   avgS = 18;
+  else if(avg >= 10_000)   avgS = 10;
+  else if(avg >= 1_000)    avgS = 4;
+  const mevP  = cat === 'MEV Bot' ? -45 : 0;
+  const eoaB  = w.is_contract === false ? 6 : 0;
+  const spamP = nb > 5000 ? -18 : (nb > 1500 ? -7 : 0);
+  const divB  = Math.min(5, (w.unique_tokens_traded || 0) * 0.3);
+  const raw = 8 + volS + avgS + mevP + eoaB + spamP + divB;
+  return Math.max(0, Math.min(100, Math.round(raw)));
+}
+function smartScore(w){ return (w && w.smart_score != null) ? w.smart_score : smartScoreLocal(w); }
+function smartBreakdown(w){ return (w && w.smart_breakdown) || null; }
+function scoreClass(s){
+  if(s >= 75) return 'score--hi';
+  if(s >= 55) return 'score--mid';
+  return 'score--lo';
+}
+function smartTierLabel(s){
+  if(s >= 80) return 'Alpha';
+  if(s >= 65) return 'Solid';
+  if(s >= 45) return 'Avg';
+  return 'Low';
+}
+// Format du breakdown pour tooltip
+function breakdownTooltip(w){
+  const br = smartBreakdown(w);
+  if(!br) return '';
+  const order = ['base','volume','avg_trade','diversity','activity','net_eth','eoa_bonus','concentration','spam','mev'];
+  const labels = {base:'Base', volume:'Volume', avg_trade:'Avg trade', diversity:'Diversité', activity:'Jours actifs', net_eth:'Net ETH', eoa_bonus:'EOA', concentration:'Concentration', spam:'Spam', mev:'MEV'};
+  return order.filter(k => k in br).map(k => `${labels[k]}: ${br[k]>=0?'+':''}${br[k]}`).join(' · ');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// State
+// ═════════════════════════════════════════════════════════════════════════════
+let allWallets = [];
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Data load
+// ═════════════════════════════════════════════════════════════════════════════
+async function loadData(){
+  try{
+    const r = await fetch('/api/wallets');
+    const d = await r.json();
+    allWallets = (d.wallets || []).map(w => {
+      const avg = (w.dune_nb_trades && w.dune_nb_trades > 0)
+        ? (w.dune_volume_usd || 0) / w.dune_nb_trades : 0;
+      // Si le back-end fournit smart_score on l'utilise tel quel, sinon fallback JS.
+      const s = (w.smart_score != null) ? w.smart_score : smartScoreLocal(w);
+      return { ...w, avg_trade_usd: avg, smart_score: s };
+    });
+    if(allWallets.length){
+      renderStats();
+      renderLeaderboard();
+      renderCopyPicks();
+      renderMevRadar();
+      renderComparator();
+    }
+    // Alerts est sa propre boucle de polling
+    await loadAlerts();
+  }catch(e){
+    console.error(e);
+    document.getElementById('leaderboard').innerHTML =
+      '<p class="text-center fs-sm" style="color:var(--c-mev);padding:var(--s-5) 0">Erreur chargement</p>';
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Alerts polling — /api/alerts toutes les 30s avec dédup + animation
+// ═════════════════════════════════════════════════════════════════════════════
+let _seenAlertKeys = new Set();
+async function loadAlerts(){
+  try{
+    const r = await fetch('/api/alerts');
+    const d = await r.json();
+    renderAlertFeed(d.alerts || [], d.generated_at);
+  }catch(e){ console.error('alerts fetch failed', e); }
+}
+function _startAlertsPolling(){
+  if(window._alertsTimer) clearInterval(window._alertsTimer);
+  window._alertsTimer = setInterval(loadAlerts, 30_000);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Render — stats
+// ═════════════════════════════════════════════════════════════════════════════
+function renderStats(){
+  // Smart wallets = score ≥55 (cohérent avec le seuil min du leaderboard).
+  const smart   = allWallets.filter(w => (w.smart_score || 0) >= 55 && w.category !== 'MEV Bot');
+  const smartVol= smart.reduce((s, w) => s + (w.total_volume_usd || 0), 0);
+  const totalVol= allWallets.reduce((s, w) => s + (w.total_volume_usd || 0), 0);
+  const mevVol  = allWallets.filter(w => w.category === 'MEV Bot')
+                            .reduce((s, w) => s + (w.total_volume_usd || 0), 0);
+  const mevPct  = totalVol > 0 ? Math.round(mevVol / totalVol * 100) : 0;
+  document.getElementById('pro-stat-alpha').textContent = smart.length;
+  document.getElementById('pro-stat-vol').textContent   = fmtUSD(smartVol);
+  document.getElementById('pro-stat-mev').textContent   = mevPct + '%';
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Render — leaderboard
+// ═════════════════════════════════════════════════════════════════════════════
+function renderLeaderboard(){
+  const minScore = parseInt(document.getElementById('filter-score').value);
+  const minVol   = parseInt(document.getElementById('filter-vol').value);
+  const type     = document.getElementById('filter-type').value;
+  const sort     = document.getElementById('filter-sort').value;
+
+  let list = allWallets
+    .filter(w => w.category !== 'MEV Bot')
+    .filter(w => (w.smart_score || 0) >= minScore)
+    .filter(w => (w.total_volume_usd || 0) >= minVol)
+    .filter(w => {
+      if(type === 'eoa') return w.is_contract === false;
+      if(type === 'sc')  return w.is_contract === true;
+      return true;
+    });
+
+  list.sort((a, b) => {
+    if(sort === 'vol') return (b.total_volume_usd||0) - (a.total_volume_usd||0);
+    if(sort === 'avg') return (b.avg_trade_usd||0) - (a.avg_trade_usd||0);
+    return (b.smart_score||0) - (a.smart_score||0);
+  });
+  list = list.slice(0, 20);
+
+  const host = document.getElementById('leaderboard');
+  const meta = document.getElementById('leader-meta');
+  meta.textContent = list.length + ' wallets';
+
+  if(!list.length){
+    host.innerHTML = '<p class="text-muted text-center fs-sm" style="padding:var(--s-5) 0">Aucun wallet ne correspond aux filtres.</p>';
+    return;
+  }
+  host.innerHTML = list.map((w, i) => {
+    const rkCls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+    const scCls = scoreClass(w.smart_score);
+    const avg = w.avg_trade_usd || 0;
+    const tip = breakdownTooltip(w);
+    const scoreEl = tip
+      ? `<span class="score ${scCls} score-tip" data-tip="${tip.replace(/"/g, '&quot;')}">`
+      : `<span class="score ${scCls}">`;
+    return `<div class="leader-row" onclick="window.open('https://etherscan.io/address/${w.address}', '_blank')">
+      <span class="rk ${rkCls}">${i+1}</span>
+      <div>
+        <div class="addr">${truncAddr(w.address)}</div>
+        <div class="fs-xs text-muted" style="margin-top:2px">${w.label && w.label !== 'Unknown' ? w.label : (w.category || 'Unknown')}</div>
+      </div>
+      <span class="vol">${fmtUSD(w.total_volume_usd)}</span>
+      <span class="trade">${fmtUSD(avg)}/t</span>
+      ${scoreEl}
+        <span class="score-bar"><span class="score-bar-fill" style="width:${w.smart_score}%"></span></span>
+        ${w.smart_score}
+      </span>
+      <a href="https://debank.com/profile/${w.address}" target="_blank" onclick="event.stopPropagation()" class="icon-btn" title="DeBank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8" stroke-linecap="round"/></svg>
+      </a>
+    </div>`;
+  }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Screener — saved filters (localStorage)
+// ═════════════════════════════════════════════════════════════════════════════
+const SCREENER_KEY = 'ww_pro_screener_v1';
+function _readFilters(){ try { return JSON.parse(localStorage.getItem(SCREENER_KEY) || '[]'); } catch { return []; } }
+function _writeFilters(arr){ localStorage.setItem(SCREENER_KEY, JSON.stringify(arr)); }
+function _currentFilterSnapshot(){
+  return {
+    score: document.getElementById('filter-score').value,
+    vol:   document.getElementById('filter-vol').value,
+    type:  document.getElementById('filter-type').value,
+    sort:  document.getElementById('filter-sort').value,
+  };
+}
+function _filterLabel(f){
+  const lblScore = `≥${f.score}`;
+  const lblVol = f.vol === '0' ? 'tous' : f.vol === '1000000' ? '≥1M' : f.vol === '10000000' ? '≥10M' : '≥100M';
+  const lblType = f.type === 'eoa' ? 'EOA' : f.type === 'sc' ? 'SC' : 'all';
+  return `score ${lblScore} · vol ${lblVol} · ${lblType}`;
+}
+function saveCurrentFilter(){
+  const snap = _currentFilterSnapshot();
+  const name = prompt('Nom du filtre ?', _filterLabel(snap));
+  if(!name) return;
+  const arr = _readFilters();
+  arr.unshift({ name, ...snap });
+  _writeFilters(arr.slice(0, 8));
+  renderSavedFilters();
+  showToast('Filtre sauvegardé', 'success', 1800);
+}
+function applySavedFilter(idx){
+  const f = _readFilters()[idx];
+  if(!f) return;
+  document.getElementById('filter-score').value = f.score;
+  document.getElementById('filter-vol').value   = f.vol;
+  document.getElementById('filter-type').value  = f.type;
+  document.getElementById('filter-sort').value  = f.sort;
+  document.querySelectorAll('#screener-saved .screener-chip').forEach((c, i) => c.classList.toggle('is-active', i === idx));
+  renderLeaderboard();
+}
+function deleteSavedFilter(idx, ev){
+  ev.stopPropagation();
+  const arr = _readFilters();
+  arr.splice(idx, 1);
+  _writeFilters(arr);
+  renderSavedFilters();
+}
+function renderSavedFilters(){
+  const host = document.getElementById('screener-saved');
+  if(!host) return;
+  const arr = _readFilters();
+  const chips = arr.map((f, i) => `<span class="screener-chip" onclick="applySavedFilter(${i})">
+    ${f.name} <span class="x" onclick="deleteSavedFilter(${i}, event)" title="Supprimer">×</span>
+  </span>`).join('');
+  host.innerHTML = chips + '<button class="screener-save-btn" onclick="saveCurrentFilter()">+ Sauver ce filtre</button>';
+}
+function onFiltersChange(){
+  // Désélectionne le filtre sauvé actif quand l'user modifie manuellement
+  document.querySelectorAll('#screener-saved .screener-chip').forEach(c => c.classList.remove('is-active'));
+  renderLeaderboard();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Render — alert feed (alimenté par /api/alerts, format normalisé)
+// ═════════════════════════════════════════════════════════════════════════════
+const ALERT_ICONS = {
+  whale: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c0-3 2-5 5-5s5 2 5 5"/><path d="M13 12c0-3 2-5 5-5s5 2 5 5-2 5-5 5-5-2-5-5"/></svg>',
+  smart: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  mev:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2L13 10M21 2v6M21 2h-6M3 22l8-8M3 22v-6M3 22h6"/></svg>',
+  new:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>'
+};
+function _humanAgo(iso){
+  if(!iso) return 'récemment';
+  const t = Date.parse(iso);
+  if(isNaN(t)) return 'récemment';
+  const d = (Date.now() - t) / 1000;
+  if(d < 60)    return 'il y a ' + Math.max(1, Math.round(d)) + 's';
+  if(d < 3600)  return 'il y a ' + Math.round(d/60) + ' min';
+  if(d < 86400) return 'il y a ' + Math.round(d/3600) + ' h';
+  return 'il y a ' + Math.round(d/86400) + ' j';
+}
+function renderAlertFeed(alerts, generatedAt){
+  const host = document.getElementById('alert-feed');
+  if(!host) return;
+  const meta = document.getElementById('alerts-meta');
+  if(meta) meta.textContent = generatedAt ? ('· ' + _humanAgo(generatedAt)) : '';
+  if(!alerts || !alerts.length){
+    host.innerHTML = '<p class="text-muted text-center fs-sm" style="padding:var(--s-5) 0">Aucune alerte récente.</p>';
+    return;
+  }
+  // Trie par récence puis sévérité
+  const ranked = [...alerts].sort((a,b)=>{
+    const sevRank = s => ({high:0, med:1, low:2}[s] ?? 3);
+    const sa = sevRank(a.severity), sb = sevRank(b.severity);
+    if(sa !== sb) return sa - sb;
+    return (Date.parse(b.ts_iso) || 0) - (Date.parse(a.ts_iso) || 0);
+  }).slice(0, 12);
+  host.innerHTML = ranked.map(a => {
+    const key = (a.type||'') + '|' + (a.address||'') + '|' + (a.title||'');
+    const isNew = !_seenAlertKeys.has(key);
+    if(isNew) _seenAlertKeys.add(key);
+    const sevDot = a.severity === 'high'
+      ? '<span class="alert-sev-dot" title="haute"></span>' : '';
+    return `<div class="alert-item alert-item--${a.type}${isNew ? ' alert-item--new-flash' : ''}"
+                 ${a.address ? `onclick="window.open('https://etherscan.io/address/${a.address}', '_blank')" style="cursor:pointer"` : ''}>
+      <div class="alert-icon">${ALERT_ICONS[a.type] || ALERT_ICONS.new}</div>
+      <div class="alert-body">
+        <div class="alert-title">${a.title}${sevDot}</div>
+        <div class="alert-detail">${a.detail || ''}</div>
+      </div>
+      <span class="alert-time">${_humanAgo(a.ts_iso)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MEV Exposure Radar — % du volume MEV par catégorie + top 5 wallets MEV
+// ═════════════════════════════════════════════════════════════════════════════
+function renderMevRadar(){
+  const host = document.getElementById('mev-radar');
+  if(!host) return;
+  const total = allWallets.reduce((s,w)=>s+(w.total_volume_usd||0),0);
+  const mevs  = allWallets.filter(w=>w.category==='MEV Bot');
+  const mevVol = mevs.reduce((s,w)=>s+(w.total_volume_usd||0),0);
+  const mevRatio = total > 0 ? mevVol/total : 0;
+  const topMev = [...mevs].sort((a,b)=>(b.total_volume_usd||0)-(a.total_volume_usd||0)).slice(0,5);
+  // Score health 0-100 : 100 = 0% MEV, 0 = 100% MEV
+  const health = Math.round((1 - Math.min(1, mevRatio * 2)) * 100);
+  const healthCls = health >= 70 ? 'score--hi' : health >= 40 ? 'score--mid' : 'score--lo';
+  host.innerHTML = `
+    <div class="mev-radar-head">
+      <div class="mev-radar-gauge">
+        <div class="mev-radar-gauge-track">
+          <div class="mev-radar-gauge-fill ${healthCls}" style="width:${health}%"></div>
+        </div>
+        <div class="mev-radar-gauge-label">Marché ${health >= 70 ? 'sain' : health >= 40 ? 'à surveiller' : 'sous pression MEV'}</div>
+      </div>
+      <div class="mev-radar-stats">
+        <div><span class="mev-radar-val" style="color:var(--c-mev)">${(mevRatio*100).toFixed(1)}%</span><span class="mev-radar-lbl">vol MEV</span></div>
+        <div><span class="mev-radar-val">${mevs.length}</span><span class="mev-radar-lbl">bots</span></div>
+        <div><span class="mev-radar-val">${fmtUSD(mevVol)}</span><span class="mev-radar-lbl">extraits</span></div>
+      </div>
+    </div>
+    <div class="mev-radar-top">
+      ${topMev.map((w,i)=>{
+        const pct = mevVol > 0 ? (w.total_volume_usd/mevVol*100).toFixed(0) : 0;
+        return `<div class="mev-radar-row" onclick="window.open('https://etherscan.io/address/${w.address}','_blank')">
+          <span class="mev-radar-rank">${i+1}</span>
+          <span class="addr">${truncAddr(w.address)}</span>
+          <span class="mev-bar"><span class="mev-bar-fill" style="width:${pct}%"></span></span>
+          <span class="mev-vol">${fmtUSD(w.total_volume_usd)}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Wallet Comparator — 2 wallets côte à côte
+// ═════════════════════════════════════════════════════════════════════════════
+let _cmpA = null, _cmpB = null;
+function renderComparator(){
+  // Picker datalist
+  const dl = document.getElementById('cmp-datalist');
+  if(dl){
+    dl.innerHTML = allWallets.slice(0, 100).map(w =>
+      `<option value="${w.address}">${(w.label && w.label !== 'Unknown') ? w.label : w.category} · ${fmtUSD(w.total_volume_usd)}</option>`
+    ).join('');
+  }
+  _renderCmpSlot('A');
+  _renderCmpSlot('B');
+}
+function pickCmp(slot){
+  const inp = document.getElementById('cmp-input-' + slot);
+  const q = (inp.value || '').toLowerCase().trim();
+  if(!q) return;
+  const w = allWallets.find(x => x.address.toLowerCase() === q || (x.label || '').toLowerCase() === q);
+  if(!w){
+    showToast('Wallet introuvable dans le top', '', 2000);
+    return;
+  }
+  if(slot === 'A') _cmpA = w; else _cmpB = w;
+  inp.value = '';
+  _renderCmpSlot(slot);
+}
+function clearCmp(slot){
+  if(slot === 'A') _cmpA = null; else _cmpB = null;
+  _renderCmpSlot(slot);
+}
+function _renderCmpSlot(slot){
+  const host = document.getElementById('cmp-slot-' + slot);
+  if(!host) return;
+  const w = slot === 'A' ? _cmpA : _cmpB;
+  if(!w){
+    host.innerHTML = `<div class="cmp-empty">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <p>Choisis un wallet ${slot}</p>
+    </div>`;
+    return;
+  }
+  const s = smartScore(w);
+  const sc = scoreClass(s);
+  const avg = w.avg_trade_usd || 0;
+  host.innerHTML = `
+    <div class="cmp-head">
+      <span class="cmp-slot-tag">Wallet ${slot}</span>
+      <button class="icon-btn" onclick="clearCmp('${slot}')" title="Retirer">×</button>
+    </div>
+    <div class="cmp-addr">${truncAddr(w.address)}</div>
+    <div class="cmp-label">${(w.label && w.label !== 'Unknown') ? w.label : (w.category || 'Unknown')}</div>
+    <div class="cmp-score ${sc}">${s}<small>${smartTierLabel(s)}</small></div>
+    <div class="cmp-rows">
+      <div><span>Volume</span><b>${fmtUSD(w.total_volume_usd)}</b></div>
+      <div><span>Trades</span><b>${fmtInt(w.dune_nb_trades)}</b></div>
+      <div><span>Avg trade</span><b>${fmtUSD(avg)}</b></div>
+      <div><span>Tokens</span><b>${w.unique_tokens_traded || 0}</b></div>
+      <div><span>Catégorie</span><b style="text-transform:uppercase;font-size:10px">${w.category || '—'}</b></div>
+    </div>`;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Render — copy-trade picks (top 3 smart money)
+// ═════════════════════════════════════════════════════════════════════════════
+function renderCopyPicks(){
+  // Top 3 non-MEV ; minimum score 55 sinon « no picks » plutôt qu'afficher du bruit.
+  const picks = allWallets
+    .filter(w => w.category !== 'MEV Bot')
+    .sort((a,b) => (b.smart_score||0) - (a.smart_score||0))
+    .slice(0, 3)
+    .filter(w => (w.smart_score || 0) >= 55);
+  const host = document.getElementById('copy-picks');
+  if(!picks.length){
+    host.innerHTML = '<p class="text-muted text-center fs-sm" style="padding:var(--s-4) 0">Pas assez de signal pour un pick — relance un Sonar.</p>';
+    return;
+  }
+  host.innerHTML = picks.map((w, i) => `
+    <div class="leader-row" style="grid-template-columns:32px 1fr auto auto" onclick="window.open('https://etherscan.io/address/${w.address}', '_blank')">
+      <span class="rk top${i+1}">${i+1}</span>
+      <div>
+        <div class="addr">${truncAddr(w.address)}</div>
+        <div class="fs-xs text-muted" style="margin-top:2px">${fmtUSD(w.total_volume_usd)} · ${fmtInt(w.dune_nb_trades)}t</div>
+      </div>
+      <span class="score score--hi">${w.smart_score}</span>
+      <a href="https://debank.com/profile/${w.address}" target="_blank" onclick="event.stopPropagation()" class="icon-btn" title="DeBank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8" stroke-linecap="round"/></svg>
+      </a>
+    </div>
+  `).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Boot
+// ═════════════════════════════════════════════════════════════════════════════
+applyProMode();
+renderSavedFilters();
+loadData();
+_startAlertsPolling();
+</script>
+<script src="/static/assets/app.js" defer></script>
+
+</body>
+</html>

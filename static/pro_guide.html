@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro · Guide — WhaleWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <style>
+    /* ═══ GUIDE PRO PAGE ════════════════════════════════════════════════════ */
+    .gp-hero { padding: var(--s-6) var(--s-6) var(--s-5); text-align: center; max-width: 760px; margin: 0 auto; }
+    .gp-hero h1 { font-size: var(--fs-3xl); margin: var(--s-3) 0; color: #fff; }
+    .gp-hero h1 .accent { background: linear-gradient(90deg, var(--aqua), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .gp-hero p { color: var(--muted); max-width: 600px; margin: 0 auto var(--s-4); }
+    .gp-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px;
+      background: rgba(0,226,255,.10); color: var(--aqua);
+      border: 1px solid rgba(0,226,255,.30);
+      font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* Table of contents */
+    .gp-toc {
+      display: flex; flex-wrap: wrap; gap: var(--s-2);
+      padding: var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-5);
+    }
+    .gp-toc-pill {
+      padding: 6px 12px; border-radius: var(--radius-sm);
+      background: var(--bg-soft); border: 1px solid var(--border-2);
+      color: var(--text-soft); text-decoration: none;
+      font-size: var(--fs-xs); font-weight: 600;
+      transition: all .15s ease;
+    }
+    .gp-toc-pill:hover {
+      color: var(--aqua); border-color: rgba(0,226,255,.40);
+      background: rgba(0,226,255,.08);
+    }
+
+    /* Grid layout */
+    .gp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-4); margin-bottom: var(--s-5); }
+    @media (max-width: 820px) { .gp-grid { grid-template-columns: 1fr; } }
+
+    .gp-card {
+      padding: var(--s-5);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      scroll-margin-top: 90px;
+    }
+    .gp-card-head { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); }
+    .gp-card-ico {
+      width: 44px; height: 44px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      background: rgba(0,226,255,.10); border: 1px solid rgba(0,226,255,.25);
+    }
+    .gp-card--gold .gp-card-ico { background: rgba(255,198,87,.10); border-color: rgba(255,198,87,.30); }
+    .gp-card--green .gp-card-ico { background: rgba(46,212,168,.10); border-color: rgba(46,212,168,.30); }
+    .gp-card--coral .gp-card-ico { background: rgba(255,107,135,.10); border-color: rgba(255,107,135,.30); }
+    .gp-card--purple .gp-card-ico { background: rgba(182,117,238,.10); border-color: rgba(182,117,238,.30); }
+    .gp-card-title { font-weight: 700; font-size: var(--fs-lg); color: #fff; flex: 1; }
+    .gp-card-step  { font-size: 10px; font-family: var(--font-mono); color: var(--muted-2); text-transform: uppercase; letter-spacing: .08em; }
+    .gp-card p { color: var(--muted); font-size: var(--fs-sm); margin-bottom: var(--s-3); line-height: 1.65; }
+
+    .gp-tips { list-style: none; padding: 0; margin: var(--s-3) 0 0; }
+    .gp-tips li {
+      display: flex; gap: var(--s-2); align-items: flex-start;
+      padding: 8px 0;
+      color: var(--text-soft); font-size: var(--fs-sm); line-height: 1.55;
+    }
+    .gp-tips li::before {
+      content: '✓'; color: var(--green); font-weight: 700;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .gp-tips li.warn::before { content: '⚠'; color: var(--c-sc); }
+    .gp-tips li.no::before   { content: '✕'; color: var(--coral); }
+    .gp-tips li strong { color: var(--text); }
+
+    .gp-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: var(--s-3);
+      padding: 8px 14px; border-radius: var(--radius-sm);
+      background: rgba(0,226,255,.10); color: var(--aqua);
+      border: 1px solid rgba(0,226,255,.30);
+      text-decoration: none; font-size: var(--fs-xs); font-weight: 600;
+      transition: all .15s;
+    }
+    .gp-cta:hover { background: rgba(0,226,255,.18); border-color: rgba(0,226,255,.50); }
+    .gp-card--gold   .gp-cta { background: rgba(255,198,87,.10); color: var(--c-sc); border-color: rgba(255,198,87,.30); }
+    .gp-card--gold   .gp-cta:hover { background: rgba(255,198,87,.18); }
+    .gp-card--green  .gp-cta { background: rgba(46,212,168,.10); color: var(--green); border-color: rgba(46,212,168,.30); }
+    .gp-card--coral  .gp-cta { background: rgba(255,107,135,.10); color: var(--coral); border-color: rgba(255,107,135,.30); }
+    .gp-card--purple .gp-cta { background: rgba(182,117,238,.10); color: #b675ee; border-color: rgba(182,117,238,.30); }
+
+    /* Workflow */
+    .gp-workflow {
+      padding: var(--s-5);
+      background: linear-gradient(135deg, rgba(255,198,87,.06), rgba(255,107,135,.04));
+      border: 1px solid rgba(255,198,87,.25);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-5);
+    }
+    .gp-workflow h2 { color: #fff; font-weight: 700; margin-bottom: var(--s-3); font-size: var(--fs-xl); }
+    .gp-workflow-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s-3); }
+    .gp-step {
+      padding: var(--s-3);
+      background: rgba(2,14,28,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .gp-step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--gold), var(--coral));
+      color: #0a0a0a; font-weight: 700; font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .gp-step h4 { color: #fff; font-size: var(--fs-sm); margin-bottom: 4px; font-weight: 700; }
+    .gp-step p  { color: var(--muted); font-size: var(--fs-xs); line-height: 1.55; margin: 0; }
+
+    /* FAQ */
+    .gp-faq {
+      padding: var(--s-5);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .gp-faq h2 { color: #fff; margin-bottom: var(--s-3); font-weight: 700; font-size: var(--fs-xl); }
+    .gp-faq details {
+      padding: var(--s-3);
+      border-bottom: 1px solid rgba(26,85,138,.30);
+    }
+    .gp-faq details[open] { background: rgba(0,226,255,.03); }
+    .gp-faq summary {
+      cursor: pointer; font-weight: 600; color: var(--text); list-style: none;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 0;
+    }
+    .gp-faq summary::after {
+      content: '+'; color: var(--aqua); font-size: 20px; font-weight: 700;
+      transition: transform .2s;
+    }
+    .gp-faq details[open] summary::after { transform: rotate(45deg); }
+    .gp-faq summary::-webkit-details-marker { display: none; }
+    .gp-faq details p { color: var(--muted); font-size: var(--fs-sm); margin: var(--s-2) 0 0; line-height: 1.65; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · ethereum</span>
+      </span>
+    </a>
+    <nav class="nav" style="margin-left:auto">
+      <a href="/"      class="nav-link">🏠 Dashboard</a>
+      <a href="/pro"   class="nav-link nav-link--pro is-active">⚡ Pro</a>
+      <a href="/why"   class="nav-link">🌊 Why</a>
+      <a href="/bot"   class="nav-link">🤖 Bot</a>
+      <a href="/guide" class="nav-link">📘 Guide</a>
+    </nav>
+    <div class="header-prices">
+      <span><span class="lbl">Ξ</span><span class="val" id="eth-price">—</span></span>
+      <span><span class="lbl">₿</span><span class="val" id="btc-price">—</span></span>
+      <span class="updated mono" id="header-clock">— UTC</span>
+    </div>
+  </div>
+</header>
+<div class="site-header-spacer"></div>
+
+<main>
+  <section class="gp-hero">
+    <div class="gp-eyebrow">📘 WhaleWatch Pro · Guide</div>
+    <h1>Comment <span class="accent">exploiter Pro</span> au max.</h1>
+    <p>8 features Pro expliquées, avec tips opérationnels pour transformer la donnée whale en signal actionnable. Lecture : ~6 min.</p>
+  </section>
+
+  <nav class="pro-subnav" aria-label="Sections Pro">
+    <a href="/pro"           class="pro-subnav-link">📈 Overview</a>
+    <a href="/pro/live"      class="pro-subnav-link"><span class="live-dot"></span> Live</a>
+    <a href="/pro/backtest"  class="pro-subnav-link">📊 Backtest</a>
+    <a href="/pro/watchlist" class="pro-subnav-link">👁 Watchlist</a>
+    <a href="/pro/guide"     class="pro-subnav-link is-active">📘 Guide Pro</a>
+  </nav>
+
+  <!-- Workflow type -->
+  <section class="gp-workflow">
+    <h2>🎯 Workflow recommandé · 5 min/jour</h2>
+    <div class="gp-workflow-steps">
+      <div class="gp-step">
+        <div class="gp-step-num">1</div>
+        <h4>Live feed (1 min)</h4>
+        <p>Survol les 30 derniers events. Filtre MEV pour repérer les flashs anormaux.</p>
+      </div>
+      <div class="gp-step">
+        <div class="gp-step-num">2</div>
+        <h4>Trading Zones (30 s)</h4>
+        <p>Sur le Dashboard, regarde le signal BUY/SELL/NEUTRAL et l'écart % vs médiane whale.</p>
+      </div>
+      <div class="gp-step">
+        <div class="gp-step-num">3</div>
+        <h4>Smart Money (1 min)</h4>
+        <p>Sur Pro Overview, top wallets non-MEV. Score > 70 = signal qualifié.</p>
+      </div>
+      <div class="gp-step">
+        <div class="gp-step-num">4</div>
+        <h4>Watchlist (1 min)</h4>
+        <p>Check tes alertes perso. Aucune action ? Skip. Sinon → décision.</p>
+      </div>
+      <div class="gp-step">
+        <div class="gp-step-num">5</div>
+        <h4>Backtest (15 min/sem)</h4>
+        <p>Une fois par semaine, vérifie que ta strat aurait été profitable sur l'historique.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Table of contents -->
+  <div class="gp-toc">
+    <span style="font-size:11px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.06em;font-weight:600;align-self:center;margin-right:6px">Jump :</span>
+    <a href="#smart-money"  class="gp-toc-pill">🎯 Smart Money Score</a>
+    <a href="#leaderboard"  class="gp-toc-pill">🏆 Leaderboard</a>
+    <a href="#mev-radar"    class="gp-toc-pill">🦈 MEV Radar</a>
+    <a href="#comparator"   class="gp-toc-pill">🆚 Comparator</a>
+    <a href="#alertes"      class="gp-toc-pill">🔔 Alertes</a>
+    <a href="#live-feed"    class="gp-toc-pill">⚡ Live feed</a>
+    <a href="#backtest"     class="gp-toc-pill">📊 Backtest</a>
+    <a href="#watchlist"    class="gp-toc-pill">👁 Watchlist</a>
+  </div>
+
+  <!-- Features -->
+  <div class="gp-grid">
+
+    <article class="gp-card gp-card--gold" id="smart-money">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">🎯</div>
+        <div style="flex:1">
+          <div class="gp-card-step">01 · Sélection</div>
+          <div class="gp-card-title">Smart Money Score</div>
+        </div>
+      </div>
+      <p>Score 0–100 calculé sur chaque wallet à partir de la <strong>profitabilité</strong>, <strong>la fréquence</strong>, <strong>la diversification tokens</strong> et l'<strong>écart MEV</strong>. Un score &gt; 70 = wallet à suivre sérieusement.</p>
+      <ul class="gp-tips">
+        <li><strong>Score 80+</strong> : conviction haute, peu de bruit.</li>
+        <li><strong>Score 60–80</strong> : intéressant à observer mais filtre par catégorie.</li>
+        <li class="warn"><strong>Score &lt; 50</strong> : trop de noise ou wallet inactif.</li>
+        <li class="no">Ne suis JAMAIS un wallet uniquement sur son score — recoupe avec le volume et le hold time.</li>
+      </ul>
+      <a href="/pro" class="gp-cta">→ Voir le Smart Money Leaderboard</a>
+    </article>
+
+    <article class="gp-card gp-card--green" id="leaderboard">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">🏆</div>
+        <div style="flex:1">
+          <div class="gp-card-step">02 · Discovery</div>
+          <div class="gp-card-title">Leaderboard filtré</div>
+        </div>
+      </div>
+      <p>Top 20 wallets filtrables par <strong>score min</strong>, <strong>volume min</strong>, <strong>type</strong> et <strong>tri</strong>. Sauvegarde tes combos de filtres préférés en un clic.</p>
+      <ul class="gp-tips">
+        <li>Combo gagnant : <strong>Score ≥ 65 + Vol ≥ $10M + Type "Smart Money"</strong>.</li>
+        <li>Tri "Alpha 7j" = wallets en gain récent — pousse l'attention vers les actifs.</li>
+        <li class="warn">Filtre toujours par <strong>Type</strong> pour éviter de mélanger MEV et conviction-trader.</li>
+      </ul>
+      <a href="/pro" class="gp-cta">→ Ouvrir le Leaderboard</a>
+    </article>
+
+    <article class="gp-card gp-card--coral" id="mev-radar">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">🦈</div>
+        <div style="flex:1">
+          <div class="gp-card-step">03 · Risk</div>
+          <div class="gp-card-title">MEV Exposure Radar</div>
+        </div>
+      </div>
+      <p>Mesure le <strong>% du volume MEV</strong> sur chaque paire / DEX. Trop de MEV = sandwich risk élevé pour toi en tant que retail.</p>
+      <ul class="gp-tips">
+        <li><strong>&lt; 5%</strong> : safe — slippage minimal attendu.</li>
+        <li><strong>5–15%</strong> : MEV présent, surveille la liquidité avant trade.</li>
+        <li class="warn"><strong>&gt; 15%</strong> : dangereux pour les orders &gt; $10K — utilise un router avec protection MEV (CoW, 1inch Fusion).</li>
+      </ul>
+      <a href="/pro" class="gp-cta">→ Ouvrir le MEV Radar</a>
+    </article>
+
+    <article class="gp-card gp-card--purple" id="comparator">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">🆚</div>
+        <div style="flex:1">
+          <div class="gp-card-step">04 · Analyse</div>
+          <div class="gp-card-title">Wallet Comparator</div>
+        </div>
+      </div>
+      <p>Compare 2 wallets côte-à-côte : volume, paires favorites, taille moyenne, hold time, % gagnant. Idéal pour <strong>découvrir des wallets similaires</strong> à un trader que tu admires.</p>
+      <ul class="gp-tips">
+        <li>Commence par 1 wallet "référence" (top MM connu) puis cherche son clone.</li>
+        <li>Si hold time identique mais paires différentes → diversification possible.</li>
+        <li class="warn">Attention aux wallets liés (même owner) — pas une vraie diversification.</li>
+      </ul>
+      <a href="/pro" class="gp-cta">→ Comparer 2 wallets</a>
+    </article>
+
+    <article class="gp-card gp-card--gold" id="alertes">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">🔔</div>
+        <div style="flex:1">
+          <div class="gp-card-step">05 · Notifs</div>
+          <div class="gp-card-title">Alertes temps réel</div>
+        </div>
+      </div>
+      <p>Trois canaux : <strong>Telegram</strong>, <strong>Discord webhook</strong>, <strong>Email digest</strong>. Configurables par seuil (volume, MEV detect, watchlist trigger).</p>
+      <ul class="gp-tips">
+        <li><strong>Telegram</strong> : best pour réactivité (push mobile immédiat).</li>
+        <li><strong>Discord</strong> : utile si tu partages avec ta team / serveur trading.</li>
+        <li><strong>Email digest</strong> : récap matinal, pas de spam intra-day.</li>
+        <li class="warn">Calibre tes seuils <strong>haut</strong> au début (vol &gt; $5M, MEV only) puis baisse — sinon trop de bruit.</li>
+      </ul>
+      <a href="/pro/watchlist" class="gp-cta">→ Configurer les notifs</a>
+    </article>
+
+    <article class="gp-card gp-card--coral" id="live-feed">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">⚡</div>
+        <div style="flex:1">
+          <div class="gp-card-step">06 · Real-time</div>
+          <div class="gp-card-title">Live Feed</div>
+        </div>
+      </div>
+      <p>Flux continu des events on-chain : <strong>BUYs/SELLs whales</strong>, <strong>sandwich MEV</strong>, <strong>transferts massifs</strong>. Filtrable par catégorie (MEV / Smart / MM / Whale).</p>
+      <ul class="gp-tips">
+        <li>Garde l'onglet ouvert pendant les sessions de trading — c'est ton radar.</li>
+        <li>Filtre <strong>MEV</strong> uniquement pour repérer les vagues d'arbitrage avant un dump.</li>
+        <li>Volume cumulé qui explose en &lt;5min = signal d'activité majeure.</li>
+      </ul>
+      <a href="/pro/live" class="gp-cta">→ Ouvrir le Live</a>
+    </article>
+
+    <article class="gp-card gp-card--green" id="backtest">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">📊</div>
+        <div style="flex:1">
+          <div class="gp-card-step">07 · Validation</div>
+          <div class="gp-card-title">Backtest</div>
+        </div>
+      </div>
+      <p>Simule sur <strong>7 / 30 / 90 / 180 jours</strong> ta stratégie : BUY ZONE simple, STRONG seulement, médiane stricte. Voir P&amp;L, win rate, max drawdown, Sharpe.</p>
+      <ul class="gp-tips">
+        <li>Compare 3 stratégies sur le <strong>même period</strong> avant de choisir.</li>
+        <li>Sharpe &gt; 1 = signal exploitable. &lt; 0.5 = noise.</li>
+        <li class="warn">Max drawdown &gt; 15% sur ton capital risk → réduis la taille de position.</li>
+        <li class="no">N'utilise jamais 100% du capital — backtest avec 25–50% pour avoir de la réserve.</li>
+      </ul>
+      <a href="/pro/backtest" class="gp-cta">→ Lancer un backtest</a>
+    </article>
+
+    <article class="gp-card" id="watchlist">
+      <div class="gp-card-head">
+        <div class="gp-card-ico">👁</div>
+        <div style="flex:1">
+          <div class="gp-card-step">08 · Suivi perso</div>
+          <div class="gp-card-title">Watchlist</div>
+        </div>
+      </div>
+      <p>Ajoute jusqu'à <strong>20 wallets perso</strong> à suivre avec notifications custom. Stockage 100% local (localStorage) — aucune donnée envoyée.</p>
+      <ul class="gp-tips">
+        <li>Commence par <strong>3–5 wallets</strong> max — sinon trop de bruit.</li>
+        <li>Mix : 2 wallets référence (MM connus) + 2 wallets que tu as découverts (alpha perso).</li>
+        <li class="warn">Reset ta watchlist chaque mois — un wallet inactif &gt; 30j n'a plus d'intérêt.</li>
+      </ul>
+      <a href="/pro/watchlist" class="gp-cta">→ Gérer ma watchlist</a>
+    </article>
+
+  </div>
+
+  <!-- FAQ -->
+  <section class="gp-faq">
+    <h2>❓ FAQ</h2>
+    <details>
+      <summary>D'où viennent les données whales ?</summary>
+      <p>WhaleWatch agrège deux sources : <strong>Dune Analytics</strong> (top wallets DEX par volume, patterns MEV) et <strong>Etherscan API</strong> (enrichissement on-chain : balance, gas, txs). Calculs faits côté serveur, cachés en JSON, rafraîchis sur clic Sonar ou cron.</p>
+    </details>
+    <details>
+      <summary>Combien de temps reste valide un signal Trading Zone ?</summary>
+      <p>Les niveaux whales (P25/médiane/P75) sont calculés sur les <strong>7 derniers jours</strong>. La chip de fraîcheur passe en orange &gt; 6h et rouge "obsolète" &gt; 24h — au-delà, ne te fie plus aveuglément au signal.</p>
+    </details>
+    <details>
+      <summary>Les alertes Telegram sont-elles vraiment temps réel ?</summary>
+      <p>Quasi : latence typique 30–90 s entre la tx on-chain et la notif (le temps que Dune réindexe + notre cron poll). Pour du sub-seconde, branche un node Ethereum direct via Alchemy/Infura websocket — c'est sur la roadmap.</p>
+    </details>
+    <details>
+      <summary>Mes wallets de watchlist sont-ils partagés ?</summary>
+      <p>Non. La watchlist est stockée dans <strong>localStorage</strong> de ton navigateur uniquement. Aucune sync, aucun envoi serveur. Si tu changes de device, tu repars de zéro (export/import à venir).</p>
+    </details>
+    <details>
+      <summary>Le backtest est-il fiable ?</summary>
+      <p>Le simulateur actuel utilise un modèle synthétique reproductible (PRNG seedé sur les paramètres). C'est suffisant pour comparer des stratégies entre elles, mais pas pour produire une vérité absolue — pour ça, brancher l'historique Dune trade-by-trade est sur la roadmap Pro+.</p>
+    </details>
+    <details>
+      <summary>Y a-t-il une API publique ?</summary>
+      <p>Pas encore publiquement. Les endpoints internes (<code>/api/wallets</code>, <code>/api/patterns</code>, <code>/api/wallet/&lt;addr&gt;</code>) sont accessibles via CORS *. Une vraie API REST avec auth + rate limit est prévue.</p>
+    </details>
+    <details>
+      <summary>Comment contribuer / signaler un bug ?</summary>
+      <p>Le repo est en cours d'ouverture sur GitHub. En attendant, dis-le directement à l'auteur du projet.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Ethereum On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"      class="nav-link">Dashboard</a>
+      <a href="/pro"   class="nav-link">Pro</a>
+      <a href="/guide" class="nav-link">Guide</a>
+      <a href="/bot"   class="nav-link">Bot</a>
+      <a href="/why"   class="nav-link">Why</a>
+    </nav>
+    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+  </div>
+</footer>
+
+<div id="toast-container" class="toast-stack"></div>
+<script src="/static/assets/app.js" defer></script>
+
+</body>
+</html>
