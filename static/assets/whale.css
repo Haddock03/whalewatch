@@ -156,6 +156,76 @@ main { position: relative; z-index: 1; }
 .container { max-width: 1400px; margin: 0 auto; padding: 0 var(--s-6); }
 .container-prose { max-width: 1100px; margin: 0 auto; padding: 0 var(--s-6); }
 
+/* ── Crypto ticker (sous header — top 10 cryptos avec logos) ──────── */
+.crypto-ticker {
+  position: sticky; top: var(--header-h); z-index: calc(var(--z-header) - 1);
+  background: linear-gradient(180deg, rgba(1,6,13,.92), rgba(1,6,13,.78));
+  border-bottom: 1px solid rgba(0,226,255,.14);
+  overflow: hidden; padding: 6px 0;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+.crypto-ticker-track {
+  display: inline-flex; align-items: center; gap: var(--s-5);
+  animation: ticker-scroll 80s linear infinite;
+}
+.crypto-ticker:hover .crypto-ticker-track { animation-play-state: paused; }
+@keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ct-item {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 14px; border-radius: 999px;
+  background: rgba(8,42,72,.45); border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600;
+  color: var(--text-soft); text-decoration: none;
+  transition: all .15s ease; flex-shrink: 0;
+}
+.ct-item:hover { color: var(--text); border-color: rgba(0,226,255,.30); background: rgba(0,226,255,.06); }
+.ct-rank   { color: var(--muted-2); font-size: 9px; font-weight: 700; }
+.ct-logo   { width: 18px; height: 18px; border-radius: 50%; background: #0a1929; }
+.ct-sym    { color: var(--text); font-weight: 700; }
+.ct-price  { color: var(--text-soft); font-weight: 600; }
+.ct-delta  { font-weight: 700; }
+.ct-delta.up   { color: var(--green); }
+.ct-delta.down { color: var(--coral); }
+.ct-loading { color: var(--muted); font-size: var(--fs-xs); padding: 0 var(--s-5); }
+
+/* Réduit la sticky-spacer pour compenser ticker — ne touche que les pages avec ticker */
+body:has(.crypto-ticker) .site-header-spacer { height: calc(var(--header-h) + 38px); }
+
+/* ── Alertes temps réel (Dashboard) ────────────────────────────────── */
+.alert-feed { display: flex; flex-direction: column; gap: 8px; max-height: 540px; overflow-y: auto; padding-right: 4px; }
+.alert-item {
+  display: flex; gap: var(--s-3); align-items: flex-start;
+  padding: 10px var(--s-3);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--c-accent, var(--aqua));
+  background: var(--bg-soft);
+  animation: alert-slide-in .35s ease;
+  transition: background .15s, transform .15s;
+}
+@keyframes alert-slide-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+.alert-item[onclick] { cursor: pointer; }
+.alert-item[onclick]:hover { background: rgba(255,255,255,.02); transform: translateX(2px); }
+.alert-item--whale { --c-accent: var(--aqua); }
+.alert-item--smart { --c-accent: var(--gold); }
+.alert-item--mev   { --c-accent: var(--coral); }
+.alert-item--new   { --c-accent: var(--green); }
+.alert-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c-accent) 14%, transparent);
+  color: var(--c-accent);
+  flex-shrink: 0;
+}
+.alert-body { flex: 1; min-width: 0; }
+.alert-title { color: var(--text); font-weight: 600; font-size: var(--fs-sm); display: flex; align-items: center; gap: 6px; }
+.alert-detail { color: var(--muted); font-size: var(--fs-xs); margin-top: 2px; }
+.alert-time { color: var(--muted-2); font-size: 10px; font-family: var(--font-mono); flex-shrink: 0; align-self: flex-start; padding-top: 2px; }
+.alert-sev-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 6px var(--coral); }
+.alert-item--new-flash { animation: alert-slide-in .35s ease, alert-flash 1.6s ease 1; }
+@keyframes alert-flash { 0% { box-shadow: 0 0 0 0 rgba(255,198,87,.55); } 100% { box-shadow: 0 0 0 8px rgba(255,198,87,0); } }
+
 /* ── Cross-document view transitions (header stays put on Chrome 126+) ─ */
 @view-transition { navigation: auto; }
 
@@ -301,7 +371,7 @@ main { view-transition-name: page-main; transition: opacity .18s ease; }
   box-shadow: 0 0 0 1px rgba(255,198,87,.25), 0 4px 18px rgba(255,198,87,.18);
 }
 
-/* Pro sub-nav : Overview / Backtest / Watchlist (partagée entre les 3 sous-pages) */
+/* Pro sub-nav : sidebar à gauche sur desktop, horizontal sur mobile */
 .pro-subnav {
   display: flex; gap: var(--s-2); flex-wrap: wrap;
   padding: var(--s-3);
@@ -309,6 +379,33 @@ main { view-transition-name: page-main; transition: opacity .18s ease; }
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   margin-bottom: var(--s-5);
+}
+/* Desktop : sub-nav devient sidebar gauche sticky, le reste en colonne droite */
+@media (min-width: 900px) {
+  main:has(> .pro-subnav) {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    column-gap: var(--s-5);
+    align-items: start;
+  }
+  /* Par défaut tout va dans la colonne droite */
+  main:has(> .pro-subnav) > * { grid-column: 2; }
+  /* Sub-nav reste col 1, sticky, vertical */
+  main:has(> .pro-subnav) > .pro-subnav {
+    grid-column: 1; grid-row: 2 / 999;
+    position: sticky; top: calc(var(--header-h) + var(--s-4));
+    flex-direction: column; align-items: stretch;
+    margin-bottom: 0;
+  }
+  /* Hero/titres span full width au-dessus du grid */
+  main:has(> .pro-subnav) > .sig-hero,
+  main:has(> .pro-subnav) > .gp-hero,
+  main:has(> .pro-subnav) > .wl-hero,
+  main:has(> .pro-subnav) > .bt-hero { grid-column: 1 / -1; }
+  /* Links left-aligned en sidebar */
+  main:has(> .pro-subnav) > .pro-subnav .pro-subnav-link {
+    text-align: left; justify-content: flex-start;
+  }
 }
 .pro-subnav-link {
   padding: 8px 14px;
