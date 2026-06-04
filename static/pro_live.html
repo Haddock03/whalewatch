@@ -207,6 +207,61 @@
     .sig-position.sig-pos-lev  .sig-position-sub { color: var(--coral); font-weight: 600; }
     .sig-position.sig-pos-lev  .sig-position-label { color: var(--coral); }
 
+    /* ── Live price cursor (SL ●━━━━━━━━━━━━ TP) ── */
+    .sig-livebar {
+      display: grid; grid-template-columns: 60px 1fr 60px;
+      gap: 8px; align-items: center;
+      padding: 10px 12px;
+      background: rgba(2,14,28,.40); border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .sig-livebar-end {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .sig-livebar-end.sl { color: var(--coral); text-align: left; }
+    .sig-livebar-end.tp { color: var(--green); text-align: right; }
+    .sig-livebar-track {
+      position: relative; height: 8px; border-radius: 4px;
+      background: linear-gradient(90deg, var(--coral), var(--c-sc) 45%, var(--c-sc) 55%, var(--green));
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
+    }
+    .sig-livebar-entry {
+      position: absolute; left: 50%; top: -2px; bottom: -2px;
+      width: 2px; background: rgba(255,255,255,.5);
+      transform: translateX(-50%);
+    }
+    .sig-livebar-cursor {
+      position: absolute; top: 50%; transform: translate(-50%, -50%);
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--c-sc);
+      box-shadow: 0 0 0 2px rgba(2,14,28,.9), 0 0 10px var(--c-sc);
+      transition: left .8s ease, background .3s ease, box-shadow .3s ease;
+      z-index: 2;
+    }
+    .sig-livebar-cursor.is-danger {
+      background: var(--coral);
+      box-shadow: 0 0 0 2px rgba(2,14,28,.9), 0 0 14px var(--coral);
+      animation: cursor-pulse-red 1.2s ease-in-out infinite;
+    }
+    .sig-livebar-cursor.is-winning {
+      background: var(--green);
+      box-shadow: 0 0 0 2px rgba(2,14,28,.9), 0 0 14px var(--green);
+      animation: cursor-pulse-green 1.2s ease-in-out infinite;
+    }
+    @keyframes cursor-pulse-red   { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-50%) scale(1.35)} }
+    @keyframes cursor-pulse-green { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-50%) scale(1.25)} }
+    .sig-livebar-info {
+      display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+      padding-top: 4px;
+      font-size: 11px; color: var(--muted-2); font-family: var(--font-mono);
+    }
+    .sig-livebar-info .live-px { color: var(--text); font-weight: 700; }
+    .sig-livebar-info .delta { font-weight: 700; }
+    .sig-livebar-info .delta.up   { color: var(--green); }
+    .sig-livebar-info .delta.down { color: var(--coral); }
+    .sig-livebar-info .toward { margin-left: auto; }
+
     /* Progress bar */
     .sig-progress-wrap { display: flex; align-items: center; gap: var(--s-2); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted-2); font-weight: 600; }
     .sig-progress { flex: 1; height: 6px; border-radius: 3px; background: var(--bg-soft); overflow: hidden; position: relative; }
@@ -395,6 +450,19 @@ let _walletsCache = [];
 let _filter = 'all';
 const MAX_SIGNALS = 18;
 
+// ── Live price feed pour le curseur SL←●→TP ─────────────────────────────────
+// WETH → ETH spot CoinGecko · cbBTC/WBTC → BTC spot · autres → random walk
+function readSpot(id) {
+  const t = document.getElementById(id)?.textContent || '';
+  const n = parseFloat(t.replace(/[^0-9.]/g, ''));
+  return n > 0 ? n : 0;
+}
+function getRealSpot(pairSym) {
+  if (pairSym === 'WETH')                       return readSpot('eth-price');
+  if (pairSym === 'cbBTC' || pairSym === 'WBTC')return readSpot('btc-price');
+  return 0;   // pas de spot réel pour les autres → simulation locale
+}
+
 // ─── Persistance des préférences (capital, risque, sort) en localStorage ─
 const STORAGE_KEY = 'whalewatch:pro-live-prefs';
 function loadPrefs() {
@@ -456,6 +524,10 @@ function generateSignal(forcedStatus) {
   const tp = entry * (1 + tpPct / 100);
   const status = forcedStatus || (Math.random() < 0.25 ? 'LIVE' : (Math.random() < 0.85 ? 'DONE' : 'STOP'));
   const startedAt = Date.now() - Math.floor(Math.random() * 50) * 60_000;
+  // Live price initial : si on a un spot réel (WETH/BTC), on l'utilise ;
+  // sinon on part de l'entry avec un léger jitter
+  const realSpot = getRealSpot(pair.sym);
+  const livePrice = realSpot > 0 ? realSpot : entry * (1 + (Math.random() - 0.5) * 0.002);
   return {
     id: Math.random().toString(36).slice(2, 10),
     side: isBuy ? 'BUY' : 'SELL',
@@ -463,14 +535,49 @@ function generateSignal(forcedStatus) {
     entry,
     sl: { price: sl, pct: slPct },
     tp: { price: tp, pct: tpPct },
-    rr: targetRR,           // R/R intrinsèque du setup
+    rr: targetRR,
     holdMin: 60,
     status,
     progress: status === 'LIVE' ? Math.min(99, ((Date.now() - startedAt) / 60_000 / 60) * 100) : 100,
     wallet: pickWallet(),
     conf: 38 + Math.floor(Math.random() * 55),
     startedAt,
+    livePrice,                  // ← prix simulé/réel pour le curseur
+    pairVol: pair.vol,          // ← stocké pour la random walk
   };
+}
+
+// Update du prix live d'un signal (utilisé par tickLivePrices)
+function updateSignalLivePrice(s) {
+  const realSpot = getRealSpot(s.pair);
+  if (realSpot > 0) {
+    s.livePrice = realSpot;
+    return;
+  }
+  // Random walk : sigma calibré sur la volatilité de la paire
+  // sigma par tick (~2s) = pair.vol / sqrt(252*24*60/2) ≈ pair.vol * 0.0029
+  // On amplifie un peu pour que le curseur bouge visiblement
+  const sigma = (s.pairVol || 0.01) * 0.005;
+  const drift = (Math.random() - 0.5) * 2 * sigma;
+  s.livePrice = s.livePrice * (1 + drift);
+}
+
+// Position 0-1 du live entre SL (0) et TP (1)
+// Clampée à [0, 1] pour pas que le curseur sorte
+function livePosition(s) {
+  if (s.side === 'BUY') {
+    // SL < entry < TP
+    const span = s.tp.price - s.sl.price;
+    if (span <= 0) return 0.5;
+    const p = (s.livePrice - s.sl.price) / span;
+    return Math.max(0, Math.min(1, p));
+  } else {
+    // TP < entry < SL
+    const span = s.sl.price - s.tp.price;
+    if (span <= 0) return 0.5;
+    const p = (s.sl.price - s.livePrice) / span;
+    return Math.max(0, Math.min(1, p));
+  }
 }
 
 function statusBadge(s) {
@@ -815,6 +922,7 @@ function renderCardInner(s) {
       <span class="sig-rr-label" style="margin-left:auto">${s.rr >= 2 ? '✅ Setup propre' : s.rr >= 1.2 ? '⚖️ Setup OK' : '⚠️ R/R faible'}</span>
     </div>
     ${posHtml}
+    ${s.status === 'LIVE' ? renderLivebar(s) : ''}
     <div class="sig-progress-wrap">
       <span>Hold ${s.holdMin} min</span>
       <div class="sig-progress"><div class="sig-progress-fill" style="width:${s.progress.toFixed(0)}%"></div></div>
@@ -831,6 +939,66 @@ function renderCard(s) {
   const sideClass = s.side === 'BUY' ? 'is-buy' : 'is-sell';
   const liveClass = s.status === 'LIVE' ? 'is-live' : '';
   return `<div class="sig-card ${sideClass} ${liveClass}" data-side="${s.side.toLowerCase()}" data-status="${s.status.toLowerCase()}" data-id="${s.id}">${renderCardInner(s)}</div>`;
+}
+
+// ═══ Live cursor SL←●→TP (cards LIVE uniquement) ═══════════════════════════
+function renderLivebar(s) {
+  const pos = livePosition(s);
+  const cursorClass = pos < 0.15 ? 'is-danger' : pos > 0.85 ? 'is-winning' : '';
+  const deltaFromEntry = ((s.livePrice - s.entry) / s.entry) * 100;
+  // Pour BUY un delta > 0 est gagnant ; pour SELL c'est l'inverse
+  const winning = s.side === 'BUY' ? deltaFromEntry > 0 : deltaFromEntry < 0;
+  const towardLabel = s.side === 'BUY'
+    ? (deltaFromEntry > 0 ? `→ TP dans ${((s.tp.price - s.livePrice) / s.livePrice * 100).toFixed(2)}%`
+                          : `← SL dans ${((s.livePrice - s.sl.price) / s.livePrice * 100).toFixed(2)}%`)
+    : (deltaFromEntry < 0 ? `→ TP dans ${((s.livePrice - s.tp.price) / s.livePrice * 100).toFixed(2)}%`
+                          : `← SL dans ${((s.sl.price - s.livePrice) / s.livePrice * 100).toFixed(2)}%`);
+  return `
+    <div class="sig-livebar">
+      <span class="sig-livebar-end sl">SL</span>
+      <div>
+        <div class="sig-livebar-track">
+          <div class="sig-livebar-entry"></div>
+          <div class="sig-livebar-cursor ${cursorClass}" style="left:${(pos * 100).toFixed(1)}%"></div>
+        </div>
+        <div class="sig-livebar-info">
+          <span class="live-px">${fmtPrice(s.livePrice)}</span>
+          <span class="delta ${winning ? 'up' : 'down'}">${deltaFromEntry >= 0 ? '+' : ''}${deltaFromEntry.toFixed(2)}%</span>
+          <span class="toward">${towardLabel}</span>
+        </div>
+      </div>
+      <span class="sig-livebar-end tp">TP</span>
+    </div>`;
+}
+
+// Update inline du curseur live (appelé à chaque tick, 0 jank)
+function updateLivebarInPlace(node, s) {
+  const cursor = node.querySelector('.sig-livebar-cursor');
+  const livePx = node.querySelector('.sig-livebar-info .live-px');
+  const delta  = node.querySelector('.sig-livebar-info .delta');
+  const toward = node.querySelector('.sig-livebar-info .toward');
+  if (!cursor) return;
+  const pos = livePosition(s);
+  cursor.style.left = (pos * 100).toFixed(1) + '%';
+  cursor.classList.toggle('is-danger',  pos < 0.15);
+  cursor.classList.toggle('is-winning', pos > 0.85);
+  if (livePx) livePx.textContent = fmtPrice(s.livePrice);
+  if (delta) {
+    const d = ((s.livePrice - s.entry) / s.entry) * 100;
+    const winning = s.side === 'BUY' ? d > 0 : d < 0;
+    delta.textContent = (d >= 0 ? '+' : '') + d.toFixed(2) + '%';
+    delta.classList.toggle('up',   winning);
+    delta.classList.toggle('down', !winning);
+  }
+  if (toward) {
+    const d = ((s.livePrice - s.entry) / s.entry) * 100;
+    const txt = s.side === 'BUY'
+      ? (d > 0 ? `→ TP dans ${((s.tp.price - s.livePrice) / s.livePrice * 100).toFixed(2)}%`
+               : `← SL dans ${((s.livePrice - s.sl.price) / s.livePrice * 100).toFixed(2)}%`)
+      : (d < 0 ? `→ TP dans ${((s.livePrice - s.tp.price) / s.livePrice * 100).toFixed(2)}%`
+               : `← SL dans ${((s.sl.price - s.livePrice) / s.livePrice * 100).toFixed(2)}%`);
+    toward.textContent = txt;
+  }
 }
 
 // Update ciblé d'un node existant — touche que ce qui peut changer (zero jank)
@@ -872,10 +1040,22 @@ function updateCardInPlace(node, s) {
       if (subEl.textContent !== t) subEl.textContent = t;
     }
   }
+  // Update live cursor (cards LIVE uniquement)
+  if (s.status === 'LIVE') updateLivebarInPlace(node, s);
   // Retire la classe --new après animation (1ʳᵉ apparition seulement)
   if (node.classList.contains('sig-card--new')) {
     setTimeout(() => node.classList.remove('sig-card--new'), 400);
   }
+}
+
+// Tick prix live : update _signals[*].livePrice + push update DOM
+function tickLivePrices() {
+  _signals.forEach(s => {
+    if (s.status !== 'LIVE') return;
+    updateSignalLivePrice(s);
+    const node = _domCards.get(s.id);
+    if (node) updateLivebarInPlace(node, s);
+  });
 }
 
 function updateAllCards() {
@@ -947,6 +1127,8 @@ function tickLiveSignals() {
   function loop() { pushSignal(); setTimeout(loop, 8000 + Math.random() * 12000); }
   setTimeout(loop, 4000);
   setInterval(tickLiveSignals, 3000);
+  // Tick prix live → curseur bouge toutes les 2s (CSS transition 0.8s lisse le mouvement)
+  setInterval(tickLivePrices, 2000);
 })();
 </script>
 <script src="/static/assets/app.js" defer></script>
