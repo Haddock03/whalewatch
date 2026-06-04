@@ -156,41 +156,43 @@ main { position: relative; z-index: 1; }
 .container { max-width: 1400px; margin: 0 auto; padding: 0 var(--s-6); }
 .container-prose { max-width: 1100px; margin: 0 auto; padding: 0 var(--s-6); }
 
-/* ── Crypto ticker (sous header — top 10 cryptos avec logos) ──────── */
+/* ── Crypto ticker — strip mince sous header (24px, sans pills) ────── */
 .crypto-ticker {
   position: sticky; top: var(--header-h); z-index: calc(var(--z-header) - 1);
-  background: linear-gradient(180deg, rgba(1,6,13,.92), rgba(1,6,13,.78));
-  border-bottom: 1px solid rgba(0,226,255,.14);
-  overflow: hidden; padding: 6px 0;
+  height: 24px;
+  background: rgba(1,6,13,.82);
+  border-bottom: 1px solid rgba(0,226,255,.12);
+  overflow: hidden;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   white-space: nowrap;
+  display: flex; align-items: center;
 }
 .crypto-ticker-track {
-  display: inline-flex; align-items: center; gap: var(--s-5);
+  display: inline-flex; align-items: center; gap: 24px;
   animation: ticker-scroll 80s linear infinite;
+  height: 100%;
 }
 .crypto-ticker:hover .crypto-ticker-track { animation-play-state: paused; }
 @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .ct-item {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 4px 14px; border-radius: 999px;
-  background: rgba(8,42,72,.45); border: 1px solid var(--border);
-  font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 0; background: none; border: none; border-radius: 0;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
   color: var(--text-soft); text-decoration: none;
-  transition: all .15s ease; flex-shrink: 0;
+  transition: opacity .15s ease; flex-shrink: 0;
+  height: 100%;
 }
-.ct-item:hover { color: var(--text); border-color: rgba(0,226,255,.30); background: rgba(0,226,255,.06); }
-.ct-rank   { color: var(--muted-2); font-size: 9px; font-weight: 700; }
-.ct-logo   { width: 18px; height: 18px; border-radius: 50%; background: #0a1929; }
-.ct-sym    { color: var(--text); font-weight: 700; }
-.ct-price  { color: var(--text-soft); font-weight: 600; }
-.ct-delta  { font-weight: 700; }
+.ct-item:hover { opacity: .75; }
+.ct-rank   { color: var(--muted-2); font-size: 9px; font-weight: 600; opacity: .6; }
+.ct-logo   { width: 14px; height: 14px; border-radius: 50%; background: #0a1929; flex-shrink: 0; }
+.ct-sym    { color: var(--text); font-weight: 700; letter-spacing: .02em; }
+.ct-price  { color: var(--text-soft); font-weight: 500; }
+.ct-delta  { font-weight: 700; font-size: 10px; }
 .ct-delta.up   { color: var(--green); }
 .ct-delta.down { color: var(--coral); }
-.ct-loading { color: var(--muted); font-size: var(--fs-xs); padding: 0 var(--s-5); }
+.ct-loading { color: var(--muted); font-size: 11px; padding: 0 16px; }
 
-/* Réduit la sticky-spacer pour compenser ticker — ne touche que les pages avec ticker */
-body:has(.crypto-ticker) .site-header-spacer { height: calc(var(--header-h) + 38px); }
+/* Pas de spacer additionnel : le ticker est en flux normal après le spacer header */
 
 /* ── Alertes temps réel (Dashboard) ────────────────────────────────── */
 .alert-feed { display: flex; flex-direction: column; gap: 8px; max-height: 540px; overflow-y: auto; padding-right: 4px; }
