@@ -12,10 +12,10 @@
   'use strict';
 
   // ── Soft navigation ───────────────────────────────────────────────────
-  const ROUTES = new Set(['/', '/pro', '/pro/live', '/pro/backtest',
+  const ROUTES = new Set(['/', '/pro/live', '/pro/backtest',
                           '/pro/watchlist', '/pro/guide',
                           '/why', '/guide', '/bot',
-                          '/index.html', '/pro.html', '/why.html',
+                          '/index.html', '/why.html',
                           '/guide.html', '/bot.html']);
   let _navigating = false;
 
