@@ -2,9 +2,15 @@
 # Enrichit les top wallets avec des signaux comportementaux utilisés par le
 # Smart Money Score (back-end) : jours actifs, diversité DEX/tokens, net flow
 # ETH approximatif, ratio buy/sell. Une seule requête Dune (chunked IN(...)).
+#
+# Multi-chain : le filtre WHERE inclut blockchain = '{chain}' pour ne pas
+# mélanger les trades cross-chain d'un même wallet (un EOA existe souvent
+# sur plusieurs chains).
 import os
 import time
 import requests
+
+from chains import DEFAULT_CHAIN, resolve
 
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY", "")
 BASE = "https://api.dune.com/api/v1"
@@ -33,7 +39,8 @@ def _chunks(seq, size):
         yield seq[i : i + size]
 
 
-def fetch_smart_signals(addresses, days=7, chunk_size=50, progress_cb=None):
+def fetch_smart_signals(addresses, days=7, chunk_size=50, progress_cb=None,
+                        chain=DEFAULT_CHAIN):
     """
     Pour une liste d'adresses, retourne un dict { addr_lower: { signal: value, ... } }
     contenant : active_days, distinct_dex, distinct_tokens, buy_vol_usd, sell_vol_usd,
@@ -41,9 +48,13 @@ def fetch_smart_signals(addresses, days=7, chunk_size=50, progress_cb=None):
 
     Une requête Dune par chunk de N adresses pour rester sous la limite du IN(...).
     Les adresses doivent être en hex lower-case sans '0x' duplication.
+
+    `chain` filtre dex.trades.blockchain pour éviter de mélanger les
+    trades cross-chain d'un même wallet.
     """
     if not addresses:
         return {}
+    dune_blockchain = resolve(chain)["dune_blockchain"]
 
     # Normalisation : dex.trades.taker est varbinary → format X'...' attendu
     def _normalize(addr):
@@ -67,6 +78,7 @@ WITH base AS (
     amount_usd
   FROM dex.trades
   WHERE taker IN ({in_list})
+    AND blockchain = '{dune_blockchain}'
     AND block_time > now() - interval '{days}' day
     AND amount_usd > 0
 ),

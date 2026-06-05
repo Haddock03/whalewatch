@@ -46,9 +46,11 @@ def enrich_results_with_smart_score(top_n=100, days=7, progress_cb=_noop, chain=
     # On enrichit uniquement le top-N pour limiter la requête Dune.
     targets = wallets[:top_n]
     addresses = [w["address"] for w in targets if w.get("address")]
-    progress_cb(f"Fetch smart signals Dune pour {len(addresses)} wallets…")
+    progress_cb(f"Fetch smart signals Dune pour {len(addresses)} wallets ({chain_cfg['label']})…")
     try:
-        signals_by_addr = fetch_smart_signals(addresses, days=days, progress_cb=progress_cb)
+        signals_by_addr = fetch_smart_signals(addresses, days=days,
+                                              progress_cb=progress_cb,
+                                              chain=chain_cfg["key"])
     except Exception as e:
         progress_cb(f"⚠ Dune smart signals KO ({e}) — fallback sans signaux")
         signals_by_addr = {}

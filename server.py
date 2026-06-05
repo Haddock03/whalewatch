@@ -200,10 +200,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         if path.startswith("/api/wallet/") and path.endswith("/trades"):
             addr = path[len("/api/wallet/"):-len("/trades")]
-            days = int(parse_qs(parsed.query).get("days", ["7"])[0])
+            qs = parse_qs(parsed.query)
+            days  = int(qs.get("days",  ["7"])[0])
+            chain = qs.get("chain", [DEFAULT_CHAIN])[0]
             try:
                 from dune_wallet_trades import get_wallet_trade_summary
-                return self._json(get_wallet_trade_summary(addr, days=days))
+                return self._json(get_wallet_trade_summary(addr, days=days, chain=chain))
             except Exception as e:
                 return self._json({"error": str(e)}, 500)
 

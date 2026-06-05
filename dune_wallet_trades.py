@@ -1,9 +1,15 @@
 # dune_wallet_trades.py
-# Récupère le résumé des trades DEX d'un wallet via l'API Dune
+# Récupère le résumé des trades DEX d'un wallet via l'API Dune.
+#
+# Multi-chain : `chain` paramètre filtre dex.trades.blockchain ; sans ça,
+# un wallet existant sur plusieurs chains verrait ses trades mélangés
+# dans le modal de détail.
 
 import os
 import requests
 import time
+
+from chains import DEFAULT_CHAIN, resolve
 
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY", "")
 BASE = "https://api.dune.com/api/v1"
@@ -28,9 +34,9 @@ def _execute_and_wait(sql, timeout=90):
     raise TimeoutError(f"Dune query timeout after {timeout}s")
 
 
-def get_wallet_trade_summary(address: str, days: int = 7) -> dict:
+def get_wallet_trade_summary(address: str, days: int = 7, chain: str = DEFAULT_CHAIN) -> dict:
     """
-    Retourne un résumé complet des trades DEX d'un wallet :
+    Retourne un résumé complet des trades DEX d'un wallet pour une chain :
     - stats globales (nb trades, volume, avg, top paire, top DEX)
     - top 10 paires par volume
     - top 5 DEX utilisés
@@ -38,6 +44,7 @@ def get_wallet_trade_summary(address: str, days: int = 7) -> dict:
     """
     # taker est varbinary dans dex.trades — comparaison directe sans lower()
     addr_hex = address if address.startswith("0x") else "0x" + address
+    dune_blockchain = resolve(chain)["dune_blockchain"]
 
     # ── Query 1 : agrégat par paire × DEX ───────────────────────────────────────
     sql_summary = f"""
@@ -53,6 +60,7 @@ SELECT
   MIN(block_time)                  AS first_trade
 FROM dex.trades
 WHERE taker = {addr_hex}
+  AND blockchain = '{dune_blockchain}'
   AND block_time > now() - interval '{days}' day
   AND amount_usd > 0
 GROUP BY project, token_pair, token_bought_symbol, token_sold_symbol
@@ -75,6 +83,7 @@ SELECT
   tx_hash
 FROM dex.trades
 WHERE taker = {addr_hex}
+  AND blockchain = '{dune_blockchain}'
   AND block_time > now() - interval '{days}' day
   AND amount_usd > 0
 ORDER BY block_time DESC
