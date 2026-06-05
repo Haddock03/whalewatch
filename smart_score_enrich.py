@@ -1,11 +1,15 @@
 # smart_score_enrich.py
 # Lit cache/results.json, fetch les signaux Dune pour les top-N wallets,
 # calcule le smart_score + breakdown, et persiste tout dans le même fichier.
+#
+# P1.1 backend (cluster detection) : enrichit aussi avec cluster_id,
+# cluster_size pour les wallets dont le deployer est partagé.
 import json
 import os
 
 from dune_smart_signals import fetch_smart_signals
 from smart_score        import compute_score, label_for
+from wallet_clusters    import detect_clusters
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 CACHE_FILE = os.path.join(BASE_DIR, "cache", "results.json")
@@ -53,14 +57,42 @@ def enrich_results_with_smart_score(top_n=100, days=7, progress_cb=_noop):
             w["smart_signals"] = sig
         scored += 1
 
+    # ── Cluster detection ────────────────────────────────────────────────
+    # On limite aux top-N pour économiser les requêtes Etherscan (1 par
+    # contract). Au-delà du top-N le pattern devient moins pertinent.
+    progress_cb(f"Détection de clusters par deployer (top {top_n})…")
+    try:
+        clusters = detect_clusters(targets, progress_cb=progress_cb)
+    except Exception as e:
+        progress_cb(f"⚠ Cluster detection KO ({e}) — skip")
+        clusters = {}
+
+    # Applique l'info cluster aux wallets (clé par address en minuscules)
+    nb_clusters = len({c["cluster_id"] for c in clusters.values()})
+    for w in wallets:
+        addr = (w.get("address") or "").lower()
+        info = clusters.get(addr)
+        if info:
+            w["cluster_id"]         = info["cluster_id"]
+            w["cluster_size"]       = info["cluster_size"]
+            w["cluster_is_factory"] = info["is_shared_factory"]
+        else:
+            # Nettoie l'éventuelle info stale
+            w.pop("cluster_id", None)
+            w.pop("cluster_size", None)
+            w.pop("cluster_is_factory", None)
+
     data["smart_score_meta"] = {
         "scored": scored,
         "with_signals": len(signals_by_addr),
         "days": days,
+        "clusters_found": nb_clusters,
+        "clustered_wallets": len(clusters),
     }
     with open(CACHE_FILE, "w") as f:
         json.dump(data, f)
-    progress_cb(f"✓ {scored} wallets scorés ({len(signals_by_addr)} avec signaux Dune)")
+    progress_cb(f"✓ {scored} wallets scorés ({len(signals_by_addr)} avec signaux Dune, "
+                f"{nb_clusters} clusters / {len(clusters)} wallets clusterisés)")
 
 
 if __name__ == "__main__":

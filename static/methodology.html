@@ -138,6 +138,22 @@
       <p class="fs-xs text-muted">
         Code source : <code>wallet_classifier.py</code> (regex), <code>smart_score.py::_infra_penalty</code> (barème), <code>test_scoring.py</code> (37 cas de test). Le module JS <code>classifyWalletType()</code> dans <code>static/index.html</code> est un miroir fidèle pour le filtre UI.
       </p>
+      <h3>Cluster detection</h3>
+      <p>
+        Une firme de trading propriétaire peut déployer 5 bots différents, chacun avec un volume DEX élevé. Sans détection, ces 5 wallets peuvent monopoliser le leaderboard et donner l'illusion de <em>5 alphas indépendants</em> alors qu'il n'y en a qu'un — l'entité qui contrôle le déployeur.
+      </p>
+      <p>
+        WhaleWatch interroge le <strong>deployer</strong> de chaque smart contract via Etherscan. Si N ≥ 2 contrats partagent un même deployer, ils sont marqués comme <strong>cluster</strong> (identifié par les 6 premiers chars du deployer, ex. <code>⛓ 0x858ea9</code>).
+      </p>
+      <ul>
+        <li>Dans le tableau principal : badge violet <code>⛓ 0x…</code> à côté de l'adresse, tooltip indique combien d'autres wallets en font partie.</li>
+        <li>Dans le Smart Money Leaderboard : <strong>déduplication automatique</strong> — un seul wallet par cluster (le mieux scoré) avec un compteur <code>+N</code> indiquant les siblings cachés.</li>
+        <li>Filtre toolbar <strong>« Dédup clusters »</strong> applique la même règle à toute la table.</li>
+        <li>Au-delà de 30 wallets sur le même deployer, on suppose une <em>factory partagée</em> (CREATE2 multisig deployers, Safe factories…) plutôt qu'un cluster privé.</li>
+      </ul>
+      <p>
+        Le clic sur un wallet faisant partie d'un cluster affiche la liste de ses siblings dans la modal de détail.
+      </p>
     </section>
 
     <!-- ─── FRÉQUENCE ─── -->

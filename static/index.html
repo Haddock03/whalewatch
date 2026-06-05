@@ -790,6 +790,7 @@
         <button class="chip is-active" data-cat="all"             onclick="setCat('all',this)">Tous</button>
         <button class="chip chip--smart" data-cat="smart"         onclick="setCat('smart',this)">⚡ Smart Money</button>
         <button class="chip" data-cat="no-infra"                  onclick="setCat('no-infra',this)" title="Cache CEX, bridges, routers DEX, market makers, MEV bots">Hors infra</button>
+        <button class="chip" data-cat="no-clusters"               onclick="setCat('no-clusters',this)" title="Ne garde qu'un wallet par cluster (déduplication par deployer commun)">Dédup clusters</button>
         <button class="chip" data-cat="MEV Bot"                  onclick="setCat('MEV Bot',this)">Prédateurs</button>
         <button class="chip" data-cat="DEX Protocol"             onclick="setCat('DEX Protocol',this)">DEX</button>
         <button class="chip" data-cat="Market Maker"             onclick="setCat('Market Maker',this)">Market Maker</button>
@@ -1022,29 +1023,60 @@ function smartTier(s){
   if(s >= 55) return { cls: 'smart-score--mid', label: 'Solid' };
   return            { cls: 'smart-score--lo',  label: 'Low'   };
 }
+// P1.1 backend (cluster detection) — quand plusieurs wallets partagent un
+// deployer, ils appartiennent probablement à une seule entité (firme prop,
+// bot fleet…). Le leaderboard les dédupe pour éviter qu'un cluster prenne
+// 5 places sur 8 et donne l'illusion de 5 alpha indépendants.
+function _dedupeClusters(wallets){
+  // Garde le wallet au meilleur score par cluster_id ; les autres deviennent
+  // invisibles dans le leaderboard mais restent visibles dans la table.
+  const bestByCluster = new Map();
+  const result = [];
+  for(const w of wallets){
+    const cid = w.cluster_id;
+    if(!cid){ result.push(w); continue; }
+    const prev = bestByCluster.get(cid);
+    if(!prev || (w._s || 0) > (prev._s || 0)){
+      if(prev){
+        // Replace prev par w : retire prev de result, ajoute w
+        const idx = result.indexOf(prev);
+        if(idx >= 0) result.splice(idx, 1);
+      }
+      bestByCluster.set(cid, w);
+      result.push(w);
+    }
+  }
+  return result;
+}
+
 function renderSmartLeaderboard(wallets){
   const host = document.getElementById('smart-leaderboard');
   if(!host) return;
   // P1.1 — exclut TOUTE l'infrastructure (CEX, bridges, routers, MM, MEV)
   // pas seulement MEV Bot. Le « Smart Money Leaderboard » ne doit montrer
   // que des wallets dont l'activité ressemble à de l'alpha discrétionnaire.
-  const ranked = wallets
+  let ranked = wallets
     .map(w => ({ ...w, _s: smartScore(w), _type: classifyWalletType(w) }))
     .filter(w => !w._type.infra && w._s >= 40)
-    .sort((a,b) => b._s - a._s)
-    .slice(0, 8);
+    .sort((a,b) => b._s - a._s);
+  // Cluster dedup avant le slice → un cluster = une entrée dans le leaderboard
+  ranked = _dedupeClusters(ranked).slice(0, 8);
   if(!ranked.length){
     host.innerHTML = '<p class="text-muted fs-sm" style="padding:var(--s-4) 0;text-align:center">Pas encore de wallets passant les filtres infra — lance un Sonar.</p>';
     return;
   }
   host.innerHTML = ranked.map((w, i) => {
     const tier = smartTier(w._s);
+    const clusterBadge = (w.cluster_size && w.cluster_size > 1)
+      ? `<span class="tag" style="background:rgba(196,125,255,.10);color:#dab5ff;border-color:rgba(196,125,255,.30);font-size:10px" title="Cluster ${w.cluster_id} : ${w.cluster_size} wallets partagent ce deployer">⛓ +${w.cluster_size - 1}</span>`
+      : '';
     return `<div class="smart-row" onclick="openModal('${w.address}')" style="cursor:pointer">
       <span class="rank-pill">${i+1}</span>
       <span class="addr">${truncAddr(w.address)}</span>
       <span class="vol">${formatUSDShort(w.total_volume_usd||0)}</span>
       <span class="smart-score ${tier.cls}">${w._s}</span>
       <span class="${w._type.cls}">${w._type.label}</span>
+      ${clusterBadge}
     </div>`;
   }).join('');
 }
@@ -1255,6 +1287,7 @@ function renderTable(wallets){
           <button class="icon-btn" onclick="copyAddr(event,'${w.address}')" title="Copier">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
+          ${w.cluster_size && w.cluster_size > 1 ? `<span class="tag" style="background:rgba(196,125,255,.10);color:#dab5ff;border-color:rgba(196,125,255,.30);font-size:10px;padding:1px 6px" title="Cluster ${w.cluster_id} — ${w.cluster_size} wallets partagent ce deployer (probable même entité)">⛓ ${w.cluster_id}</span>` : ''}
         </div>
       </td>
       <td>
@@ -2082,12 +2115,29 @@ function applyFilters(){
       mc = !isInfra(w) && ((w.smart_score ?? smartScore(w)) >= 55);
     } else if(catFilter==='no-infra'){
       mc = !isInfra(w);
+    } else if(catFilter==='no-clusters'){
+      mc = true; // dédup appliquée après le filter
     } else {
       mc = catFilter==='all' || (w.category||'Unknown')===catFilter;
     }
     const ms=!search||w.address.toLowerCase().includes(search)||(w.label||'').toLowerCase().includes(search);
     return mc&&ms;
   });
+  // Cluster dedup post-filter : garde le top-volume par cluster_id
+  if(catFilter==='no-clusters'){
+    const bestByCluster = new Map();
+    filtered = filtered.filter(w => {
+      if(!w.cluster_id) return true;
+      const cur = bestByCluster.get(w.cluster_id);
+      const v = w.total_volume_usd || 0;
+      if(!cur || (cur.total_volume_usd || 0) < v){
+        if(cur){ const idx = filtered.indexOf(cur); /* dedup en passe finale ci-dessous */ }
+        bestByCluster.set(w.cluster_id, w);
+        return true;
+      }
+      return false;
+    });
+  }
   applySortRender();
 }
 function sortBy(field){
@@ -2101,10 +2151,14 @@ function updateFilterCounts(wallets){
   const counts={};
   wallets.forEach(w=>{ const c=w.category||'Unknown'; counts[c]=(counts[c]||0)+1; });
   const nonInfra = wallets.filter(w => !isInfra(w)).length;
+  // Compte les clusters distincts pour le label "Dédup clusters"
+  const clusters = new Set(wallets.filter(w => w.cluster_id).map(w => w.cluster_id));
+  const dedupCount = wallets.filter(w => !w.cluster_id).length + clusters.size;
   const total=wallets.length;
   const labels={
     'all':            `Tous · ${total}`,
     'no-infra':       `Hors infra · ${nonInfra}`,
+    'no-clusters':    `Dédup clusters · ${dedupCount}`,
     'MEV Bot':        `Prédateurs · ${counts['MEV Bot']||0}`,
     'DEX Protocol':   `DEX · ${counts['DEX Protocol']||0}`,
     'Market Maker':   `Market Maker · ${counts['Market Maker']||0}`,
@@ -2140,6 +2194,21 @@ function openModal(addr){
   const mev=w.mev_score||0;
   const mevBar=`<div class="flex items-center gap-1">${[0,1,2].map(i=>`<span style="width:8px;height:8px;border-radius:2px;background:${i<mev?'var(--c-mev)':'var(--border)'}"></span>`).join('')}<span class="text-muted" style="margin-left:6px">${['—','moyen','élevé'][mev]||'—'}</span></div>`;
 
+  // Cluster info : trouve les autres wallets du même cluster pour les lister
+  const siblings = (w.cluster_id ? allWallets.filter(x => x.cluster_id === w.cluster_id && x.address !== w.address) : []);
+  const clusterRow = w.cluster_id
+    ? `<div style="background:rgba(196,125,255,.06);border:1px solid rgba(196,125,255,.25);border-radius:8px;padding:10px 12px;margin:8px 0">
+        <div style="font-size:11px;color:#dab5ff;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">
+          ⛓ Cluster ${w.cluster_id} · ${w.cluster_size} wallets
+        </div>
+        <p class="fs-xs text-soft" style="margin:4px 0 6px">Ces wallets partagent le même deployer — probablement contrôlés par la même entité.</p>
+        ${siblings.length ? '<div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">' +
+          siblings.slice(0, 5).map(s => `<a onclick="event.stopPropagation();closeModal();setTimeout(()=>openModal('${s.address}'),50)" style="cursor:pointer;color:#adc8ff;font-family:monospace;font-size:11px;text-decoration:underline">${truncAddr(s.address)} · ${formatUSDShort(s.total_volume_usd||0)} · score ${s.smart_score ?? '—'}</a>`).join('') +
+          (siblings.length > 5 ? `<span class="fs-xs text-muted">+ ${siblings.length - 5} autres</span>` : '') +
+          '</div>' : ''}
+      </div>`
+    : '';
+
   const rows=[
     ['Adresse',`<span class="mono fs-xs" style="color:var(--blue);word-break:break-all">${w.address}</span>`],
     ['Type',w.is_contract===true?'<span class="badge badge--sc">SMART CONTRACT</span>':w.is_contract===false?'<span class="badge badge--eoa">EOA</span>':'<span class="text-muted">—</span>'],
@@ -2147,6 +2216,7 @@ function openModal(addr){
     ['Label',w.label&&w.label!=='Unknown'?`<span class="text-soft font-semibold">${w.label}</span>`:'<span class="text-muted">Unknown</span>'],
     ['Catégorie',w.category?`<span class="${catClass(w.category)}">${w.category}</span>`:'—'],
     ['Score MEV',mevBar],
+    ...(w.cluster_id ? [['__cluster__', clusterRow]] : []),
     ['',''],
     ['Volume Total',`<span class="text-green font-semibold">${formatUSD(w.total_volume_usd)}</span>`],
     ['Volume Dune DEX',formatUSD(w.dune_volume_usd)],
@@ -2171,12 +2241,14 @@ function openModal(addr){
       </button>
     </div>
     <div class="flex flex-col gap-2">
-      ${rows.map(([k,v])=>k?`
-        <div class="flex items-start justify-between gap-3" style="padding:4px 0;border-bottom:1px solid var(--border)">
+      ${rows.map(([k,v])=>{
+        if(k === '__cluster__') return v; // pleine largeur, sans label
+        if(!k) return '<div style="height:8px"></div>';
+        return `<div class="flex items-start justify-between gap-3" style="padding:4px 0;border-bottom:1px solid var(--border)">
           <span class="fs-xs text-muted" style="width:120px;flex-shrink:0">${k}</span>
           <span class="fs-xs text-soft text-right">${v??'—'}</span>
-        </div>`:'<div style="height:8px"></div>'
-      ).join('')}
+        </div>`;
+      }).join('')}
     </div>
     <div class="grid-3 mt-5">
       <a href="https://etherscan.io/address/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Etherscan ↗</a>
