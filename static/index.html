@@ -2653,11 +2653,13 @@ async function doPoll(){
 // ═════════════════════════════════════════════════════════════════════════════
 function exportCSV(){
   if(!allWallets.length)return;
-  const cols=['rank','address','label','category','is_contract','total_volume_usd','dune_volume_usd','dune_nb_trades','total_tx_count','token_transfer_count','current_balance_eth','gas_spent_eth','mev_score'];
+  // Inclut les nouvelles colonnes : smart_score, smart_label, cluster_id
+  const cols=['rank','address','label','category','is_contract','total_volume_usd','dune_volume_usd','dune_nb_trades','smart_score','smart_label','cluster_id','cluster_size','total_tx_count','token_transfer_count','current_balance_eth','gas_spent_eth','mev_score'];
   const csv=[cols.join(','),...allWallets.map(w=>cols.map(c=>{const v=w[c]??'';return typeof v==='string'&&v.includes(',')?`"${v}"`:v;}).join(','))].join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`top_wallets_eth_${new Date().toISOString().slice(0,10)}.csv`;
+  // Filename reflète la chain active (ex: top_wallets_arbitrum_2026-06-05.csv)
+  a.download=`top_wallets_${_currentChain}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
 
