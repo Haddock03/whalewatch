@@ -88,6 +88,16 @@ CHAINS = {
         "cache_file": "results_optimism.json",
         "patterns_file": "patterns_optimism.json",
     },
+    "polygon": {
+        "chainid": 137,
+        "dune_blockchain": "polygon",
+        "explorer_url": "https://polygonscan.com",
+        "label": "Polygon",
+        "symbol": "POL",            # POL (formerly MATIC)
+        "volume_scale": 30.0,       # initial — à calibrer après 1er Sonar
+        "cache_file": "results_polygon.json",
+        "patterns_file": "patterns_polygon.json",
+    },
 }
 
 
@@ -103,7 +113,8 @@ def resolve(chain):
     if not chain:
         return CHAINS[DEFAULT_CHAIN]
     key = chain.strip().lower()
-    aliases = {"eth": "ethereum", "arb": "arbitrum", "op": "optimism"}
+    aliases = {"eth": "ethereum", "arb": "arbitrum", "op": "optimism",
+               "matic": "polygon", "pol": "polygon"}
     key = aliases.get(key, key)
     if key not in CHAINS:
         raise ValueError(
