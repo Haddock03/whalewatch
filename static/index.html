@@ -2461,8 +2461,18 @@ function _showKpiSkeletons(){
 // Multi-chain — état + helpers
 // ═════════════════════════════════════════════════════════════════════════════
 let _currentChain = (() => {
-  try { return localStorage.getItem('ww_chain') || 'ethereum'; }
-  catch(e){ return 'ethereum'; }
+  // Priorité : ?chain= dans l'URL > localStorage > ethereum par défaut.
+  // Permet aux liens externes (/?chain=arbitrum) de pre-sélectionner une chain.
+  try {
+    const qs = new URLSearchParams(location.search);
+    const qp = qs.get('chain');
+    const valid = ['ethereum','arbitrum','base','optimism','polygon','bnb'];
+    if(qp && valid.includes(qp)){
+      try { localStorage.setItem('ww_chain', qp); } catch(e){}
+      return qp;
+    }
+    return localStorage.getItem('ww_chain') || 'ethereum';
+  } catch(e){ return 'ethereum'; }
 })();
 const CHAIN_EXPLORERS = {
   ethereum: 'https://etherscan.io',
