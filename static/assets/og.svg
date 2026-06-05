@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#020c1b"/>
@@ -11,60 +11,42 @@
       <stop offset="100%" stop-color="#c47dff"/>
     </linearGradient>
     <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#00e2ff" stop-opacity="0.25"/>
+      <stop offset="0%" stop-color="#00e2ff" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#00e2ff" stop-opacity="0"/>
     </radialGradient>
   </defs>
-
-  <!-- Background fills 1200x1200 square -->
-  <rect width="1200" height="1200" fill="url(#bg)"/>
-
-  <!-- All OG content is offset 285px down so center crop (y=285→915) captures it -->
-  <g transform="translate(0, 285)">
-    <!-- Ambient glows -->
-    <circle cx="200" cy="180" r="180" fill="url(#glow)"/>
-    <circle cx="1000" cy="500" r="220" fill="url(#glow)"/>
-
-    <!-- Subtle horizontal lines -->
-    <g stroke="#1a558a" stroke-width="0.5" opacity="0.3">
-      <line x1="0" y1="120" x2="1200" y2="120"/>
-      <line x1="0" y1="250" x2="1200" y2="250"/>
-      <line x1="0" y1="380" x2="1200" y2="380"/>
-      <line x1="0" y1="510" x2="1200" y2="510"/>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="240" cy="160" r="240" fill="url(#glow)"/>
+  <circle cx="980" cy="520" r="260" fill="url(#glow)"/>
+  <g stroke="#1a558a" stroke-width="0.5" opacity="0.28">
+    <line x1="0" y1="150" x2="1200" y2="150"/>
+    <line x1="0" y1="320" x2="1200" y2="320"/>
+    <line x1="0" y1="490" x2="1200" y2="490"/>
+  </g>
+  <g transform="translate(600, 250)">
+    <circle cx="0" cy="0" r="96" fill="#0e3e64" stroke="url(#accent)" stroke-width="3"/>
+    <g transform="translate(-2,-2) scale(1.3)">
+      <path d="M -60 2 C -60 -18, -38 -30, -8 -30 C 20 -30, 42 -20, 50 0 C 42 20, 20 28, -8 26 C -38 24, -60 16, -60 2 Z" fill="#5eff9e"/>
+      <path d="M 44 -3 C 55 -11, 64 -22, 72 -20 C 74 -19, 72 -8, 66 -3 C 72 2, 74 14, 72 15 C 64 17, 55 6, 44 3 Z" fill="#5eff9e"/>
+      <path d="M -56 6 C -40 16, -14 20, 8 16 C 6 9, 8 1, 11 -5 C -14 -7, -40 -3, -56 6 Z" fill="#7dffb6"/>
+      <path d="M -4 15 C 4 29, 18 31, 24 25 C 14 23, 4 19, -2 13 Z" fill="#3fce78"/>
+      <circle cx="-40" cy="-7" r="4" fill="#020c1b"/>
     </g>
-
-    <!-- Whale icon -->
-    <g transform="translate(90, 90)">
-      <circle cx="60" cy="60" r="60" fill="#0e3e64" stroke="url(#accent)" stroke-width="2"/>
-      <g transform="translate(60, 60)" fill="#5eff9e">
-        <path d="M-32 4 C -32 -10, -10 -22, 8 -18 C 24 -14, 32 -2, 32 6 C 32 14, 22 22, 8 22 C -10 24, -24 18, -28 10 Z"/>
-        <path d="M30 0 L 42 -10 L 42 12 Z"/>
-        <circle cx="14" cy="-4" r="2.4" fill="#020c1b"/>
-      </g>
+    <g stroke="#00e2ff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9">
+      <path d="M -39 -41 C -49 -59, -39 -68, -47 -81"/>
+      <path d="M -29 -41 C -26 -60, -18 -70, -23 -83"/>
+      <path d="M -34 -41 C -36 -59, -30 -69, -35 -82"/>
     </g>
-
-    <!-- Wordmark -->
-    <text x="230" y="135" font-family="Helvetica, Arial, sans-serif" font-size="44" font-weight="800" fill="#dff1ff" letter-spacing="2">WHALEWATCH</text>
-    <text x="232" y="165" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#7baacf" letter-spacing="4">ETHEREUM · ON-CHAIN · RADAR</text>
-
-    <!-- Headline -->
-    <text x="90" y="310" font-family="Helvetica, Arial, sans-serif" font-size="74" font-weight="800" fill="#dff1ff">Traquer les baleines.</text>
-    <text x="90" y="395" font-family="Helvetica, Arial, sans-serif" font-size="74" font-weight="800" fill="url(#accent)">Pas les copier.</text>
-
-    <!-- Subhead -->
-    <text x="90" y="475" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#a8cce4">Radar on-chain Ethereum — flux DEX, MEV, smart money.</text>
-    <text x="90" y="510" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#a8cce4">Données vérifiables. Pas de boîte noire.</text>
-
-    <!-- URL pill -->
-    <g transform="translate(90, 555)">
-      <rect width="240" height="40" rx="20" fill="#0e3e64" stroke="#2674b5" stroke-width="1"/>
-      <text x="20" y="26" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#5eff9e">whalewatchapp.io</text>
+    <g fill="#00e2ff" opacity="0.9">
+      <circle cx="-47" cy="-83" r="3"/>
+      <circle cx="-23" cy="-85" r="3"/>
+      <circle cx="-35" cy="-84" r="2.4"/>
     </g>
-
-    <!-- Decorative wave -->
-    <g transform="translate(880, 555)" stroke="#00e2ff" stroke-width="2" fill="none" opacity="0.5">
-      <path d="M0 20 C 20 0, 40 40, 60 20 S 100 0, 120 20 S 160 40, 180 20 S 220 0, 240 20"/>
-      <path d="M0 38 C 20 18, 40 58, 60 38 S 100 18, 120 38 S 160 58, 180 38 S 220 18, 240 38" opacity="0.4"/>
-    </g>
+  </g>
+  <text x="600" y="430" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="76" font-weight="800" fill="#dff1ff" letter-spacing="4">WHALEWATCH</text>
+  <text x="600" y="478" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="500" fill="#7baacf" letter-spacing="6">ETHEREUM · ON-CHAIN · RADAR</text>
+  <g transform="translate(480, 530)">
+    <rect width="240" height="44" rx="22" fill="#0e3e64" stroke="#2674b5" stroke-width="1"/>
+    <text x="120" y="29" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#5eff9e">whalewatchapp.io</text>
   </g>
 </svg>
