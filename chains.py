@@ -44,6 +44,7 @@ CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 #     Optimism : 25    (total $0.15B/7j — chain calme, top à 58 Avg)
 #     Polygon  : 30    (total $2.8B/7j, top non-infra 63 Avg)
 #     BNB Chain: 20    (total $16.6B/7j, top non-infra $86M → 74 Solid)
+#     Avalanche: 50    (total $0.46B/7j, top non-infra $5M → 69 Solid)
 #   À recalibrer si la distribution des volumes change significativement.
 
 CHAINS = {
