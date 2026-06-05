@@ -98,6 +98,16 @@ CHAINS = {
         "cache_file": "results_polygon.json",
         "patterns_file": "patterns_polygon.json",
     },
+    "bnb": {
+        "chainid": 56,
+        "dune_blockchain": "bnb",
+        "explorer_url": "https://bscscan.com",
+        "label": "BNB Chain",
+        "symbol": "BNB",
+        "volume_scale": 20.0,       # initial — à calibrer après 1er Sonar
+        "cache_file": "results_bnb.json",
+        "patterns_file": "patterns_bnb.json",
+    },
 }
 
 
@@ -114,7 +124,8 @@ def resolve(chain):
         return CHAINS[DEFAULT_CHAIN]
     key = chain.strip().lower()
     aliases = {"eth": "ethereum", "arb": "arbitrum", "op": "optimism",
-               "matic": "polygon", "pol": "polygon"}
+               "matic": "polygon", "pol": "polygon",
+               "bsc": "bnb", "binance": "bnb"}
     key = aliases.get(key, key)
     if key not in CHAINS:
         raise ValueError(

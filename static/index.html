@@ -487,6 +487,7 @@
         <option value="base">Base</option>
         <option value="optimism">Optimism</option>
         <option value="polygon">Polygon</option>
+        <option value="bnb">BNB Chain</option>
       </select>
     </div>
 
@@ -2439,6 +2440,7 @@ const CHAIN_EXPLORERS = {
   base:     'https://basescan.org',
   optimism: 'https://optimistic.etherscan.io',
   polygon:  'https://polygonscan.com',
+  bnb:      'https://bscscan.com',
 };
 // Couleurs officielles inspirées des marques de chaque chain — utilisées
 // pour le dot/glow du chain selector et la live-chip
@@ -2448,6 +2450,7 @@ const CHAIN_ACCENT = {
   base:     { color: '#0052ff',  label: 'BASE' },  // Coinbase blue
   optimism: { color: '#ff0420',  label: 'OP'   },  // Optimism red
   polygon:  { color: '#8247e5',  label: 'POL'  },  // Polygon purple
+  bnb:      { color: '#f0b90b',  label: 'BNB'  },  // Binance yellow
 };
 function currentExplorer(){ return CHAIN_EXPLORERS[_currentChain] || CHAIN_EXPLORERS.ethereum; }
 function currentChainAccent(){ return CHAIN_ACCENT[_currentChain] || CHAIN_ACCENT.ethereum; }
