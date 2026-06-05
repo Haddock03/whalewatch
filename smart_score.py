@@ -2,7 +2,21 @@
 # Calcule un Smart Money Score 0-100 par wallet, en combinant les données
 # du pipeline existant (results.json fields) avec l'enrichissement Dune
 # de dune_smart_signals.py. Retourne aussi un breakdown pour les tooltips UI.
+#
+# P1.1 backend (refonte score) :
+#   Le score pénalise désormais explicitement l'infrastructure (CEX hot
+#   wallets, bridges, routers DEX, market makers, MEV bots) qui n'est pas
+#   du « alpha discrétionnaire ». La classification est faite par
+#   wallet_classifier.classify_wallet() — voir ce module pour les regex.
+#
+#   Avant : seuls les MEV Bot étaient pénalisés (-45). DEX Protocol / Market
+#   Maker / certains Smart Contracts pouvaient finir top du leaderboard
+#   alors qu'ils ne sont pas du flux directionnel.
+#   Après : tous les types « infrastructure » subissent un cap à 25 + une
+#   pénalité graduée (voir _infra_penalty). Le MEV reste le plus pénalisé.
 import math
+
+from wallet_classifier import classify_wallet, INFRA_TYPES, TYPE_MEV, TYPE_MM, TYPE_CEX, TYPE_BRIDGE, TYPE_ROUTER
 
 
 def _vol_pts(volume_usd):
@@ -65,6 +79,8 @@ def _spam_penalty(nb_trades):
 def _mev_penalty(category, mev_score):
     # MEV bot : -45 (disqualifie pratiquement).
     # mev_score > 0 sans cat MEV : pénalité graduée.
+    # NB : Conservé pour rétrocompat. Le vrai filtre infra est maintenant
+    # géré par _infra_penalty() qui appelle wallet_classifier.
     if category == "MEV Bot":
         return -45.0
     if (mev_score or 0) >= 2:
@@ -72,6 +88,31 @@ def _mev_penalty(category, mev_score):
     if (mev_score or 0) == 1:
         return -6.0
     return 0.0
+
+
+# Pénalité par type d'infrastructure. MEV reste le plus pénalisé (déjà
+# couvert par _mev_penalty, on évite la double-comptabilisation).
+# Valeurs choisies pour que le score final tombe sous le seuil "Solid" (65)
+# même pour un wallet à 1 Md$ de volume. Volume 40 + avg 22 + … ≈ 75 ;
+# avec -55 → ≤ 25. C'est la cible : Smart Money Score < 30 pour de l'infra.
+_INFRA_PENALTY_BY_TYPE = {
+    TYPE_MEV:    0.0,    # déjà -45 via _mev_penalty
+    TYPE_MM:    -45.0,
+    TYPE_CEX:   -55.0,
+    TYPE_BRIDGE:-55.0,
+    TYPE_ROUTER:-55.0,
+}
+
+
+def _infra_penalty(wallet_type):
+    """Pénalité graduée par type d'infrastructure (en plus du _mev_penalty).
+
+    `wallet_type` est le dict retourné par classify_wallet().
+    Renvoie une valeur ≤ 0.
+    """
+    if not wallet_type or not wallet_type.get("is_infra"):
+        return 0.0
+    return _INFRA_PENALTY_BY_TYPE.get(wallet_type["key"], 0.0)
 
 
 def _eoa_bonus(is_contract):
@@ -115,6 +156,9 @@ def compute_score(wallet, signals=None, days_window=7):
     total_dex_vol_usd = sig.get("total_dex_vol_usd") or (wallet.get("dune_volume_usd") or 0)
     max_day_vol_usd = sig.get("max_day_vol_usd") or 0
 
+    # P1.1 backend — classification granulaire pour la pénalité infra
+    wallet_type = classify_wallet(wallet)
+
     parts = {
         "base": 8,  # baseline points (mode Free = ~30, smart wallet ≥65)
         "volume": round(_vol_pts(vol), 1),
@@ -126,6 +170,7 @@ def compute_score(wallet, signals=None, days_window=7):
         "concentration": round(_concentration_penalty(max_day_vol_usd, total_dex_vol_usd), 1),
         "spam": round(_spam_penalty(nb), 1),
         "mev": round(_mev_penalty(cat, mev), 1),
+        "infra": round(_infra_penalty(wallet_type), 1),
     }
     raw = sum(parts.values())
     score = max(0, min(100, round(raw)))
@@ -143,15 +188,6 @@ def label_for(score):
 
 
 if __name__ == "__main__":
-    test_wallet = {
-        "total_volume_usd": 200_000_000,
-        "dune_volume_usd": 180_000_000,
-        "dune_nb_trades": 420,
-        "category": "Unknown",
-        "mev_score": 0,
-        "is_contract": False,
-        "unique_tokens_traded": 35,
-    }
     test_signals = {
         "active_days": 7,
         "distinct_dex": 4,
@@ -160,7 +196,18 @@ if __name__ == "__main__":
         "total_dex_vol_usd": 180_000_000,
         "max_day_vol_usd": 40_000_000,
     }
-    s, br = compute_score(test_wallet, test_signals)
-    print(f"Score: {s}  ({label_for(s)})")
-    for k, v in br.items():
-        print(f"  {k:14s} {v:+.1f}")
+    test_cases = [
+        ("Alpha EOA",          {"label": "Unknown", "category": "Unknown", "is_contract": False, "total_volume_usd": 200_000_000, "dune_volume_usd": 180_000_000, "dune_nb_trades": 420, "mev_score": 0, "unique_tokens_traded": 35}),
+        ("MEV Bot",            {"label": "Jaredfromsubway (MEV bot)", "category": "MEV Bot", "is_contract": True, "total_volume_usd": 900_000_000, "dune_volume_usd": 900_000_000, "dune_nb_trades": 95000, "mev_score": 3, "unique_tokens_traded": 12}),
+        ("Wintermute MM",      {"label": "Wintermute (MM)", "category": "Market Maker", "is_contract": False, "total_volume_usd": 1_500_000_000, "dune_volume_usd": 1_500_000_000, "dune_nb_trades": 3000, "mev_score": 0, "unique_tokens_traded": 80}),
+        ("Binance hot wallet", {"label": "Binance 14", "category": "Other", "is_contract": False, "total_volume_usd": 5_000_000_000, "dune_volume_usd": 5_000_000_000, "dune_nb_trades": 12000, "mev_score": 0, "unique_tokens_traded": 200}),
+        ("1inch router",       {"label": "1inch v5 Aggregator", "category": "DEX Protocol", "is_contract": True, "total_volume_usd": 3_000_000_000, "dune_volume_usd": 3_000_000_000, "dune_nb_trades": 80000, "mev_score": 0, "unique_tokens_traded": 500}),
+        ("Stargate Bridge",    {"label": "Stargate Bridge", "category": "Other", "is_contract": True, "total_volume_usd": 800_000_000, "dune_volume_usd": 800_000_000, "dune_nb_trades": 15000, "mev_score": 0, "unique_tokens_traded": 25}),
+        ("Smart Contract",     {"label": "Unknown", "category": "Smart Contract", "is_contract": True, "total_volume_usd": 50_000_000, "dune_volume_usd": 50_000_000, "dune_nb_trades": 200, "mev_score": 0, "unique_tokens_traded": 10}),
+    ]
+    print(f"{'Case':22s} {'Score':>6s}  {'Label':>8s}   breakdown")
+    print("-" * 80)
+    for name, w in test_cases:
+        s, br = compute_score(w, test_signals)
+        nonzero = ", ".join(f"{k}{v:+.0f}" for k, v in br.items() if v != 0)
+        print(f"{name:22s} {s:>6d}  {label_for(s):>8s}   {nonzero}")

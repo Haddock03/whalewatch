@@ -111,21 +111,32 @@
         Le score est sur 100. Il combine <strong>volume</strong>, <strong>taille moyenne par trade</strong>, <strong>diversité de tokens</strong>, et applique des <strong>pénalités</strong> pour les comportements qui ne sont pas de l'alpha (MEV, spam, infrastructure).
       </p>
       <div class="meth-formula">
-        score = 8 + volume_tier + avg_trade_tier + diversity + eoa_bonus + activity_bonus<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− mev_penalty − spam_penalty − concentration_penalty
+        score = 8 + volume_tier + avg_trade_tier + diversity + eoa_bonus + activity_bonus + net_eth_bonus<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− mev_penalty − spam_penalty − concentration_penalty − <strong>infra_penalty</strong>
       </div>
       <h3>Détails des pénalités</h3>
       <ul>
         <li><strong>MEV</strong> : −45 si la catégorie est MEV Bot (sandwich, frontrun, backrun).</li>
         <li><strong>Spam</strong> : −18 si plus de 5000 trades sur 7j (bot probable) ; −7 si plus de 1500.</li>
-        <li><strong>Concentration</strong> : −10 si un seul token représente plus de 90 % du volume (wash trading possible).</li>
+        <li><strong>Concentration</strong> : jusqu'à −10 si un seul jour représente plus de 50 % du volume hebdo (pump-chase ou wash trading possible).</li>
+        <li><strong>Infrastructure</strong> (nouveauté P1.1 backend) : −45 pour Market Maker, −55 pour CEX hot wallet, Bridge, Router DEX. Voir ci-dessous.</li>
       </ul>
       <h3>Exclusion infrastructure (P1.1)</h3>
       <p>
-        Le <strong>Smart Money Leaderboard</strong> filtre les wallets identifiés comme : CEX hot wallets, bridges, routers DEX (Uniswap, 1inch, 0x…), market makers (Wintermute, Jump, GSR…), MEV bots. Ces wallets ont un volume énorme mais ne représentent <em>pas</em> de l'alpha discrétionnaire — c'est de l'infrastructure.
+        Les <strong>wallets d'infrastructure</strong> ont un volume colossal mais ne représentent <em>pas</em> de l'alpha discrétionnaire. Ils sont désormais explicitement pénalisés <strong>côté backend</strong> dans le score, avant même qu'il n'arrive au frontend :
       </p>
+      <ul>
+        <li><strong>CEX hot wallets</strong> — Binance, Coinbase, Kraken, Bybit, OKX, etc. Détectés par les name tags Etherscan.</li>
+        <li><strong>Bridges</strong> — Stargate, Across, Wormhole, Hop, Synapse, deBridge, Orbiter, Li.Fi…</li>
+        <li><strong>Routers DEX</strong> — Uniswap, 1inch, 0x, Paraswap, CowSwap, Kyber, Odos, Matcha…</li>
+        <li><strong>Market Makers</strong> — Wintermute, Jump Trading, Jane Street, GSR, Cumberland, Flow Traders…</li>
+        <li><strong>MEV Bots</strong> — sandwich, frontrun, backrun, arbitrage atomique, flashbot bundles.</li>
+      </ul>
       <p>
-        Le filtre se fait par regex sur les <em>name tags</em> Etherscan et la catégorie Dune. Liste publique, modifiable dans <code>static/index.html</code> (fonction <code>classifyWalletType</code>).
+        Invariant garanti par les tests : même à 1 Md$ de volume, un wallet d'infrastructure obtient un score < 65 (sous le seuil « Solid ») et n'apparaît donc <strong>jamais</strong> dans le Smart Money Leaderboard.
+      </p>
+      <p class="fs-xs text-muted">
+        Code source : <code>wallet_classifier.py</code> (regex), <code>smart_score.py::_infra_penalty</code> (barème), <code>test_scoring.py</code> (37 cas de test). Le module JS <code>classifyWalletType()</code> dans <code>static/index.html</code> est un miroir fidèle pour le filtre UI.
       </p>
     </section>
 
