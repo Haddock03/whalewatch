@@ -166,6 +166,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._serve_file(os.path.join(BASE_DIR, path.lstrip("/")), mime)
 
         # API
+        if path == "/api/health":
+            # Endpoint léger pour load balancer / uptime monitoring.
+            # Renvoie 200 si le serveur tourne ; payload détaille la santé
+            # par chain (cache existe, âge < 24h, nb wallets > 0).
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            chains_health = []
+            stale_threshold_hours = 24
+            for k, v in CHAIN_CONFIGS.items():
+                cp = os.path.join(CACHE_DIR, v["cache_file"])
+                d = load_json(cp, None)
+                age_hours = None
+                healthy = False
+                if d and d.get("last_updated"):
+                    try:
+                        dt = datetime.fromisoformat(d["last_updated"].replace("Z", "+00:00"))
+                        age_hours = round((now - dt).total_seconds() / 3600, 2)
+                        healthy = age_hours < stale_threshold_hours and len(d.get("wallets") or []) > 0
+                    except Exception:
+                        pass
+                chains_health.append({
+                    "chain": k,
+                    "has_cache": d is not None,
+                    "age_hours": age_hours,
+                    "wallets": len(d.get("wallets", []) if d else []),
+                    "healthy": healthy,
+                })
+            overall = "ok" if any(c["healthy"] for c in chains_health) else "degraded"
+            return self._json({
+                "status": overall,
+                "uptime_seconds": None,  # could track from process start
+                "timestamp": _utc_now_iso(),
+                "chains": chains_health,
+                "stale_threshold_hours": stale_threshold_hours,
+            })
+
         if path == "/api/status":
             with _lock:
                 return self._json(_state)
