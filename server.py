@@ -180,6 +180,43 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "explorer_url": v["explorer_url"],
             } for k, v in CHAIN_CONFIGS.items()])
 
+        if path == "/api/chains/summary":
+            # Agrégat de tous les caches : utile pour un widget "Vue d'ensemble"
+            # qui compare les 6 chains supportées sans avoir à fetch chacune.
+            summary = []
+            for k, v in CHAIN_CONFIGS.items():
+                cache_path = os.path.join(CACHE_DIR, v["cache_file"])
+                data = load_json(cache_path, None)
+                if data and data.get("wallets"):
+                    wallets = data["wallets"]
+                    top = max(wallets, key=lambda w: w.get("total_volume_usd") or 0, default={})
+                    summary.append({
+                        "key": k,
+                        "label": v["label"],
+                        "symbol": v["symbol"],
+                        "explorer_url": v["explorer_url"],
+                        "total_volume_usd": data.get("total_volume_usd") or 0,
+                        "total_wallets": data.get("total_wallets") or len(wallets),
+                        "last_updated": data.get("last_updated"),
+                        "top_wallet_address": top.get("address"),
+                        "top_wallet_volume_usd": top.get("total_volume_usd") or 0,
+                        "has_data": True,
+                    })
+                else:
+                    summary.append({
+                        "key": k,
+                        "label": v["label"],
+                        "symbol": v["symbol"],
+                        "explorer_url": v["explorer_url"],
+                        "total_volume_usd": 0,
+                        "total_wallets": 0,
+                        "last_updated": None,
+                        "top_wallet_address": None,
+                        "top_wallet_volume_usd": 0,
+                        "has_data": False,
+                    })
+            return self._json({"chains": summary})
+
         if path == "/api/wallets":
             chain = parse_qs(parsed.query).get("chain", [DEFAULT_CHAIN])[0]
             _, cache_path, _ = _chain_paths(chain)

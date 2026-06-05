@@ -548,6 +548,15 @@
     <div class="hero-strip-whale" aria-hidden="true">🐳</div>
   </section>
 
+  <!-- ═══ MULTI-CHAIN OVERVIEW ═════════════════════════════════════════════ -->
+  <section id="chain-overview" class="mb-5" aria-label="Vue d'ensemble multi-chain">
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <h2 class="fs-sm text-muted" style="text-transform:uppercase;letter-spacing:.08em;margin:0">Vue multi-chain · volume DEX 7j</h2>
+      <span class="fs-xs text-muted">Clic = bascule</span>
+    </div>
+    <div id="chain-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--s-2)"></div>
+  </section>
+
   <!-- ═══ STAT CARDS ═══════════════════════════════════════════════════════ -->
   <section class="stats-grid mb-5">
 
@@ -2496,6 +2505,39 @@ function _applyChainTheme(chain){
   const chainName = chain.charAt(0).toUpperCase() + chain.slice(1);
   document.title = `WhaleWatch · ${chainName} — On-Chain Radar`;
 }
+async function loadChainOverview(){
+  // Petit widget qui montre les 6 chains avec leurs volumes — clic = switch.
+  const grid = document.getElementById('chain-overview-grid');
+  if(!grid) return;
+  try{
+    const r = await fetch('/api/chains/summary');
+    if(!r.ok) return;
+    const d = await r.json();
+    const chains = d.chains || [];
+    const fmtV = v => v >= 1e9 ? '$'+(v/1e9).toFixed(2)+'B' : v >= 1e6 ? '$'+(v/1e6).toFixed(0)+'M' : v>0 ? '$'+Math.round(v).toLocaleString() : '—';
+    grid.innerHTML = chains.map(c => {
+      const a = CHAIN_ACCENT[c.key] || CHAIN_ACCENT.ethereum;
+      const isActive = c.key === _currentChain;
+      const ageMs = c.last_updated ? (Date.now() - new Date(c.last_updated).getTime()) : null;
+      const age = ageMs != null ? _humanAge(ageMs) : 'pas encore d\'analyse';
+      return `<button onclick="onChainChange('${c.key}')" type="button"
+        class="chain-mini-card"
+        aria-pressed="${isActive}"
+        style="text-align:left;border:1px solid ${isActive ? a.color : 'var(--border)'};background:${isActive ? a.color + '12' : 'rgba(2,12,27,.55)'};border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;gap:4px;color:inherit;font:inherit">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${a.color};box-shadow:0 0 6px ${a.color}"></span>
+            <span style="font-weight:700;font-size:11px;letter-spacing:.04em">${c.label}</span>
+          </div>
+          ${isActive ? `<span style="font-size:9px;color:${a.color};font-weight:700">ACTIVE</span>` : ''}
+        </div>
+        <div style="font-family:var(--font-mono);font-weight:700;font-size:16px;color:${c.has_data ? 'var(--text)' : 'var(--muted)'}">${fmtV(c.total_volume_usd)}</div>
+        <div class="fs-xs text-muted" style="font-size:10px">${c.total_wallets || 0} wallets · ${age}</div>
+      </button>`;
+    }).join('');
+  }catch(e){ /* silencieux : l'utilisateur n'en sera pas privé du dashboard */ }
+}
+
 function onChainChange(chain){
   if(chain === _currentChain) return;
   _currentChain = chain;
@@ -2508,8 +2550,13 @@ function onChainChange(chain){
   const tbody = document.getElementById('tbody');
   if(tbody) tbody.innerHTML = '<tr><td colspan="8"><span class="skel skel--row" style="width:96%"></span></td></tr><tr><td colspan="8"><span class="skel skel--row" style="width:92%"></span></td></tr>';
   loadData();
-  // Re-évalue le panel alertes (caché si chain ≠ ethereum)
+  // Re-évalue le panel alertes (caché si chain ≠ ethereum) et redessine
+  // le widget multi-chain (pour mettre à jour l'active card)
   if(typeof loadAlerts === 'function') loadAlerts();
+  if(typeof loadChainOverview === 'function') loadChainOverview();
+  // Sync le selector dropdown si onChainChange déclenché autrement que par lui
+  const sel = document.getElementById('chain-selector');
+  if(sel && sel.value !== chain) sel.value = chain;
   const a = CHAIN_ACCENT[chain] || CHAIN_ACCENT.ethereum;
   showToast(`Bascule sur ${chain.charAt(0).toUpperCase() + chain.slice(1)} (${a.label})`, 'success', 1800);
 }
@@ -2722,6 +2769,7 @@ if (!window.__wwBodyInit) {
   }).catch(()=>{});
   initCharts();
   loadData();
+  loadChainOverview();
   fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
   fetch(`/api/patterns?chain=${encodeURIComponent(_currentChain)}`).then(r=>r.ok?r.json():null).then(d=>{
     if(d && !d.error){
