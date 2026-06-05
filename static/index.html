@@ -474,17 +474,20 @@
       </span>
     </a>
 
-    <span class="live-chip">LIVE · 7j</span>
+    <span id="live-chip" class="live-chip" data-chain="ethereum">LIVE · 7j · ETH</span>
 
     <!-- Chain selector (multi-chain L2) -->
-    <select id="chain-selector" onchange="onChainChange(this.value)"
-            aria-label="Chaîne blockchain"
-            style="margin-left:var(--s-2);padding:5px 26px 5px 10px;border-radius:6px;border:1px solid var(--border);background:rgba(2,12,27,.55);color:var(--text);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 12 12&quot;><path d=&quot;M3 5l3 3 3-3&quot; stroke=&quot;%237baacf&quot; stroke-width=&quot;1.5&quot; fill=&quot;none&quot;/></svg>');background-repeat:no-repeat;background-position:right 8px center;background-size:10px">
-      <option value="ethereum">Ethereum</option>
-      <option value="arbitrum">Arbitrum</option>
-      <option value="base">Base</option>
-      <option value="optimism">Optimism</option>
-    </select>
+    <div class="chain-selector-wrap" style="margin-left:var(--s-2);position:relative">
+      <span id="chain-dot" aria-hidden="true" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);pointer-events:none;transition:all .25s ease"></span>
+      <select id="chain-selector" onchange="onChainChange(this.value)"
+              aria-label="Chaîne blockchain"
+              style="padding:5px 26px 5px 22px;border-radius:6px;border:1px solid var(--border);background:rgba(2,12,27,.55);color:var(--text);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 12 12&quot;><path d=&quot;M3 5l3 3 3-3&quot; stroke=&quot;%237baacf&quot; stroke-width=&quot;1.5&quot; fill=&quot;none&quot;/></svg>');background-repeat:no-repeat;background-position:right 8px center;background-size:10px">
+        <option value="ethereum">Ethereum</option>
+        <option value="arbitrum">Arbitrum</option>
+        <option value="base">Base</option>
+        <option value="optimism">Optimism</option>
+      </select>
+    </div>
 
     <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
       <a href="/"            class="nav-link is-active">Dashboard</a>
@@ -2435,18 +2438,46 @@ const CHAIN_EXPLORERS = {
   base:     'https://basescan.org',
   optimism: 'https://optimistic.etherscan.io',
 };
+// Couleurs officielles inspirées des marques de chaque chain — utilisées
+// pour le dot/glow du chain selector et la live-chip
+const CHAIN_ACCENT = {
+  ethereum: { color: '#00e2ff',  label: 'ETH'  },  // cyan (ETH brand)
+  arbitrum: { color: '#28a0f0',  label: 'ARB'  },  // Arbitrum blue
+  base:     { color: '#0052ff',  label: 'BASE' },  // Coinbase blue
+  optimism: { color: '#ff0420',  label: 'OP'   },  // Optimism red
+};
 function currentExplorer(){ return CHAIN_EXPLORERS[_currentChain] || CHAIN_EXPLORERS.ethereum; }
+function currentChainAccent(){ return CHAIN_ACCENT[_currentChain] || CHAIN_ACCENT.ethereum; }
+function _applyChainTheme(chain){
+  const a = CHAIN_ACCENT[chain] || CHAIN_ACCENT.ethereum;
+  const dot = document.getElementById('chain-dot');
+  if(dot){
+    dot.style.background = a.color;
+    dot.style.boxShadow = `0 0 10px ${a.color}`;
+  }
+  const chip = document.getElementById('live-chip');
+  if(chip){
+    chip.dataset.chain = chain;
+    chip.textContent = `LIVE · 7j · ${a.label}`;
+    chip.style.borderColor = a.color;
+    chip.style.color = a.color;
+    // Background avec opacité faible de la couleur d'accent
+    chip.style.background = a.color + '15'; // 15 = ~8% en hex
+  }
+}
 function onChainChange(chain){
   if(chain === _currentChain) return;
   _currentChain = chain;
   try { localStorage.setItem('ww_chain', chain); } catch(e){}
+  _applyChainTheme(chain);
   // Reset state + reload everything
   _whaleAlertShown = false;
   _showKpiSkeletons();
   const tbody = document.getElementById('tbody');
   if(tbody) tbody.innerHTML = '<tr><td colspan="8"><span class="skel skel--row" style="width:96%"></span></td></tr><tr><td colspan="8"><span class="skel skel--row" style="width:92%"></span></td></tr>';
   loadData();
-  showToast(`Bascule sur ${chain.charAt(0).toUpperCase() + chain.slice(1)}`, 'success', 1800);
+  const a = CHAIN_ACCENT[chain] || CHAIN_ACCENT.ethereum;
+  showToast(`Bascule sur ${chain.charAt(0).toUpperCase() + chain.slice(1)} (${a.label})`, 'success', 1800);
 }
 
 async function loadData(){
@@ -2644,6 +2675,8 @@ if (!window.__wwBodyInit) {
   // Restore le sélecteur de chain depuis localStorage
   const sel = document.getElementById('chain-selector');
   if(sel) sel.value = _currentChain;
+  // Applique le thème de chain (dot color + live-chip) au boot
+  _applyChainTheme(_currentChain);
   // Populate dynamiquement depuis /api/chains (au cas où on ajoute une chain server-side)
   fetch('/api/chains').then(r => r.ok ? r.json() : null).then(chains => {
     if(!chains || !chains.length || !sel) return;
