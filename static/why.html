@@ -565,6 +565,12 @@
     <p class="fs-xs text-muted mt-2" style="text-align:center">
       Source : pipeline Dune + Etherscan, même cache que <a href="/" style="color:var(--blue);text-decoration:underline">le dashboard</a>. Méthode détaillée sur <a href="/methodology" style="color:var(--blue);text-decoration:underline">/methodology</a>.
     </p>
+
+    <!-- Multi-chain coverage -->
+    <div class="mt-5" style="border-top:1px solid var(--border);padding-top:var(--s-5)">
+      <p class="fs-xs text-muted text-center mb-3" style="text-transform:uppercase;letter-spacing:.1em">Couverture multi-chain · volume DEX 7j</p>
+      <div id="why-chains-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--s-2);max-width:780px;margin:0 auto"></div>
+    </div>
   </section>
 
   <!-- ═══ APPROCHE — DEPTH LAYERS ═══ -->
@@ -759,6 +765,28 @@
 
   fetch('/api/patterns').then(r => r.json()).then(d => {
     if (d && d.signals && d.signals.length) document.getElementById('stat-signals').textContent = d.signals.length;
+  }).catch(() => {});
+
+  // Multi-chain coverage panel
+  const CHAIN_COLORS = {
+    ethereum: '#00e2ff', arbitrum: '#28a0f0', base: '#0052ff',
+    optimism: '#ff0420', polygon: '#8247e5', bnb: '#f0b90b',
+  };
+  fetch('/api/chains/summary').then(r => r.ok ? r.json() : null).then(d => {
+    const grid = document.getElementById('why-chains-grid');
+    if (!grid || !d || !d.chains) return;
+    const fmtV = v => v >= 1e9 ? '$'+(v/1e9).toFixed(2)+'B' : v >= 1e6 ? '$'+(v/1e6).toFixed(0)+'M' : v>0 ? '$'+Math.round(v).toLocaleString() : '—';
+    grid.innerHTML = d.chains.map(c => {
+      const color = CHAIN_COLORS[c.key] || '#7baacf';
+      return `<a href="/?chain=${c.key}" style="text-decoration:none;color:inherit;border:1px solid ${color}40;border-radius:8px;padding:8px 10px;background:${color}08;display:flex;flex-direction:column;gap:2px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="width:7px;height:7px;border-radius:50%;background:${color}"></span>
+          <span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:${color}">${c.label.toUpperCase()}</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-weight:700;font-size:14px;color:var(--text)">${fmtV(c.total_volume_usd)}</div>
+        <div style="font-size:10px;color:var(--muted)">${c.total_wallets || 0} wallets</div>
+      </a>`;
+    }).join('');
   }).catch(() => {});
 </script>
 <script src="/static/assets/app.js" defer></script>
