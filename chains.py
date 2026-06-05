@@ -118,11 +118,15 @@ DEFAULT_CHAIN = "ethereum"
 def resolve(chain):
     """Renvoie le dict de config pour une chain, ou raise ValueError.
 
-    Accepte les alias usuels (eth → ethereum, arb → arbitrum, op → optimism).
-    Case-insensitive.
+    Accepte les alias usuels (eth → ethereum, arb → arbitrum, op → optimism,
+    matic/pol → polygon, bsc/binance → bnb). Case-insensitive + trim.
+    Renvoie toujours un dict enrichi avec :
+      - key (string canonical)
+      - cache_path (absolute path)
+      - patterns_path (absolute path)
     """
     if not chain:
-        return CHAINS[DEFAULT_CHAIN]
+        chain = DEFAULT_CHAIN
     key = chain.strip().lower()
     aliases = {"eth": "ethereum", "arb": "arbitrum", "op": "optimism",
                "matic": "polygon", "pol": "polygon",

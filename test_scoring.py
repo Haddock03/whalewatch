@@ -149,6 +149,76 @@ check(br["infra"] == 0, f"Smart Contract → infra penalty = 0 (obtenu {br['infr
 check(s >= 45, f"Smart Contract → score={s} (≥ 45 attendu)")
 
 
+# ── Test 6 : chains.resolve() ───────────────────────────────────────────────
+section("chains.resolve() — résolution + aliases + erreurs")
+
+from chains import resolve, CHAINS, list_chains, DEFAULT_CHAIN
+
+# Toutes les chains canoniques résolvent
+for k in CHAINS:
+    cfg = resolve(k)
+    check(cfg["key"] == k, f"resolve({k!r}) → key={k}")
+
+# Aliases connus
+alias_cases = [
+    ("eth", "ethereum"), ("ETH", "ethereum"),
+    ("arb", "arbitrum"), ("op", "optimism"),
+    ("matic", "polygon"), ("pol", "polygon"),
+    ("bsc", "bnb"), ("binance", "bnb"),
+]
+for alias, expected in alias_cases:
+    cfg = resolve(alias)
+    check(cfg["key"] == expected, f"resolve({alias!r}) → {expected}")
+
+# Case insensitivity + whitespace
+check(resolve("  ARBITRUM  ")["key"] == "arbitrum", "resolve gère whitespace + case")
+
+# None / vide → default
+check(resolve(None)["key"] == DEFAULT_CHAIN, "resolve(None) → DEFAULT_CHAIN")
+check(resolve("")["key"] == DEFAULT_CHAIN, "resolve('') → DEFAULT_CHAIN")
+
+# Chain inconnue → ValueError
+try:
+    resolve("solana")
+    check(False, "resolve('solana') aurait dû lever ValueError")
+except ValueError:
+    check(True, "resolve('solana') lève ValueError")
+
+# list_chains renvoie tous les configs avec cache_path/patterns_path enrichis
+chains_list = list_chains()
+check(len(chains_list) == len(CHAINS), f"list_chains() → {len(CHAINS)} entrées")
+check(all("cache_path" in c and "patterns_path" in c for c in chains_list),
+      "list_chains contient cache_path et patterns_path")
+
+# volume_scale présent pour toutes les chains (nécessaire pour smart_score)
+for c in chains_list:
+    check("volume_scale" in c and c["volume_scale"] > 0,
+          f"{c['key']} a un volume_scale > 0 ({c.get('volume_scale')})")
+
+
+# ── Test 7 : invariants score × scale ───────────────────────────────────────
+section("Score reste cohérent avec différents volume_scale")
+
+# Un même wallet avec scale=1 vs scale=100 → le score doit MONTER (plus de
+# volume_pts) sauf si déjà max ou wallet vide.
+base_wallet = {
+    "label": "Unknown", "category": "Unknown", "is_contract": False,
+    "total_volume_usd": 5_000_000,  # $5M, donnerait 12 pts à scale=1
+    "dune_volume_usd": 5_000_000, "dune_nb_trades": 200,
+    "mev_score": 0, "unique_tokens_traded": 20,
+}
+s1, _ = compute_score(base_wallet, signals=None, volume_scale=1.0)
+s100, _ = compute_score(base_wallet, signals=None, volume_scale=100.0)
+check(s100 >= s1, f"$5M wallet : scale=1 → {s1}, scale=100 → {s100} (devrait monter)")
+
+# Scale ne doit JAMAIS retirer la pénalité infra
+infra_wallet = {**base_wallet, "label": "Wintermute (MM)", "category": "Market Maker"}
+s_infra_scale1, _ = compute_score(infra_wallet, signals=None, volume_scale=1.0)
+s_infra_scale100, _ = compute_score(infra_wallet, signals=None, volume_scale=100.0)
+check(s_infra_scale1 < 65, f"MM scale=1 → {s_infra_scale1} (< 65)")
+check(s_infra_scale100 < 65, f"MM scale=100 → {s_infra_scale100} (< 65)")
+
+
 # ── Récap ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*70}")
 print(f"Résultats : {_PASS} succès, {len(_FAIL)} échecs")
