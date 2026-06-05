@@ -26,6 +26,23 @@ import os
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 
 
+# Note sur `volume_scale` :
+#   Le Smart Money Score est calibré sur les volumes Ethereum (seuils :
+#   ≥10M$ = 22 pts, ≥1Md$ = 40 pts dans _vol_pts). Sur les L2, les volumes
+#   DEX par wallet sont 30–100× plus petits → sans correction, tout le
+#   monde stagne à score 40 et le tier "Alpha" est inatteignable.
+#
+#   volume_scale est un multiplicateur appliqué au volume avant le tier
+#   matching : un volume effectif = vol * scale. Choisi pour qu'un wallet
+#   « top 5% non-infra » d'une chain donnée tombe en tier Alpha/Solid,
+#   comparable à Ethereum.
+#
+#   Valeurs initiales (à affiner avec les données observées) :
+#     Ethereum : 1.0
+#     Arbitrum : 100 (top vol ARB ~$3M  → vol effectif $300M  → tier 32 pts)
+#     Base     : 50  (top vol BASE typiquement plus élevé qu'ARB)
+#     Optimism : 50  (idem)
+
 CHAINS = {
     "ethereum": {
         "chainid": 1,
@@ -33,6 +50,7 @@ CHAINS = {
         "explorer_url": "https://etherscan.io",
         "label": "Ethereum",
         "symbol": "ETH",
+        "volume_scale": 1.0,
         # Rétrocompat : fichier historique sans suffixe pour ne pas casser
         # les déploiements existants qui s'appuient dessus.
         "cache_file": "results.json",
@@ -44,6 +62,7 @@ CHAINS = {
         "explorer_url": "https://arbiscan.io",
         "label": "Arbitrum",
         "symbol": "ETH",
+        "volume_scale": 100.0,
         "cache_file": "results_arbitrum.json",
         "patterns_file": "patterns_arbitrum.json",
     },
@@ -53,6 +72,7 @@ CHAINS = {
         "explorer_url": "https://basescan.org",
         "label": "Base",
         "symbol": "ETH",
+        "volume_scale": 50.0,
         "cache_file": "results_base.json",
         "patterns_file": "patterns_base.json",
     },
@@ -62,6 +82,7 @@ CHAINS = {
         "explorer_url": "https://optimistic.etherscan.io",
         "label": "Optimism",
         "symbol": "ETH",
+        "volume_scale": 50.0,
         "cache_file": "results_optimism.json",
         "patterns_file": "patterns_optimism.json",
     },

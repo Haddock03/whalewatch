@@ -53,11 +53,13 @@ def enrich_results_with_smart_score(top_n=100, days=7, progress_cb=_noop, chain=
         progress_cb(f"⚠ Dune smart signals KO ({e}) — fallback sans signaux")
         signals_by_addr = {}
 
-    # Scoring
+    # Scoring (avec volume_scale par chain pour calibrer les L2)
+    volume_scale = chain_cfg.get("volume_scale", 1.0)
     scored = 0
     for w in wallets:
         sig = signals_by_addr.get((w.get("address") or "").lower())
-        score, breakdown = compute_score(w, signals=sig, days_window=days)
+        score, breakdown = compute_score(w, signals=sig, days_window=days,
+                                         volume_scale=volume_scale)
         w["smart_score"]     = score
         w["smart_label"]     = label_for(score)
         w["smart_breakdown"] = breakdown

@@ -19,25 +19,31 @@ import math
 from wallet_classifier import classify_wallet, INFRA_TYPES, TYPE_MEV, TYPE_MM, TYPE_CEX, TYPE_BRIDGE, TYPE_ROUTER
 
 
-def _vol_pts(volume_usd):
+def _vol_pts(volume_usd, volume_scale=1.0):
     # 0-40 pts en tiers stricts — déterminant principal du score.
-    if volume_usd >= 1_000_000_000: return 40.0
-    if volume_usd >= 100_000_000:   return 32.0
-    if volume_usd >= 10_000_000:    return 22.0
-    if volume_usd >= 1_000_000:     return 12.0
-    if volume_usd >= 100_000:       return 5.0
+    # `volume_scale` ajuste les seuils pour les L2 (volumes plus petits qu'ETH).
+    # Voir chains.py pour les valeurs par chain.
+    v = volume_usd * volume_scale
+    if v >= 1_000_000_000: return 40.0
+    if v >= 100_000_000:   return 32.0
+    if v >= 10_000_000:    return 22.0
+    if v >= 1_000_000:     return 12.0
+    if v >= 100_000:       return 5.0
     return 0.0
 
 
-def _avg_trade_pts(avg_trade_usd):
+def _avg_trade_pts(avg_trade_usd, volume_scale=1.0):
     # 0-22 pts. Sweet spot 50k-1M (trades discrétionnaires).
     # >5M = OTC/MM peu reproductible. <1k = bot-spam.
-    if avg_trade_usd >= 5_000_000:  return 10.0
-    if avg_trade_usd >= 1_000_000:  return 16.0
-    if avg_trade_usd >= 200_000:    return 22.0
-    if avg_trade_usd >= 50_000:     return 18.0
-    if avg_trade_usd >= 10_000:     return 10.0
-    if avg_trade_usd >= 1_000:      return 4.0
+    # Scale appliqué de la même façon : sur L2, un avg trade $20k peut
+    # correspondre à un sweet spot.
+    a = avg_trade_usd * volume_scale
+    if a >= 5_000_000:  return 10.0
+    if a >= 1_000_000:  return 16.0
+    if a >= 200_000:    return 22.0
+    if a >= 50_000:     return 18.0
+    if a >= 10_000:     return 10.0
+    if a >= 1_000:      return 4.0
     return 0.0
 
 
@@ -131,7 +137,7 @@ def _net_eth_pts(net_eth_usd, total_dex_vol_usd):
     return min(8.0, ratio * 30.0)
 
 
-def compute_score(wallet, signals=None, days_window=7):
+def compute_score(wallet, signals=None, days_window=7, volume_scale=1.0):
     """
     wallet : dict avec au moins
       total_volume_usd, dune_volume_usd, dune_nb_trades, category,
@@ -139,6 +145,8 @@ def compute_score(wallet, signals=None, days_window=7):
     signals : dict optionnel depuis dune_smart_signals.fetch_smart_signals,
       contient active_days, distinct_dex, distinct_tokens, net_eth_usd,
       total_dex_vol_usd, max_day_vol_usd.
+    volume_scale : facteur d'échelle pour calibrer les seuils volume par
+      chain (1.0 par défaut = Ethereum ; voir chains.py pour les L2).
     Retourne (score: int 0-100, breakdown: dict pts par composant).
     """
     vol = wallet.get("total_volume_usd") or 0
@@ -161,8 +169,8 @@ def compute_score(wallet, signals=None, days_window=7):
 
     parts = {
         "base": 8,  # baseline points (mode Free = ~30, smart wallet ≥65)
-        "volume": round(_vol_pts(vol), 1),
-        "avg_trade": round(_avg_trade_pts(avg), 1),
+        "volume": round(_vol_pts(vol, volume_scale), 1),
+        "avg_trade": round(_avg_trade_pts(avg, volume_scale), 1),
         "diversity": round(_diversity_pts(distinct_dex, distinct_tokens), 1),
         "activity": round(_activity_pts(active_days, days_window), 1),
         "net_eth": round(_net_eth_pts(net_eth_usd, total_dex_vol_usd), 1),
