@@ -1255,13 +1255,17 @@ function renderTable(wallets){
 // ═════════════════════════════════════════════════════════════════════════════
 function countUp(el, target, formatter, duration=900){
   if(!el) return;
+  // Fallback : si rAF est gelé (tab en background, headless),
+  // garantit que la valeur finale s'affiche quoi qu'il arrive.
+  const finalize = () => { el.textContent = formatter(target); };
+  setTimeout(finalize, duration + 80);
   const start=performance.now();
   function step(now){
     const t=Math.min((now-start)/duration,1);
     const ease=1-Math.pow(1-t,3);
     el.textContent=formatter(target*ease);
     if(t<1) requestAnimationFrame(step);
-    else el.textContent=formatter(target);
+    else finalize();
   }
   requestAnimationFrame(step);
 }
