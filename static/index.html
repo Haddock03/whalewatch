@@ -1970,12 +1970,17 @@ async function loadCryptoTicker(){
     const ch = c.price_change_percentage_24h ?? c.change ?? 0;
     const dir = ch >= 0 ? 'up' : 'down';
     const sign = ch >= 0 ? '+' : '';
-    return `<a class="ct-item" href="https://www.coingecko.com/en/coins/${c.id || c.symbol}" target="_blank" rel="noopener">
+    // A11y : arrow glyph en plus de la couleur (✓ daltoniens), aria-label pour SR
+    const arrow = ch >= 0 ? '▲' : '▼';
+    const sym = (c.symbol || '').toUpperCase();
+    const price = fmt(c.current_price || c.price || 0);
+    const a11y = `${sym} ${price}, variation 24h ${sign}${ch.toFixed(2)}%`;
+    return `<a class="ct-item" href="https://www.coingecko.com/en/coins/${c.id || c.symbol}" target="_blank" rel="noopener" aria-label="${a11y}">
       <span class="ct-rank">${String(i+1).padStart(2,'0')}</span>
-      <img class="ct-logo" src="${c.image}" alt="${c.symbol}" loading="lazy"/>
-      <span class="ct-sym">${(c.symbol || '').toUpperCase()}</span>
-      <span class="ct-price">${fmt(c.current_price || c.price || 0)}</span>
-      <span class="ct-delta ${dir}">${sign}${ch.toFixed(2)}%</span>
+      <img class="ct-logo" src="${c.image}" alt="" loading="lazy"/>
+      <span class="ct-sym">${sym}</span>
+      <span class="ct-price">${price}</span>
+      <span class="ct-delta ${dir}" aria-hidden="true"><span style="font-size:9px;margin-right:2px">${arrow}</span>${sign}${ch.toFixed(2)}%</span>
     </a>`;
   }).join('');
   // Duplicate pour scroll infini sans jump
