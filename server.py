@@ -299,9 +299,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return self._json({"error": "Not found"}, 404)
 
     # ── POST ────────────────────────────────────────────────────────────
+    def _check_refresh_token(self):
+        """Exige un jeton secret pour les endpoints de refresh.
+        Le jeton est lu dans la variable d'env REFRESH_TOKEN.
+        Renvoie True si autorisé, sinon écrit une erreur 401 et renvoie False."""
+        expected = os.environ.get("REFRESH_TOKEN")
+        if not expected:
+            return True  # pas de jeton configuré = pas de protection (rétro-compat)
+        provided = self.headers.get("X-Refresh-Token", "")
+        if provided != expected:
+            self._json({"error": "Non autorisé.", "status": "unauthorized"}, 401)
+            return False
+        return True
+
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if path in ("/api/refresh", "/api/patterns/refresh"):
+            if not self._check_refresh_token():
+                return
 
         if path == "/api/refresh":
             # Validation des clés API avant lancement — évite un échec
