@@ -54,7 +54,13 @@ def fetch_smart_signals(addresses, days=7, chunk_size=50, progress_cb=None,
     """
     if not addresses:
         return {}
-    dune_blockchain = resolve(chain)["dune_blockchain"]
+    chain_cfg = resolve(chain)
+    dune_blockchain = chain_cfg["dune_blockchain"]
+    # Construit la liste SQL des tokens "natifs/wrappés" pour cette chain.
+    # Sur ETH/L2 c'est ETH-like ; sur BNB c'est WBNB+ETH ; sur Polygon WMATIC ; etc.
+    # Cf. chains.CHAINS[*]["native_tokens"].
+    native_tokens = chain_cfg.get("native_tokens") or ["WETH","ETH"]
+    native_sql_list = ",".join(f"'{t}'" for t in native_tokens)
 
     # Normalisation : dex.trades.taker est varbinary → format X'...' attendu
     def _normalize(addr):
@@ -88,9 +94,9 @@ agg AS (
     COUNT(DISTINCT day)                       AS active_days,
     COUNT(DISTINCT project)                   AS distinct_dex,
     COUNT(DISTINCT sym_buy) + COUNT(DISTINCT sym_sell) AS distinct_tokens_raw,
-    SUM(CASE WHEN sym_buy IN ('WETH','ETH','stETH','wstETH','rETH','cbETH')
+    SUM(CASE WHEN sym_buy IN ({native_sql_list})
              THEN amount_usd ELSE 0 END)      AS eth_buy_usd,
-    SUM(CASE WHEN sym_sell IN ('WETH','ETH','stETH','wstETH','rETH','cbETH')
+    SUM(CASE WHEN sym_sell IN ({native_sql_list})
              THEN amount_usd ELSE 0 END)      AS eth_sell_usd,
     SUM(CASE WHEN sym_buy IN ('USDC','USDT','DAI','USDC.e','FDUSD','TUSD','USDe','PYUSD')
              THEN amount_usd ELSE 0 END)      AS stable_buy_usd,

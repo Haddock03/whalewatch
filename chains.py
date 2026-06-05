@@ -54,6 +54,9 @@ CHAINS = {
         "label": "Ethereum",
         "symbol": "ETH",
         "volume_scale": 1.0,
+        # Native + wrapped + liquid staking — utilisés par dune_smart_signals
+        # pour mesurer le "net flow" du token de conviction long de la chain.
+        "native_tokens": ["WETH","ETH","stETH","wstETH","rETH","cbETH"],
         # Rétrocompat : fichier historique sans suffixe pour ne pas casser
         # les déploiements existants qui s'appuient dessus.
         "cache_file": "results.json",
@@ -66,6 +69,8 @@ CHAINS = {
         "label": "Arbitrum",
         "symbol": "ETH",
         "volume_scale": 100.0,
+        # Native = ETH bridgé ; LSTs aussi
+        "native_tokens": ["WETH","ETH","stETH","wstETH","rETH","cbETH"],
         "cache_file": "results_arbitrum.json",
         "patterns_file": "patterns_arbitrum.json",
     },
@@ -76,6 +81,8 @@ CHAINS = {
         "label": "Base",
         "symbol": "ETH",
         "volume_scale": 5.0,
+        # cbETH est natif Coinbase, gros sur Base
+        "native_tokens": ["WETH","ETH","cbETH","wstETH","rETH"],
         "cache_file": "results_base.json",
         "patterns_file": "patterns_base.json",
     },
@@ -86,6 +93,7 @@ CHAINS = {
         "label": "Optimism",
         "symbol": "ETH",
         "volume_scale": 25.0,
+        "native_tokens": ["WETH","ETH","stETH","wstETH","rETH","cbETH"],
         "cache_file": "results_optimism.json",
         "patterns_file": "patterns_optimism.json",
     },
@@ -96,6 +104,8 @@ CHAINS = {
         "label": "Polygon",
         "symbol": "POL",            # POL (formerly MATIC)
         "volume_scale": 30.0,       # initial — à calibrer après 1er Sonar
+        # MATIC/POL natif + wrapped, et ETH bridgé qui circule pas mal
+        "native_tokens": ["WMATIC","MATIC","POL","WETH","ETH"],
         "cache_file": "results_polygon.json",
         "patterns_file": "patterns_polygon.json",
     },
@@ -106,6 +116,8 @@ CHAINS = {
         "label": "BNB Chain",
         "symbol": "BNB",
         "volume_scale": 20.0,       # initial — à calibrer après 1er Sonar
+        # WBNB/BNB natifs ; ETH et BTCB bridgés sont aussi des assets de conviction
+        "native_tokens": ["WBNB","BNB","ETH","WETH","BTCB"],
         "cache_file": "results_bnb.json",
         "patterns_file": "patterns_bnb.json",
     },
@@ -116,6 +128,8 @@ CHAINS = {
         "label": "Avalanche",
         "symbol": "AVAX",
         "volume_scale": 50.0,              # initial — à calibrer
+        # WAVAX/AVAX natif ; ETH/BTC bridgés (WETH.e, BTC.b)
+        "native_tokens": ["WAVAX","AVAX","WETH.e","WETH","BTC.b"],
         "cache_file": "results_avalanche.json",
         "patterns_file": "patterns_avalanche.json",
     },
