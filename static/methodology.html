@@ -182,11 +182,34 @@
       </p>
     </section>
 
+    <!-- ─── MULTI-CHAIN ─── -->
+    <section class="meth-section" id="chains">
+      <h2><span class="meth-pill meth-pill--source">Chains</span> Multi-chain L2</h2>
+      <p>
+        WhaleWatch couvre désormais plusieurs blockchains EVM. Le sélecteur en haut du dashboard permet de basculer entre :
+      </p>
+      <div class="meth-card-grid">
+        <div class="meth-card"><div class="meth-card-label">Ethereum</div><div class="meth-card-value">L1 · chainid 1</div></div>
+        <div class="meth-card"><div class="meth-card-label">Arbitrum</div><div class="meth-card-value">L2 · chainid 42161</div></div>
+        <div class="meth-card"><div class="meth-card-label">Base</div><div class="meth-card-value">L2 · chainid 8453</div></div>
+        <div class="meth-card"><div class="meth-card-label">Optimism</div><div class="meth-card-value">L2 · chainid 10</div></div>
+      </div>
+      <p style="margin-top:var(--s-4)">
+        Chaque chain a son <strong>cache séparé</strong> (<code>cache/results_&lt;chain&gt;.json</code>), son propre Sonar, son propre Smart Money Leaderboard. L'API Etherscan V2 unifie l'enrichissement on-chain (paramètre <code>chainid</code>), et Dune Analytics couvre la table <code>dex.trades</code> sur toutes ces chains.
+      </p>
+      <p>
+        Les explorer links (Etherscan, Arbiscan, Basescan, Optimistic Etherscan) s'adaptent automatiquement à la chain sélectionnée. Le score, la classification infra et la détection de clusters fonctionnent de manière chain-agnostique.
+      </p>
+      <p class="fs-xs text-muted">
+        Patterns whales (zones BUY/SELL, heatmap) restent <strong>Ethereum-only</strong> pour l'instant — les patterns historiques nécessitent une calibration par chain. À venir.
+      </p>
+    </section>
+
     <!-- ─── LIMITES (P1.5) ─── -->
     <section class="meth-section" id="limits">
       <h2><span class="meth-pill meth-pill--limit">Limites</span> Ce que WhaleWatch <em>ne voit pas</em></h2>
       <div class="meth-warn">
-        <p><strong>WhaleWatch couvre les swaps DEX on-chain Ethereum.</strong> Le produit ne voit <em>ni</em> les positions sur les exchanges centralisés (Binance, Coinbase, Bybit…), <em>ni</em> les contrats à terme et perpétuels (Binance Futures, dYdX, GMX, Hyperliquid…).</p>
+        <p><strong>WhaleWatch couvre les swaps DEX on-chain EVM (Ethereum + L2 majeurs).</strong> Le produit ne voit <em>ni</em> les positions sur les exchanges centralisés (Binance, Coinbase, Bybit…), <em>ni</em> les contrats à terme et perpétuels (Binance Futures, dYdX, GMX, Hyperliquid…).</p>
       </div>
       <p>
         Concrètement, ça veut dire :
@@ -201,7 +224,7 @@
       </p>
       <h3>Autres limites assumées</h3>
       <ul>
-        <li><strong>Ethereum mainnet uniquement.</strong> Pas (encore) de L2 ni d'autres chains.</li>
+        <li><strong>EVM chains uniquement.</strong> Solana, Aptos, Sui, Bitcoin et autres non-EVM sont hors couverture.</li>
         <li><strong>Pas de filtre 100% fiable contre le wash trading.</strong> La pénalité de concentration en réduit l'impact, mais ne l'élimine pas.</li>
         <li><strong>Les name tags Etherscan ne sont pas exhaustifs.</strong> Un wallet d'infrastructure non labellisé peut passer comme « EOA » jusqu'à ce qu'on l'ajoute.</li>
       </ul>

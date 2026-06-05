@@ -24,8 +24,12 @@ import time
 import requests
 
 ETHERSCAN_API_KEY = os.environ.get("ETHERSCAN_API_KEY", "")
-ETHERSCAN_CHAIN_ID = int(os.environ.get("ETHERSCAN_CHAIN_ID", "1"))
 BASE_URL = "https://api.etherscan.io/v2/api"
+
+# On délègue le chain_id au module etherscan_scraper qui le maintient au
+# niveau process. Si on veut tester ce module isolé, set_chain_id() peut
+# être appelé directement.
+from etherscan_scraper import get_chain_id as _get_chain_id
 
 # Si un deployer apparaît > 30 fois dans notre top → c'est probablement
 # une factory partagée (CREATE2 multisig deployers, Safe factories, etc.)
@@ -37,7 +41,7 @@ MIN_CLUSTER_SIZE = 2
 
 def _get(params, retries=3):
     params["apikey"] = ETHERSCAN_API_KEY
-    params.setdefault("chainid", ETHERSCAN_CHAIN_ID)
+    params.setdefault("chainid", _get_chain_id())
     for attempt in range(retries):
         try:
             r = requests.get(BASE_URL, params=params, timeout=10)

@@ -476,6 +476,16 @@
 
     <span class="live-chip">LIVE · 7j</span>
 
+    <!-- Chain selector (multi-chain L2) -->
+    <select id="chain-selector" onchange="onChainChange(this.value)"
+            aria-label="Chaîne blockchain"
+            style="margin-left:var(--s-2);padding:5px 26px 5px 10px;border-radius:6px;border:1px solid var(--border);background:rgba(2,12,27,.55);color:var(--text);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 12 12&quot;><path d=&quot;M3 5l3 3 3-3&quot; stroke=&quot;%237baacf&quot; stroke-width=&quot;1.5&quot; fill=&quot;none&quot;/></svg>');background-repeat:no-repeat;background-position:right 8px center;background-size:10px">
+      <option value="ethereum">Ethereum</option>
+      <option value="arbitrum">Arbitrum</option>
+      <option value="base">Base</option>
+      <option value="optimism">Optimism</option>
+    </select>
+
     <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
       <a href="/"            class="nav-link is-active">Dashboard</a>
       <a href="/pro/live"    class="nav-link nav-link--pro">Pro</a>
@@ -1308,7 +1318,7 @@ function renderTable(wallets){
       <td class="text-right">${avgTradeCell}</td>
       <td class="text-right">
         <div class="flex items-center justify-between gap-1" style="justify-content:flex-end">
-          <a href="https://etherscan.io/address/${w.address}" target="_blank" onclick="event.stopPropagation()" class="icon-btn" title="Etherscan">
+          <a href="${currentExplorer()}/address/${w.address}" target="_blank" onclick="event.stopPropagation()" class="icon-btn" title="Etherscan">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
           <a href="https://debank.com/profile/${w.address}" target="_blank" onclick="event.stopPropagation()" class="icon-btn" title="DeBank">
@@ -1441,7 +1451,7 @@ async function loadPatterns(forceRefresh=false){
   try {
     // Tente cache d'abord (sauf si forceRefresh demandé)
     if (!forceRefresh) {
-      const cached = await fetch('/api/patterns').then(r => r.ok ? r.json() : null).catch(() => null);
+      const cached = await fetch(`/api/patterns?chain=${encodeURIComponent(_currentChain)}`).then(r => r.ok ? r.json() : null).catch(() => null);
       if (cached && cached.n_wallets === n) {
         renderPatterns(cached); _setPatternsMeta(cached); _resetPatternsBtn();
         return;
@@ -1453,7 +1463,7 @@ async function loadPatterns(forceRefresh=false){
     let tries = 0, ready = false;
     while (tries++ < maxTries) {
       await new Promise(res => setTimeout(res, 3000));
-      const d = await fetch('/api/patterns').then(r => r.ok ? r.json() : null).catch(() => null);
+      const d = await fetch(`/api/patterns?chain=${encodeURIComponent(_currentChain)}`).then(r => r.ok ? r.json() : null).catch(() => null);
       if (d && d.n_wallets === n) {
         renderPatterns(d); _setPatternsMeta(d); ready = true; break;
       }
@@ -2072,7 +2082,7 @@ function renderAlertFeed(alerts, generatedAt){
     if(isNew) _seenAlertKeys.add(key);
     const sevDot = a.severity === 'high' ? '<span class="alert-sev-dot" title="haute"></span>' : '';
     return `<div class="alert-item alert-item--${a.type||'new'}${isNew ? ' alert-item--new-flash' : ''}"
-                 ${a.address ? `onclick="window.open('https://etherscan.io/address/${a.address}', '_blank')"` : ''}>
+                 ${a.address ? `onclick="window.open(currentExplorer()+'/address/${a.address}', '_blank')"` : ''}>
       <div class="alert-icon">${ALERT_ICONS[a.type] || ALERT_ICONS.new}</div>
       <div class="alert-body">
         <div class="alert-title">${a.title || 'Alerte'}${sevDot}</div>
@@ -2251,7 +2261,7 @@ function openModal(addr){
       }).join('')}
     </div>
     <div class="grid-3 mt-5">
-      <a href="https://etherscan.io/address/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Etherscan ↗</a>
+      <a href="${currentExplorer()}/address/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Etherscan ↗</a>
       <a href="https://debank.com/profile/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">DeBank ↗</a>
       <a href="https://app.zerion.io/${w.address}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Zerion ↗</a>
     </div>
@@ -2276,7 +2286,7 @@ async function loadWalletTrades(addr){
   panel.classList.add('hidden');
   panel.innerHTML='';
   try{
-    const r=await fetch(`/api/wallet/${addr}/trades`);
+    const r=await fetch(`/api/wallet/${addr}/trades?chain=${encodeURIComponent(_currentChain)}`);
     const d=await r.json();
     if(d.error){panel.innerHTML=`<p class="fs-xs" style="color:var(--c-mev)">${d.error}</p>`;panel.classList.remove('hidden');return;}
     panel.innerHTML=renderTradesPanel(d);
@@ -2363,7 +2373,7 @@ function renderTradesPanel(d){
                 <td class="text-red mono">${fmtAmt(t.sold_amount,t.sold_symbol)}</td>
                 <td class="text-right text-soft mono">${fmt(t.amount_usd)}</td>
                 <td class="text-center">
-                  <a href="https://etherscan.io/tx/${t.tx_hash}" target="_blank" class="text-muted" style="text-decoration:none">↗</a>
+                  <a href="${currentExplorer()}/tx/${t.tx_hash}" target="_blank" class="text-muted" style="text-decoration:none">↗</a>
                 </td>
               </tr>`).join('')}
           </tbody>
@@ -2412,6 +2422,33 @@ function _showKpiSkeletons(){
   });
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Multi-chain — état + helpers
+// ═════════════════════════════════════════════════════════════════════════════
+let _currentChain = (() => {
+  try { return localStorage.getItem('ww_chain') || 'ethereum'; }
+  catch(e){ return 'ethereum'; }
+})();
+const CHAIN_EXPLORERS = {
+  ethereum: 'https://etherscan.io',
+  arbitrum: 'https://arbiscan.io',
+  base:     'https://basescan.org',
+  optimism: 'https://optimistic.etherscan.io',
+};
+function currentExplorer(){ return CHAIN_EXPLORERS[_currentChain] || CHAIN_EXPLORERS.ethereum; }
+function onChainChange(chain){
+  if(chain === _currentChain) return;
+  _currentChain = chain;
+  try { localStorage.setItem('ww_chain', chain); } catch(e){}
+  // Reset state + reload everything
+  _whaleAlertShown = false;
+  _showKpiSkeletons();
+  const tbody = document.getElementById('tbody');
+  if(tbody) tbody.innerHTML = '<tr><td colspan="8"><span class="skel skel--row" style="width:96%"></span></td></tr><tr><td colspan="8"><span class="skel skel--row" style="width:92%"></span></td></tr>';
+  loadData();
+  showToast(`Bascule sur ${chain.charAt(0).toUpperCase() + chain.slice(1)}`, 'success', 1800);
+}
+
 async function loadData(){
   // Si on est en error/empty et que l'utilisateur clique "Réessayer", remettre des skeletons
   if(_dashState === 'error' || _dashState === 'empty'){
@@ -2421,7 +2458,7 @@ async function loadData(){
   }
   _dashState = 'loading';
   try{
-    const r = await fetch('/api/wallets');
+    const r = await fetch(`/api/wallets?chain=${encodeURIComponent(_currentChain)}`);
     if(!r.ok) throw new Error('HTTP '+r.status);
     const data = await r.json();
     allWallets = (data.wallets||[]).map(w => {
@@ -2473,7 +2510,7 @@ async function triggerRefresh(){
   document.getElementById('refresh-icon').classList.add('spin');
   try{
     // /api/refresh enchaîne wallets + patterns (cf. _run_analysis.py)
-    const r = await fetch('/api/refresh', { method: 'POST' });
+    const r = await fetch(`/api/refresh?chain=${encodeURIComponent(_currentChain)}`, { method: 'POST' });
     const d = await r.json();
     if(d.status==='running' || d.message==='Analyse lancée') startPoll();
     else{ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
@@ -2503,7 +2540,7 @@ function _pollPatternsUntilReady(){
       return;
     }
     try{
-      const r = await fetch('/api/patterns');
+      const r = await fetch(`/api/patterns?chain=${encodeURIComponent(_currentChain)}`);
       if(myId !== _patternsPoll) return;                     // remplacé pendant le await
       if(!r.ok) return;
       const d = await r.json();
@@ -2604,10 +2641,20 @@ function copyAddr(e,addr){
 if (!window.__wwBodyInit) {
   window.__wwBodyInit = true;
   applyProMode();
+  // Restore le sélecteur de chain depuis localStorage
+  const sel = document.getElementById('chain-selector');
+  if(sel) sel.value = _currentChain;
+  // Populate dynamiquement depuis /api/chains (au cas où on ajoute une chain server-side)
+  fetch('/api/chains').then(r => r.ok ? r.json() : null).then(chains => {
+    if(!chains || !chains.length || !sel) return;
+    const current = sel.value;
+    sel.innerHTML = chains.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
+    sel.value = current;
+  }).catch(()=>{});
   initCharts();
   loadData();
   fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
-  fetch('/api/patterns').then(r=>r.ok?r.json():null).then(d=>{
+  fetch(`/api/patterns?chain=${encodeURIComponent(_currentChain)}`).then(r=>r.ok?r.json():null).then(d=>{
     if(d && !d.error){
       renderPatterns(d); _setPatternsMeta(d); _resetPatternsBtn();
     } else {

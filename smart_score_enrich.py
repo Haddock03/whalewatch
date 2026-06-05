@@ -7,11 +7,14 @@
 import json
 import os
 
+from chains             import resolve, DEFAULT_CHAIN
 from dune_smart_signals import fetch_smart_signals
+from etherscan_scraper  import set_chain_id
 from smart_score        import compute_score, label_for
 from wallet_clusters    import detect_clusters
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
+# Path rétrocompat pour Ethereum. Surchargeable par chain via enrich(chain=…)
 CACHE_FILE = os.path.join(BASE_DIR, "cache", "results.json")
 
 
@@ -19,14 +22,20 @@ def _noop(msg):
     print(msg, flush=True)
 
 
-def enrich_results_with_smart_score(top_n=100, days=7, progress_cb=_noop):
-    """Ouvre results.json, enrichit chaque wallet avec smart_score, smart_label
-    et smart_breakdown, puis ré-écrit le fichier."""
-    if not os.path.exists(CACHE_FILE):
-        progress_cb(f"results.json absent ({CACHE_FILE}) — skip enrichment")
+def enrich_results_with_smart_score(top_n=100, days=7, progress_cb=_noop, chain=DEFAULT_CHAIN):
+    """Ouvre le cache JSON de la chain donnée, enrichit chaque wallet avec
+    smart_score, smart_label, smart_breakdown, cluster_id, puis ré-écrit le
+    fichier. `chain` accepte ethereum / arbitrum / base / optimism."""
+    chain_cfg = resolve(chain)
+    cache_file = chain_cfg["cache_path"]
+    # Switch le chain_id Etherscan pour les appels deployer (clusters)
+    set_chain_id(chain_cfg["chainid"])
+
+    if not os.path.exists(cache_file):
+        progress_cb(f"Cache absent ({cache_file}) — skip enrichment")
         return
 
-    with open(CACHE_FILE) as f:
+    with open(cache_file) as f:
         data = json.load(f)
 
     wallets = data.get("wallets") or []
@@ -88,12 +97,16 @@ def enrich_results_with_smart_score(top_n=100, days=7, progress_cb=_noop):
         "days": days,
         "clusters_found": nb_clusters,
         "clustered_wallets": len(clusters),
+        "chain": chain_cfg["key"],
     }
-    with open(CACHE_FILE, "w") as f:
+    with open(cache_file, "w") as f:
         json.dump(data, f)
-    progress_cb(f"✓ {scored} wallets scorés ({len(signals_by_addr)} avec signaux Dune, "
+    progress_cb(f"✓ {chain_cfg['label']} : {scored} wallets scorés "
+                f"({len(signals_by_addr)} avec signaux Dune, "
                 f"{nb_clusters} clusters / {len(clusters)} wallets clusterisés)")
 
 
 if __name__ == "__main__":
-    enrich_results_with_smart_score()
+    import sys
+    chain = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CHAIN
+    enrich_results_with_smart_score(chain=chain)

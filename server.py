@@ -19,11 +19,21 @@ def _utc_now_iso():
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 CACHE_DIR  = os.path.join(BASE_DIR, "cache")
-CACHE_FILE = os.path.join(CACHE_DIR, "results.json")
-PATTERNS_FILE = os.path.join(CACHE_DIR, "patterns.json")
 
 # Permet aux modules d'analyse d'être importés depuis n'importe quel endpoint
 sys.path.insert(0, BASE_DIR)
+
+# Multi-chain (chains.py est dans BASE_DIR maintenant que sys.path est patché)
+from chains import resolve as resolve_chain, DEFAULT_CHAIN, CHAINS as CHAIN_CONFIGS
+
+
+def _chain_paths(chain_param):
+    """Renvoie (chain_key, cache_path, patterns_path) en gérant les erreurs."""
+    try:
+        cfg = resolve_chain(chain_param or DEFAULT_CHAIN)
+    except ValueError:
+        cfg = resolve_chain(DEFAULT_CHAIN)
+    return cfg["key"], cfg["cache_path"], cfg["patterns_path"]
 
 # Routes statiques → fichiers HTML
 PAGES = {
@@ -71,17 +81,19 @@ def load_json(path, default=None):
         return default
 
 
-def run_analysis(n_wallets: int = 100, days: int = 7):
+def run_analysis(n_wallets: int = 100, days: int = 7, chain: str = DEFAULT_CHAIN):
     """Lance _run_analysis.py en subprocess en streamant le progress.
 
-    n_wallets/days sont passés via env vars (WW_N_WALLETS, WW_DAYS) —
-    plus simples que des args CLI pour la composition avec subprocess.Popen.
+    n_wallets/days/chain sont passés via env vars (WW_N_WALLETS, WW_DAYS,
+    WW_CHAIN) — plus simples que des args CLI pour la composition avec
+    subprocess.Popen.
     """
-    set_state(status="running", progress="Lancement de l'analyse...", error=None,
-              started_at=_utc_now_iso())
+    set_state(status="running", progress=f"Lancement de l'analyse {chain}...",
+              error=None, started_at=_utc_now_iso())
     try:
         script = os.path.join(BASE_DIR, "_run_analysis.py")
-        env = {**os.environ, "WW_N_WALLETS": str(n_wallets), "WW_DAYS": str(days)}
+        env = {**os.environ, "WW_N_WALLETS": str(n_wallets),
+               "WW_DAYS": str(days), "WW_CHAIN": chain}
         proc = subprocess.Popen(
             [sys.executable, script],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -158,12 +170,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             with _lock:
                 return self._json(_state)
 
+        if path == "/api/chains":
+            # Liste des chains disponibles pour le sélecteur frontend
+            return self._json([{
+                "key": k,
+                "label": v["label"],
+                "symbol": v["symbol"],
+                "chainid": v["chainid"],
+                "explorer_url": v["explorer_url"],
+            } for k, v in CHAIN_CONFIGS.items()])
+
         if path == "/api/wallets":
-            return self._json(load_json(CACHE_FILE, EMPTY_WALLETS))
+            chain = parse_qs(parsed.query).get("chain", [DEFAULT_CHAIN])[0]
+            _, cache_path, _ = _chain_paths(chain)
+            return self._json(load_json(cache_path, EMPTY_WALLETS))
 
         if path == "/api/patterns":
+            chain = parse_qs(parsed.query).get("chain", [DEFAULT_CHAIN])[0]
+            _, _, patterns_path = _chain_paths(chain)
             # Renvoie 200 + null si pas encore prêt → le frontend gère la fallback
-            return self._json(load_json(PATTERNS_FILE))
+            return self._json(load_json(patterns_path))
 
         if path == "/api/alerts":
             try:
@@ -183,7 +209,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         if path.startswith("/api/wallet/"):
             addr = path[len("/api/wallet/"):].lower()
-            data = load_json(CACHE_FILE, EMPTY_WALLETS)
+            chain = parse_qs(parsed.query).get("chain", [DEFAULT_CHAIN])[0]
+            _, cache_path, _ = _chain_paths(chain)
+            data = load_json(cache_path, EMPTY_WALLETS)
             for w in data.get("wallets", []):
                 if w.get("address", "").lower() == addr:
                     return self._json(w)
@@ -206,10 +234,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if running:
                 return self._json({"message": "Analyse déjà en cours", "status": "running"})
             qs = parse_qs(parsed.query)
-            n    = int(qs.get("n",    ["100"])[0])
-            days = int(qs.get("days", ["7"])[0])
-            threading.Thread(target=run_analysis, args=(n, days), daemon=True).start()
-            return self._json({"message": f"Analyse lancée ({n} wallets, {days}j)",
+            n     = int(qs.get("n",    ["100"])[0])
+            days  = int(qs.get("days", ["7"])[0])
+            chain = qs.get("chain", [DEFAULT_CHAIN])[0]
+            threading.Thread(target=run_analysis, args=(n, days, chain), daemon=True).start()
+            return self._json({"message": f"Analyse {chain} lancée ({n} wallets, {days}j)",
                                "status": "running"})
 
         if path == "/api/patterns/refresh":

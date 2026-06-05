@@ -12,7 +12,12 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(__file__))
 from etherscan_scraper import analyze_wallet_volume
 
+from chains import resolve, DEFAULT_CHAIN
+from etherscan_scraper import set_chain_id
+
 ETHERSCAN_API_KEY = os.environ.get("ETHERSCAN_API_KEY", "")
+# Rétrocompat : ce path est utilisé pour Ethereum par défaut ; les autres
+# chains passent par chains.resolve(chain)["cache_path"].
 CACHE_FILE = os.path.join(os.path.dirname(__file__), "cache", "results.json")
 
 KNOWN_LABELS = {
@@ -128,22 +133,30 @@ def fmt_volume(v):
     return f"${v:.0f}"
 
 
-def merge_and_rank(df_dune=None, dune_csv_path=None, additional_wallets=None, progress_cb=None):
+def merge_and_rank(df_dune=None, dune_csv_path=None, additional_wallets=None,
+                   progress_cb=None, chain=DEFAULT_CHAIN):
     """
-    Pipeline complet de fusion Dune + Etherscan.
+    Pipeline complet de fusion Dune + Etherscan pour une chain donnée.
 
     Args:
         df_dune: DataFrame Dune déjà chargé (prioritaire sur dune_csv_path)
         dune_csv_path: chemin CSV Dune alternatif
         additional_wallets: adresses supplémentaires à toujours inclure
         progress_cb: callback(msg) pour les mises à jour de statut
+        chain: nom de la chain (ex. "ethereum", "arbitrum", "base")
     Returns:
         DataFrame final classé
     """
+    chain_cfg = resolve(chain)
+    # Switch le chain_id Etherscan pour tout le reste du pipeline
+    set_chain_id(chain_cfg["chainid"])
+    cache_path = chain_cfg["cache_path"]
+
     def log(msg):
         print(msg)
         if progress_cb:
             progress_cb(msg)
+    log(f"=== Pipeline merge_and_rank pour {chain_cfg['label']} (chainid {chain_cfg['chainid']}) ===")
 
     log("=== ÉTAPE 1/4 - Chargement données Dune ===")
     if df_dune is None or df_dune.empty:
@@ -208,7 +221,7 @@ def merge_and_rank(df_dune=None, dune_csv_path=None, additional_wallets=None, pr
 
     # Sauvegarde CSV (dans cache/ — seul dossier writable en prod conteneurisé)
     os.makedirs(os.path.join(os.path.dirname(__file__), "cache"), exist_ok=True)
-    csv_path = os.path.join(os.path.dirname(__file__), "cache", "top_wallets_final.csv")
+    csv_path = os.path.join(os.path.dirname(__file__), "cache", f"top_wallets_final_{chain}.csv")
     export_cols = ["rank", "address", "label", "category", "is_contract", "contract_name",
                    "total_volume_usd", "volume_display", "dune_volume_usd", "dune_nb_trades",
                    "total_tx_count", "token_transfer_count", "unique_tokens_traded",
@@ -231,17 +244,19 @@ def merge_and_rank(df_dune=None, dune_csv_path=None, additional_wallets=None, pr
         wallets_json.append(w)
 
     cache_data = {
+        "chain": chain,
+        "chain_label": chain_cfg["label"],
         "wallets": wallets_json,
         "eth_price": eth_price,
         "last_updated": datetime.utcnow().isoformat() + "Z",
         "total_wallets": len(wallets_json),
         "total_volume_usd": float(df["total_volume_usd"].sum()),
     }
-    with open(CACHE_FILE, "w") as f:
+    with open(cache_path, "w") as f:
         json.dump(cache_data, f)
 
     log(f"\nExporté: {csv_path} ({len(df)} wallets)")
-    log(f"Cache JSON: {CACHE_FILE}")
+    log(f"Cache JSON: {cache_path}")
     log(f"Prix ETH: ${eth_price:,.0f}")
     return df
 

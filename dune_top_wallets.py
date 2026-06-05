@@ -1,16 +1,22 @@
 # dune_top_wallets.py
-# Requête Dune Analytics pour top wallets DEX par volume
+# Requête Dune Analytics pour top wallets DEX par volume.
+#
+# Multi-chain : le nom de la blockchain est paramétré (ethereum, arbitrum,
+# base, optimism…). Voir chains.py pour la liste.
 
 import os
 import requests
 import pandas as pd
 import time
 
+from chains import resolve, DEFAULT_CHAIN
+
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY", "")
 BASE = "https://api.dune.com/api/v1"
 HEADERS = {"X-Dune-API-Key": DUNE_API_KEY}
 
-QUERY_SQL = """
+# Template SQL ; la valeur de `blockchain` est injectée par fetch_top_wallets.
+QUERY_TEMPLATE = """
 SELECT
     taker AS wallet,
     COUNT(*) AS nb_trades,
@@ -20,7 +26,7 @@ SELECT
     MAX(block_time) AS last_trade
 FROM dex.trades
 WHERE block_time > NOW() - INTERVAL '7' DAY
-    AND blockchain = 'ethereum'
+    AND blockchain = '{blockchain}'
     AND amount_usd > 0
     AND taker IS NOT NULL
 GROUP BY taker
@@ -30,7 +36,7 @@ LIMIT 200
 """
 
 
-def execute_sql_direct(sql=QUERY_SQL):
+def execute_sql_direct(sql):
     """Exécute une requête SQL directement via l'endpoint /sql/execute"""
     r = requests.post(
         f"{BASE}/sql/execute",
@@ -90,16 +96,23 @@ def get_results(execution_id):
     return pd.DataFrame(rows)
 
 
-def fetch_top_wallets(progress_cb=None):
+def fetch_top_wallets(chain=DEFAULT_CHAIN, progress_cb=None):
     """
-    Pipeline complet : exécute le SQL, attend les résultats, retourne un DataFrame.
-    progress_cb(msg) : callback optionnel pour les mises à jour de statut.
-    """
-    print("=== Dune Analytics - Top Wallets DEX ===")
-    if progress_cb:
-        progress_cb("Lancement de la requête Dune...")
+    Pipeline complet : exécute le SQL pour la chain donnée, attend les
+    résultats, retourne un DataFrame.
 
-    execution_id = execute_sql_direct()
+    `chain` : nom de la chain (ex. "ethereum", "arbitrum", "base").
+              Validé par chains.resolve().
+    `progress_cb(msg)` : callback optionnel pour les mises à jour de statut.
+    """
+    cfg = resolve(chain)
+    sql = QUERY_TEMPLATE.format(blockchain=cfg["dune_blockchain"])
+
+    print(f"=== Dune Analytics - Top Wallets DEX ({cfg['label']}) ===")
+    if progress_cb:
+        progress_cb(f"Lancement de la requête Dune sur {cfg['label']}…")
+
+    execution_id = execute_sql_direct(sql)
     wait_for_results(execution_id, progress_cb=progress_cb)
     df = get_results(execution_id)
 
@@ -128,12 +141,15 @@ def format_volume(v):
 
 
 if __name__ == "__main__":
-    df = fetch_top_wallets()
+    import sys
+    chain = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CHAIN
+    df = fetch_top_wallets(chain=chain)
     if not df.empty:
         df["rank"] = range(1, len(df) + 1)
         df["volume_display"] = df["total_volume_usd"].apply(format_volume)
-        print("\n=== TOP 20 WALLETS PAR VOLUME DEX (30j) ===")
+        print(f"\n=== TOP 20 WALLETS PAR VOLUME DEX (7j) — {chain} ===")
         cols = [c for c in ["rank", "address", "nb_trades", "volume_display", "last_trade"] if c in df.columns]
         print(df[cols].head(20).to_string(index=False))
-        df.to_csv("dune_top_wallets.csv", index=False)
-        print(f"\nExporté: dune_top_wallets.csv ({len(df)} wallets)")
+        out = f"dune_top_wallets_{chain}.csv"
+        df.to_csv(out, index=False)
+        print(f"\nExporté: {out} ({len(df)} wallets)")

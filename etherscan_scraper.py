@@ -12,13 +12,27 @@ import time
 
 ETHERSCAN_API_KEY = os.environ.get("ETHERSCAN_API_KEY", "")
 BASE_URL = "https://api.etherscan.io/v2/api"
-CHAIN_ID = int(os.environ.get("ETHERSCAN_CHAIN_ID", "1"))  # 1 = Ethereum mainnet
+# Chain ID par défaut. Peut être surchargé par :
+#   1) variable d'env ETHERSCAN_CHAIN_ID (rétrocompat)
+#   2) thread-local set_chain_id() depuis combine_and_rank.merge_and_rank()
+DEFAULT_CHAIN_ID = int(os.environ.get("ETHERSCAN_CHAIN_ID", "1"))
+_current_chain_id = DEFAULT_CHAIN_ID
+
+
+def set_chain_id(chainid):
+    """Permet aux modules amont de switcher la chain dynamiquement."""
+    global _current_chain_id
+    _current_chain_id = int(chainid)
+
+
+def get_chain_id():
+    return _current_chain_id
 
 
 def _get(params, retries=3):
     params["apikey"] = ETHERSCAN_API_KEY
     # V2 exige chainid sur tous les endpoints
-    params.setdefault("chainid", CHAIN_ID)
+    params.setdefault("chainid", _current_chain_id)
     for attempt in range(retries):
         try:
             r = requests.get(BASE_URL, params=params, timeout=15)
