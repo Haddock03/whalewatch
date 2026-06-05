@@ -72,7 +72,36 @@ def main():
                     help="Ignore --max-age, force le refresh")
     ap.add_argument("--n-wallets", type=int, default=100)
     ap.add_argument("--days", type=int, default=7)
+    ap.add_argument("--list", action="store_true",
+                    help="Liste les chains avec l'âge de leur cache puis quitte")
     args = ap.parse_args()
+
+    # Mode listing : pas de Sonar, juste un tableau de l'état actuel.
+    if args.list:
+        from datetime import datetime, timezone
+        print(f"{'Chain':12s} {'Cache age':>14s} {'Wallets':>9s}  Status")
+        print("-" * 50)
+        for k in CHAINS:
+            cfg = resolve(k)
+            age = _cache_age_minutes(cfg["cache_path"])
+            if age is None:
+                print(f"{k:12s} {'(no cache)':>14s} {'—':>9s}  ⚠ skip dans cron")
+                continue
+            if age < 60:
+                status = "✓ fresh"
+            elif age < 24*60:
+                status = "○ ok"
+            else:
+                status = "⏱ stale"
+            wallets = "?"
+            try:
+                with open(cfg["cache_path"]) as f:
+                    wallets = str(len(json.load(f).get("wallets") or []))
+            except Exception:
+                pass
+            human = f"{age/60:.1f}h" if age >= 60 else f"{age:.0f}m"
+            print(f"{k:12s} {human:>14s} {wallets:>9s}  {status}")
+        sys.exit(0)
 
     # Liste cible : args.chains ou toutes
     if args.chains:
