@@ -488,6 +488,7 @@
         <option value="optimism">Optimism</option>
         <option value="polygon">Polygon</option>
         <option value="bnb">BNB Chain</option>
+        <option value="avalanche">Avalanche</option>
       </select>
     </div>
 
@@ -2466,7 +2467,7 @@ let _currentChain = (() => {
   try {
     const qs = new URLSearchParams(location.search);
     const qp = qs.get('chain');
-    const valid = ['ethereum','arbitrum','base','optimism','polygon','bnb'];
+    const valid = ['ethereum','arbitrum','base','optimism','polygon','bnb','avalanche'];
     if(qp && valid.includes(qp)){
       try { localStorage.setItem('ww_chain', qp); } catch(e){}
       return qp;
@@ -2475,22 +2476,24 @@ let _currentChain = (() => {
   } catch(e){ return 'ethereum'; }
 })();
 const CHAIN_EXPLORERS = {
-  ethereum: 'https://etherscan.io',
-  arbitrum: 'https://arbiscan.io',
-  base:     'https://basescan.org',
-  optimism: 'https://optimistic.etherscan.io',
-  polygon:  'https://polygonscan.com',
-  bnb:      'https://bscscan.com',
+  ethereum:  'https://etherscan.io',
+  arbitrum:  'https://arbiscan.io',
+  base:      'https://basescan.org',
+  optimism:  'https://optimistic.etherscan.io',
+  polygon:   'https://polygonscan.com',
+  bnb:       'https://bscscan.com',
+  avalanche: 'https://snowtrace.io',
 };
 // Couleurs officielles inspirées des marques de chaque chain — utilisées
 // pour le dot/glow du chain selector et la live-chip
 const CHAIN_ACCENT = {
-  ethereum: { color: '#00e2ff',  label: 'ETH'  },  // cyan (ETH brand)
-  arbitrum: { color: '#28a0f0',  label: 'ARB'  },  // Arbitrum blue
-  base:     { color: '#0052ff',  label: 'BASE' },  // Coinbase blue
-  optimism: { color: '#ff0420',  label: 'OP'   },  // Optimism red
-  polygon:  { color: '#8247e5',  label: 'POL'  },  // Polygon purple
-  bnb:      { color: '#f0b90b',  label: 'BNB'  },  // Binance yellow
+  ethereum:  { color: '#00e2ff',  label: 'ETH'  },  // cyan (ETH brand)
+  arbitrum:  { color: '#28a0f0',  label: 'ARB'  },  // Arbitrum blue
+  base:      { color: '#0052ff',  label: 'BASE' },  // Coinbase blue
+  optimism:  { color: '#ff0420',  label: 'OP'   },  // Optimism red
+  polygon:   { color: '#8247e5',  label: 'POL'  },  // Polygon purple
+  bnb:       { color: '#f0b90b',  label: 'BNB'  },  // Binance yellow
+  avalanche: { color: '#e84142',  label: 'AVAX' },  // Avalanche red
 };
 function currentExplorer(){ return CHAIN_EXPLORERS[_currentChain] || CHAIN_EXPLORERS.ethereum; }
 function currentChainAccent(){ return CHAIN_ACCENT[_currentChain] || CHAIN_ACCENT.ethereum; }
@@ -2519,7 +2522,8 @@ function _applyChainTheme(chain){
   if(sub){
     // Mapping des labels d'affichage de la chain (BNB Chain en deux mots)
     const labels = {ethereum:'Ethereum', arbitrum:'Arbitrum', base:'Base',
-                    optimism:'Optimism', polygon:'Polygon', bnb:'BNB Chain'};
+                    optimism:'Optimism', polygon:'Polygon', bnb:'BNB Chain',
+                    avalanche:'Avalanche'};
     sub.textContent = `Volume DEX ${labels[chain] || chainName}`;
   }
 }

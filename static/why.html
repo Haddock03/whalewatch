@@ -771,6 +771,7 @@
   const CHAIN_COLORS = {
     ethereum: '#00e2ff', arbitrum: '#28a0f0', base: '#0052ff',
     optimism: '#ff0420', polygon: '#8247e5', bnb: '#f0b90b',
+    avalanche: '#e84142',
   };
   fetch('/api/chains/summary').then(r => r.ok ? r.json() : null).then(d => {
     const grid = document.getElementById('why-chains-grid');

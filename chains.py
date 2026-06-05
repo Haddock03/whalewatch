@@ -109,6 +109,16 @@ CHAINS = {
         "cache_file": "results_bnb.json",
         "patterns_file": "patterns_bnb.json",
     },
+    "avalanche": {
+        "chainid": 43114,
+        "dune_blockchain": "avalanche_c",  # Dune utilise avalanche_c pour C-Chain
+        "explorer_url": "https://snowtrace.io",
+        "label": "Avalanche",
+        "symbol": "AVAX",
+        "volume_scale": 50.0,              # initial — à calibrer
+        "cache_file": "results_avalanche.json",
+        "patterns_file": "patterns_avalanche.json",
+    },
 }
 
 
@@ -130,7 +140,8 @@ def resolve(chain):
     key = chain.strip().lower()
     aliases = {"eth": "ethereum", "arb": "arbitrum", "op": "optimism",
                "matic": "polygon", "pol": "polygon",
-               "bsc": "bnb", "binance": "bnb"}
+               "bsc": "bnb", "binance": "bnb",
+               "avax": "avalanche"}
     key = aliases.get(key, key)
     if key not in CHAINS:
         raise ValueError(
