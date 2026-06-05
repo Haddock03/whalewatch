@@ -304,6 +304,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         path = parsed.path
 
         if path == "/api/refresh":
+            # Validation des clés API avant lancement — évite un échec
+            # silencieux dans le subprocess que l'utilisateur attend pour rien.
+            missing = []
+            if not os.environ.get("DUNE_API_KEY"):
+                missing.append("DUNE_API_KEY")
+            if not os.environ.get("ETHERSCAN_API_KEY"):
+                missing.append("ETHERSCAN_API_KEY")
+            if missing:
+                return self._json({
+                    "error": f"Clés API manquantes : {', '.join(missing)}. "
+                             "Voir .env.example et le README pour la configuration.",
+                    "status": "config_error",
+                }, 400)
             with _lock:
                 running = _state["status"] == "running"
             if running:
@@ -338,5 +351,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     os.makedirs(CACHE_DIR, exist_ok=True)
     port = int(os.environ.get("PORT", 8000))
+    # Warn au démarrage si les clés API sont absentes — utile pour les
+    # premiers déploiements où l'utilisateur a oublié .env.
+    missing_keys = []
+    if not os.environ.get("DUNE_API_KEY"):
+        missing_keys.append("DUNE_API_KEY")
+    if not os.environ.get("ETHERSCAN_API_KEY"):
+        missing_keys.append("ETHERSCAN_API_KEY")
+    if missing_keys:
+        print(f"⚠️  Clés API manquantes : {', '.join(missing_keys)}", flush=True)
+        print(f"    Le serveur tourne mais /api/refresh renverra une erreur 400.", flush=True)
+        print(f"    Configure-les via .env (voir .env.example et README).", flush=True)
     print(f"WhaleWatch — http://0.0.0.0:{port}", flush=True)
     http.server.ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
