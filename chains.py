@@ -37,11 +37,13 @@ CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 #   « top 5% non-infra » d'une chain donnée tombe en tier Alpha/Solid,
 #   comparable à Ethereum.
 #
-#   Valeurs initiales (à affiner avec les données observées) :
-#     Ethereum : 1.0
-#     Arbitrum : 100 (top vol ARB ~$3M  → vol effectif $300M  → tier 32 pts)
-#     Base     : 50  (top vol BASE typiquement plus élevé qu'ARB)
-#     Optimism : 50  (idem)
+#   Valeurs calibrées sur observations 5 juin 2026 :
+#     Ethereum : 1.0   (référence, total vol $7.6B/7j)
+#     Arbitrum : 100   (total $1.77B/7j, top non-infra $3M → tier 32 avec scale)
+#     Base     : 5     (total $9.2B/7j — Base est très actif, presque ETH-level ;
+#                       scale moins agressif pour ne pas sur-noter)
+#     Optimism : 25    (entre les deux, à affiner)
+#   À recalibrer si la distribution des volumes change significativement.
 
 CHAINS = {
     "ethereum": {
@@ -72,7 +74,7 @@ CHAINS = {
         "explorer_url": "https://basescan.org",
         "label": "Base",
         "symbol": "ETH",
-        "volume_scale": 50.0,
+        "volume_scale": 5.0,
         "cache_file": "results_base.json",
         "patterns_file": "patterns_base.json",
     },
@@ -82,7 +84,7 @@ CHAINS = {
         "explorer_url": "https://optimistic.etherscan.io",
         "label": "Optimism",
         "symbol": "ETH",
-        "volume_scale": 50.0,
+        "volume_scale": 25.0,
         "cache_file": "results_optimism.json",
         "patterns_file": "patterns_optimism.json",
     },
