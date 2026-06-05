@@ -55,16 +55,14 @@ def main(n_wallets: int = 100, pattern_days: int = 7, chain: str = DEFAULT_CHAIN
     except Exception as e:
         log(f"⚠ Smart score/alertes échoués : {e}")
 
-    # 3. Patterns whales (Ethereum uniquement pour l'instant)
-    if chain == "ethereum":
-        log(f"Étape 3/4 — Analyse patterns whales ({n_wallets} wallets, {pattern_days}j)…")
-        try:
-            analyze_patterns(n_wallets=n_wallets, days=pattern_days)
-            log("✓ Patterns générés")
-        except Exception as e:
-            log(f"⚠ Patterns échoués : {e}")
-    else:
-        log(f"Étape 3/4 — Patterns whales : skip (multi-chain pas encore supporté pour {chain_cfg['label']})")
+    # 3. Patterns whales (toutes chains)
+    log(f"Étape 3/4 — Analyse patterns whales ({n_wallets} wallets, {pattern_days}j, {chain_cfg['label']})…")
+    try:
+        analyze_patterns(n_wallets=n_wallets, days=pattern_days, chain=chain)
+        log(f"✓ Patterns générés ({chain_cfg['label']})")
+    except Exception as e:
+        # Échec patterns ≠ échec total : les wallets sont déjà cachés
+        log(f"⚠ Patterns échoués sur {chain_cfg['label']} : {e}")
 
     log(f"=== Analyse terminée pour {chain_cfg['label']} ===")
 

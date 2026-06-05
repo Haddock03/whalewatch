@@ -1,15 +1,23 @@
 # dune_patterns.py
-# Analyse les patterns de trading communs sur les top wallets via Dune
-# Utilise un CTE subquery — pas besoin de cache préalable, scalable à N wallets
+# Analyse les patterns de trading communs sur les top wallets via Dune.
+# Utilise un CTE subquery — pas besoin de cache préalable, scalable à N wallets.
+#
+# Multi-chain : le paramètre `chain` injecte le filtre blockchain dans toutes
+# les sous-requêtes (top_wallets CTE + 4 queries d'analyse). Le cache de
+# sortie est dérivé de chains.resolve : patterns.json (ETH rétrocompat),
+# patterns_arbitrum.json, patterns_base.json, patterns_optimism.json.
 
 import json
 import os
 import requests
 import time
 
+from chains import DEFAULT_CHAIN, resolve
+
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY", "")
 BASE = "https://api.dune.com/api/v1"
 HEADERS = {"X-Dune-Api-Key": DUNE_API_KEY, "Content-Type": "application/json"}
+# Path rétrocompat (Ethereum) ; les autres chains passent par chains.resolve
 CACHE_FILE = os.path.join(os.path.dirname(__file__), "cache", "patterns.json")
 
 
@@ -30,9 +38,10 @@ def _execute_and_wait(sql, timeout=180):
     raise TimeoutError(f"Dune timeout après {timeout}s")
 
 
-def analyze_patterns(n_wallets: int = 100, days: int = 7, progress_cb=None):
+def analyze_patterns(n_wallets: int = 100, days: int = 7, progress_cb=None,
+                     chain: str = DEFAULT_CHAIN):
     """
-    Analyse les patterns des top N wallets DEX sur Ethereum.
+    Analyse les patterns des top N wallets DEX sur la chain donnée.
 
     Utilise un CTE (WITH top_wallets AS ...) pour identifier les top N wallets
     directement via Dune — aucune dépendance au cache results.json.
@@ -41,13 +50,18 @@ def analyze_patterns(n_wallets: int = 100, days: int = 7, progress_cb=None):
         n_wallets: nombre de wallets à analyser (défaut 100, max ~500)
         days: fenêtre temporelle en jours
         progress_cb: callback(msg) pour les mises à jour de statut
+        chain: nom de la chain (ethereum, arbitrum, base, optimism)
     """
+    chain_cfg = resolve(chain)
+    dune_blockchain = chain_cfg["dune_blockchain"]
+    cache_path = chain_cfg["patterns_path"]
+
     def log(msg):
         print(msg)
         if progress_cb:
             progress_cb(msg)
 
-    log(f"Analyse patterns — top {n_wallets} wallets · {days}j · Ethereum")
+    log(f"Analyse patterns — top {n_wallets} wallets · {days}j · {chain_cfg['label']}")
 
     # ── CTE commun : top N wallets par volume sur la période ────────────────────
     top_wallets_cte = f"""
@@ -55,7 +69,7 @@ WITH top_wallets AS (
   SELECT taker
   FROM dex.trades
   WHERE block_time > now() - interval '{days}' day
-    AND blockchain = 'ethereum'
+    AND blockchain = '{dune_blockchain}'
     AND amount_usd > 0
     AND taker IS NOT NULL
   GROUP BY taker
@@ -148,7 +162,7 @@ mev_wallets AS (
   FROM dex.trades t
   JOIN top_wallets tw ON t.taker = tw.taker
   WHERE t.block_time > now() - interval '{days}' day
-    AND t.blockchain = 'ethereum'
+    AND t.blockchain = '{dune_blockchain}'
   GROUP BY t.taker
   HAVING COUNT(*) >= 200
 ),
@@ -168,7 +182,7 @@ eth_ops AS (
   FROM dex.trades t
   JOIN mev_wallets mw ON t.taker = mw.taker
   WHERE t.block_time > now() - interval '{days}' day
-    AND t.blockchain = 'ethereum'
+    AND t.blockchain = '{dune_blockchain}'
     AND (t.token_bought_symbol = 'WETH' OR t.token_sold_symbol = 'WETH')
     AND t.amount_usd BETWEEN 10 AND 20000000
 )
@@ -201,7 +215,7 @@ mev_wallets AS (
   FROM dex.trades t
   JOIN top_wallets tw ON t.taker = tw.taker
   WHERE t.block_time > now() - interval '{days}' day
-    AND t.blockchain = 'ethereum'
+    AND t.blockchain = '{dune_blockchain}'
   GROUP BY t.taker
   HAVING COUNT(*) >= 200
 ),
@@ -216,7 +230,7 @@ eth_trades_ordered AS (
   FROM dex.trades t
   JOIN mev_wallets mw ON t.taker = mw.taker
   WHERE t.block_time > now() - interval '{days}' day
-    AND t.blockchain = 'ethereum'
+    AND t.blockchain = '{dune_blockchain}'
     AND (t.token_bought_symbol = 'WETH' OR t.token_sold_symbol = 'WETH')
     AND t.amount_usd BETWEEN 10 AND 20000000
 ),
@@ -453,8 +467,8 @@ ORDER BY MIN(date_diff('second', block_time, next_time))
         ],
     }
 
-    os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
-    with open(CACHE_FILE, "w") as f:
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    with open(cache_path, "w") as f:
         json.dump(result, f)
 
     log(f"✓ Patterns sauvegardés ({n_wallets} wallets, {total_trades_real:,} trades, {_fmt(total_vol_real)} vol)")
