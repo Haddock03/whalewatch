@@ -205,9 +205,20 @@
       <p class="fs-xs text-muted">
         Les patterns whales (zones BUY/SELL, heatmap horaire, top paires/DEX, distribution des tailles, prix MEV) sont désormais disponibles sur les 4 chains. Note : les seuils internes (e.g. nombre minimum de trades pour qualifier un wallet MEV) restent calibrés sur Ethereum et peuvent être affinés au fil de l'observation sur L2.
       </p>
-      <div class="meth-warn" style="margin-top:var(--s-3)">
-        <p><strong>Calibration L2 en cours :</strong> les seuils de volume du Smart Score (≥10M$ = 22 pts, ≥1Md$ = 40 pts) sont calibrés sur Ethereum. Sur les L2 (volumes typiques 50–100× plus petits), les meilleurs wallets plafonnent autour de score 40. Un facteur d'échelle par chain est prévu pour rétablir des distributions Alpha/Solid/Avg comparables.</p>
-      </div>
+      <p style="margin-top:var(--s-4)">
+        <strong>Calibration par chain.</strong> Les seuils de volume du Smart Score (≥10M$ = 22 pts, ≥1Md$ = 40 pts) sont calibrés sur Ethereum. Chaque chain a un <code>volume_scale</code> qui pondère les volumes avant le tier matching, pour rétablir des distributions Alpha/Solid/Avg comparables :
+      </p>
+      <ul>
+        <li><strong>Ethereum</strong> : scale 1.0 (référence)</li>
+        <li><strong>Arbitrum</strong> : scale 100 (top non-infra ~$3M devient ~$300M effectif)</li>
+        <li><strong>Base</strong> : scale 5 (chain très active, scale conservateur)</li>
+        <li><strong>Optimism</strong> : scale 25</li>
+        <li><strong>Polygon</strong> : scale 30</li>
+        <li><strong>BNB Chain</strong> : scale 20</li>
+      </ul>
+      <p class="fs-xs text-muted">
+        Code source : <code>chains.py::CHAINS</code>. Calibrations affinées par observation des distributions réelles à chaque ajout/refresh de chain.
+      </p>
     </section>
 
     <!-- ─── LIMITES (P1.5) ─── -->
