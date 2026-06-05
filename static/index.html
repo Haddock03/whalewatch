@@ -513,9 +513,9 @@
       <span id="status-text">Sonar actif…</span>
     </div>
 
-    <button id="btn-refresh" onclick="triggerRefresh()" class="btn btn-primary btn-sm" style="margin-left:var(--s-2)">
+    <button id="btn-refresh" onclick="triggerRefresh()" class="btn btn-primary btn-sm" style="margin-left:var(--s-2)" title="Lance un Sonar pour la chain active">
       <svg id="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15 0M20 15a9 9 0 0 1-15 0"/></svg>
-      Sonar
+      <span id="btn-refresh-label">Sonar</span>
     </button>
   </div>
   <div id="progress-line" class="progress-line hidden"></div>
@@ -2519,13 +2519,13 @@ function _applyChainTheme(chain){
   document.title = `WhaleWatch · ${chainName} — On-Chain Radar`;
   // Met à jour les sous-titres KPI qui mentionnent la chain
   const sub = document.getElementById('stat-volume-sub');
-  if(sub){
-    // Mapping des labels d'affichage de la chain (BNB Chain en deux mots)
-    const labels = {ethereum:'Ethereum', arbitrum:'Arbitrum', base:'Base',
-                    optimism:'Optimism', polygon:'Polygon', bnb:'BNB Chain',
-                    avalanche:'Avalanche'};
-    sub.textContent = `Volume DEX ${labels[chain] || chainName}`;
-  }
+  const labels = {ethereum:'Ethereum', arbitrum:'Arbitrum', base:'Base',
+                  optimism:'Optimism', polygon:'Polygon', bnb:'BNB Chain',
+                  avalanche:'Avalanche'};
+  if(sub) sub.textContent = `Volume DEX ${labels[chain] || chainName}`;
+  // Met à jour le label du bouton Sonar pour qu'il indique la chain visée
+  const btnLabel = document.getElementById('btn-refresh-label');
+  if(btnLabel) btnLabel.textContent = `Sonar · ${a.label}`;
 }
 async function loadChainOverview(){
   // Petit widget qui montre les 6 chains avec leurs volumes — clic = switch.
