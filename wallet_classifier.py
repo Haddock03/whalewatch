@@ -36,12 +36,13 @@ _RX_CEX = re.compile(
 )
 _RX_BRIDGE = re.compile(
     r"(bridge|stargate|across|hop[\s_-]?protocol|wormhole|synapse"
-    r"|debridge|orbiter|li[\s.\-]?fi|connext|cbridge|polybridge)",
+    r"|debridge|orbiter|li[\s.\-]?fi|connext|cbridge|polybridge"
+    r"|settler|mainnet[\s_-]?settler|arbitrum[\s_-]?settler|optimism[\s_-]?settler|base[\s_-]?settler)",
     re.IGNORECASE,
 )
 _RX_ROUTER = re.compile(
-    r"(router|aggregator|1inch|paraswap|0x[\s_-]?protocol|cowswap|kyber"
-    r"|metamask[\s_-]?swap|universal[\s_-]?router|swaprouter|odos|matcha)",
+    r"(router|aggregator|1inch|paraswap|augustus|0x[\s_-]?protocol|cowswap|kyber"
+    r"|metamask[\s_-]?swap|universal[\s_-]?router|swaprouter|odos|matcha|swap[\s_-]?router)",
     re.IGNORECASE,
 )
 
@@ -79,9 +80,14 @@ def classify_wallet(wallet):
         - label      : str | None  (name tag Etherscan ou contract_name)
         - is_contract: bool | None
     Champs optionnels utilisés en heuristique :
-        - contract_name : str | None
+        - contract_name : str | None  (récupéré via Etherscan getsourcecode,
+                                       utile sur L2 où les name tags Etherscan
+                                       sont moins exhaustifs qu'Ethereum)
     """
     cat = (wallet.get("category") or "").strip()
+    # On combine label + contract_name pour les regex car sur L2, les name
+    # tags Etherscan sont rares mais le contract_name (e.g. "AugustusV6",
+    # "ArbitrumSettler", "MainnetSettler") révèle le rôle du contrat.
     lbl = (wallet.get("label") or "") + " " + (wallet.get("contract_name") or "")
     is_contract = wallet.get("is_contract")
 

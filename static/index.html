@@ -1132,8 +1132,8 @@ function catClass(cat){
 // (CEX, bridges, routers DEX, market makers, MEV bots) pour la fiabilité du
 // leaderboard. Détection par regex sur le label + category Dune.
 // ═════════════════════════════════════════════════════════════════════════════
-const _RX_ROUTER = /(router|aggregator|1inch|paraswap|0x protocol|cowswap|kyber|metamask swap|universal router|swaprouter)/i;
-const _RX_BRIDGE = /(bridge|stargate|across|hop|wormhole|synapse|debridge|orbiter|li[\s.-]?fi|connext)/i;
+const _RX_ROUTER = /(router|aggregator|1inch|paraswap|augustus|0x protocol|cowswap|kyber|metamask swap|universal router|swaprouter|odos|matcha|swap router)/i;
+const _RX_BRIDGE = /(bridge|stargate|across|hop|wormhole|synapse|debridge|orbiter|li[\s.-]?fi|connext|settler|mainnet settler|arbitrum settler|optimism settler|base settler)/i;
 const _RX_CEX    = /(binance|coinbase|kraken|bybit|okx|kucoin|huobi|bitfinex|gate\.io|crypto\.com|gemini|bitstamp|cex|exchange[: ])/i;
 const _RX_MM     = /(market maker|wintermute|jump trading|jane street|amber|gsr|cumberland|flow traders|alameda)/i;
 const _RX_MEV    = /(mev|sandwich|jaredfromsubway|frontrunner|backrun|atomic arb)/i;
