@@ -38,11 +38,12 @@ CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 #   comparable à Ethereum.
 #
 #   Valeurs calibrées sur observations 5 juin 2026 :
-#     Ethereum : 1.0   (référence, total vol $7.6B/7j)
-#     Arbitrum : 100   (total $1.77B/7j, top non-infra $3M → tier 32 avec scale)
-#     Base     : 5     (total $9.2B/7j — Base est très actif, presque ETH-level ;
-#                       scale moins agressif pour ne pas sur-noter)
-#     Optimism : 25    (entre les deux, à affiner)
+#     Ethereum : 1.0   (référence, total vol $7.6B/7j, top alpha 80)
+#     Arbitrum : 100   (total $1.77B/7j, top non-infra $3M → 78 Solid)
+#     Base     : 5     (total $9.2B/7j — Base très actif, scale conservateur)
+#     Optimism : 25    (total $0.15B/7j — chain calme, top à 58 Avg)
+#     Polygon  : 30    (total $2.8B/7j, top non-infra 63 Avg)
+#     BNB Chain: 20    (total $16.6B/7j, top non-infra $86M → 74 Solid)
 #   À recalibrer si la distribution des volumes change significativement.
 
 CHAINS = {
