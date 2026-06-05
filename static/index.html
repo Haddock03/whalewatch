@@ -2111,6 +2111,14 @@ function renderAlertFeed(alerts, generatedAt){
   }).join('');
 }
 async function loadAlerts(){
+  const card = document.getElementById('alerts-card');
+  // Les alertes (snapshot diff over time) ne sont calculées que pour Ethereum
+  // pour l'instant — sur les autres chains, on cache le panel.
+  if(_currentChain !== 'ethereum'){
+    if(card) card.style.display = 'none';
+    return;
+  }
+  if(card) card.style.display = '';
   try{
     const r = await fetch('/api/alerts');
     if(!r.ok) return;
@@ -2496,6 +2504,8 @@ function onChainChange(chain){
   const tbody = document.getElementById('tbody');
   if(tbody) tbody.innerHTML = '<tr><td colspan="8"><span class="skel skel--row" style="width:96%"></span></td></tr><tr><td colspan="8"><span class="skel skel--row" style="width:92%"></span></td></tr>';
   loadData();
+  // Re-évalue le panel alertes (caché si chain ≠ ethereum)
+  if(typeof loadAlerts === 'function') loadAlerts();
   const a = CHAIN_ACCENT[chain] || CHAIN_ACCENT.ethereum;
   showToast(`Bascule sur ${chain.charAt(0).toUpperCase() + chain.slice(1)} (${a.label})`, 'success', 1800);
 }
