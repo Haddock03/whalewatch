@@ -2537,15 +2537,18 @@ async function loadChainOverview(){
     const d = await r.json();
     const chains = d.chains || [];
     const fmtV = v => v >= 1e9 ? '$'+(v/1e9).toFixed(2)+'B' : v >= 1e6 ? '$'+(v/1e6).toFixed(0)+'M' : v>0 ? '$'+Math.round(v).toLocaleString() : '—';
+    const STALE_THRESHOLD_MS = 24 * 3600 * 1000; // 24h
     grid.innerHTML = chains.map(c => {
       const a = CHAIN_ACCENT[c.key] || CHAIN_ACCENT.ethereum;
       const isActive = c.key === _currentChain;
       const ageMs = c.last_updated ? (Date.now() - new Date(c.last_updated).getTime()) : null;
+      const isStale = ageMs != null && ageMs > STALE_THRESHOLD_MS;
       const age = ageMs != null ? _humanAge(ageMs) : 'pas encore d\'analyse';
+      const staleIcon = isStale ? '<span title="Cache > 24h" style="color:#ffb050;margin-left:4px">⏱</span>' : '';
       return `<button onclick="onChainChange('${c.key}')" type="button"
         class="chain-mini-card"
         aria-pressed="${isActive}"
-        style="text-align:left;border:1px solid ${isActive ? a.color : 'var(--border)'};background:${isActive ? a.color + '12' : 'rgba(2,12,27,.55)'};border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;gap:4px;color:inherit;font:inherit">
+        style="text-align:left;border:1px solid ${isActive ? a.color : 'var(--border)'};background:${isActive ? a.color + '12' : 'rgba(2,12,27,.55)'};border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;gap:4px;color:inherit;font:inherit${isStale ? ';opacity:.75' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="width:8px;height:8px;border-radius:50%;background:${a.color};box-shadow:0 0 6px ${a.color}"></span>
@@ -2554,7 +2557,7 @@ async function loadChainOverview(){
           ${isActive ? `<span style="font-size:9px;color:${a.color};font-weight:700">ACTIVE</span>` : ''}
         </div>
         <div style="font-family:var(--font-mono);font-weight:700;font-size:16px;color:${c.has_data ? 'var(--text)' : 'var(--muted)'}">${fmtV(c.total_volume_usd)}</div>
-        <div class="fs-xs text-muted" style="font-size:10px">${c.total_wallets || 0} wallets · ${age}</div>
+        <div class="fs-xs text-muted" style="font-size:10px">${c.total_wallets || 0} wallets · ${age}${staleIcon}</div>
       </button>`;
     }).join('');
   }catch(e){ /* silencieux : l'utilisateur n'en sera pas privé du dashboard */ }
