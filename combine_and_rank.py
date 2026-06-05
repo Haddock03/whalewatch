@@ -28,6 +28,11 @@ KNOWN_LABELS = {
     "0x00000000003b3cc22aF3aE1EAc0440BcEe416B40": "MEV Bot (Sandwich)",
     "0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C": "Wintermute (MM)",
     "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9": "Jump Trading",
+    # ── Infra découverte lors de l'investigation des top contracts non-labelés ──
+    # Les regex de wallet_classifier détectent "bridge" et "router" dans le label
+    # → ces wallets seront automatiquement marqués infra et pénalisés -55.
+    "0x70bf6634eE8Cb27D04478f184b9b8bB13E5f4710": "Across Bridge (Hub Pool)",
+    "0x52aa899454998Be5b000Ad077a46Bbe360F4e497": "Fluid Liquidity Router",
 }
 
 

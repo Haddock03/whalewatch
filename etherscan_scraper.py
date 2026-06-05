@@ -1,16 +1,24 @@
 # etherscan_scraper.py
-# Données on-chain des wallets via l'API Etherscan
+# Données on-chain des wallets via l'API Etherscan V2.
+#
+# 2026 — migration V1 → V2 obligatoire : l'API V1 (api.etherscan.io/api)
+# retourne désormais NOTOK avec un message "deprecated V1 endpoint".
+# La V2 unifie 50+ chains derrière une seule base URL et requiert un
+# paramètre `chainid` (1 = Ethereum mainnet). Docs : https://docs.etherscan.io/
 
 import os
 import requests
 import time
 
 ETHERSCAN_API_KEY = os.environ.get("ETHERSCAN_API_KEY", "")
-BASE_URL = "https://api.etherscan.io/api"
+BASE_URL = "https://api.etherscan.io/v2/api"
+CHAIN_ID = int(os.environ.get("ETHERSCAN_CHAIN_ID", "1"))  # 1 = Ethereum mainnet
 
 
 def _get(params, retries=3):
     params["apikey"] = ETHERSCAN_API_KEY
+    # V2 exige chainid sur tous les endpoints
+    params.setdefault("chainid", CHAIN_ID)
     for attempt in range(retries):
         try:
             r = requests.get(BASE_URL, params=params, timeout=15)
