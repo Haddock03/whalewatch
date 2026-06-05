@@ -4,6 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WhaleWatch — ETH On-Chain Radar</title>
+  <meta name="description" content="Radar on-chain Ethereum : tracking des baleines DEX, flux de capitaux et activité MEV. Données Dune + Etherscan, méthodologie ouverte. Pour comprendre, pas pour copier." />
+  <meta name="theme-color" content="#020c1b" />
+  <link rel="canonical" href="https://whalewatchapp.io/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WhaleWatch" />
+  <meta property="og:url" content="https://whalewatchapp.io/" />
+  <meta property="og:title" content="WhaleWatch — Radar on-chain Ethereum" />
+  <meta property="og:description" content="Traque les baleines DEX, les flux et l'activité MEV en temps réel. Données vérifiables, pas de boîte noire." />
+  <meta property="og:image" content="https://whalewatchapp.io/static/assets/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="WhaleWatch — Radar on-chain Ethereum" />
+  <meta name="twitter:description" content="Traque les baleines DEX, les flux et l'activité MEV en temps réel. Données vérifiables, pas de boîte noire." />
+  <meta name="twitter:image" content="https://whalewatchapp.io/static/assets/og.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/assets/whale.css">
@@ -217,6 +232,33 @@
       color: var(--muted);
     }
     .empty-state svg { width: 32px; height: 32px; opacity: .4; margin-bottom: var(--s-3); }
+    .empty-state .btn { margin-top: var(--s-3); }
+    .empty-state--error svg { color: var(--red); opacity: .7; }
+
+    /* Skeleton loaders — shimmer pour les états de chargement */
+    .skel {
+      display: inline-block;
+      vertical-align: middle;
+      background: linear-gradient(90deg,
+        rgba(255,255,255,.04) 0%,
+        rgba(255,255,255,.10) 50%,
+        rgba(255,255,255,.04) 100%);
+      background-size: 200% 100%;
+      animation: skel-shimmer 1.4s ease-in-out infinite;
+      border-radius: 4px;
+      color: transparent !important;
+    }
+    .skel--num   { width: 5.5ch; height: .9em; }
+    .skel--num-l { width: 7ch;   height: 1em;  }
+    .skel--text  { width: 8ch;   height: .8em; }
+    .skel--row   { width: 100%;  height: 18px; margin: 6px 0; border-radius: 4px; }
+    @keyframes skel-shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skel { animation: none; background: rgba(255,255,255,.06); }
+    }
 
     /* Pagination */
     .pagination {
@@ -485,7 +527,7 @@
   <section class="hero-strip">
     <div>
       <h1 class="hero-strip-title">Plonge dans <span class="accent">l'océan des baleines</span></h1>
-      <p class="hero-strip-sub"><span id="hero-wallets">—</span> wallets suivis · <span id="hero-volume">—</span> de flux DEX · <span id="hero-mev">—</span> prédateurs MEV repérés</p>
+      <p class="hero-strip-sub"><span id="hero-wallets" class="skel skel--text">—</span> wallets suivis · <span id="hero-volume" class="skel skel--text">—</span> de flux DEX · <span id="hero-mev" class="skel skel--text">—</span> prédateurs MEV repérés</p>
     </div>
     <div class="hero-strip-whale" aria-hidden="true">🐳</div>
   </section>
@@ -503,7 +545,7 @@
         <span class="stat-label">Flux 7j</span>
         <span class="stat-emoji" aria-hidden="true">🌊</span>
       </div>
-      <p id="stat-volume" class="stat-value tabular-nums">—</p>
+      <p id="stat-volume" class="stat-value tabular-nums"><span class="skel skel--num-l">—</span></p>
       <p class="stat-sub">Volume DEX Ethereum</p>
     </div>
 
@@ -517,8 +559,8 @@
         <span class="stat-label">École</span>
         <span class="stat-emoji" aria-hidden="true">🐠</span>
       </div>
-      <p id="stat-total" class="stat-value tabular-nums">—</p>
-      <p id="stat-contracts-sub" class="stat-sub">— smart contracts</p>
+      <p id="stat-total" class="stat-value tabular-nums"><span class="skel skel--num-l">—</span></p>
+      <p id="stat-contracts-sub" class="stat-sub">smart contracts trackés</p>
     </div>
 
     <div class="stat stat--red">
@@ -531,7 +573,7 @@
         <span class="stat-label">Prédateurs</span>
         <span class="stat-emoji" aria-hidden="true">🦈</span>
       </div>
-      <p id="stat-mev" class="stat-value tabular-nums">—</p>
+      <p id="stat-mev" class="stat-value tabular-nums"><span class="skel skel--num-l">—</span></p>
       <p id="stat-mev-vol" class="stat-sub">MEV vol cumulé</p>
     </div>
 
@@ -684,7 +726,7 @@
       <span class="pro-card-badge">PRO</span>
       <div style="flex:1">
         <div class="pro-card-title">⚡ Smart Money Leaderboard</div>
-        <div class="pro-card-sub">Top wallets non-MEV avec un score d'alpha élevé — candidats au copy-trading</div>
+        <div class="pro-card-sub">Top wallets non-MEV avec un score d'alpha élevé — wallets à surveiller (pas à copier aveuglément)</div>
       </div>
       <a href="/pro/live" class="btn btn-ghost btn-sm">Voir tout →</a>
     </div>
@@ -703,7 +745,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <h4>Débloque le Smart Money Leaderboard</h4>
-        <p>Score d'alpha calculé par wallet (volume × diversité × non-MEV) + copy-trade picks + alertes temps réel.</p>
+        <p>Score d'alpha par wallet (volume × diversité × non-MEV), wallets à surveiller en priorité, alertes temps réel. Pour comprendre les flux, pas pour copier aveuglément.</p>
         <button onclick="toggleProMode()">⚡ Activer le mode Pro</button>
       </div>
     </div>
@@ -764,10 +806,11 @@
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="8" class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 6c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
-            <p>Océan vide — cliquez <strong style="color:var(--text)">Sonar</strong> pour scanner</p>
-          </td></tr>
+          <tr><td colspan="8"><span class="skel skel--row" style="width:96%"></span></td></tr>
+          <tr><td colspan="8"><span class="skel skel--row" style="width:92%"></span></td></tr>
+          <tr><td colspan="8"><span class="skel skel--row" style="width:94%"></span></td></tr>
+          <tr><td colspan="8"><span class="skel skel--row" style="width:90%"></span></td></tr>
+          <tr><td colspan="8"><span class="skel skel--row" style="width:95%"></span></td></tr>
         </tbody>
       </table>
     </div>
@@ -1265,7 +1308,11 @@ function updateStats(data){
   if(ep) _analysisEthPrice = ep;
   document.getElementById('stat-eth').textContent=fmtPrice(ep);
   document.getElementById('eth-price').textContent=fmtPrice(ep);
-  // Hero strip live stats
+  // Hero strip live stats — retire la classe skel pour révéler le texte
+  ['hero-wallets','hero-volume','hero-mev'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('skel','skel--text','skel--num-l');
+  });
   document.getElementById('hero-wallets').textContent = ws.length;
   document.getElementById('hero-volume').textContent  = formatUSDShort(totVol);
   document.getElementById('hero-mev').textContent     = mevs.length;
@@ -2211,19 +2258,59 @@ function renderTradesPanel(d){
 // ═════════════════════════════════════════════════════════════════════════════
 // Data
 // ═════════════════════════════════════════════════════════════════════════════
+// État du dashboard : 'loading' | 'success' | 'empty' | 'error'
+// — initial : 'loading' tant que le 1er fetch n'a pas répondu
+let _dashState = 'loading';
+
+function _renderTbodyState(state, msg){
+  const tbody = document.getElementById('tbody');
+  if(!tbody) return;
+  if(state === 'empty'){
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
+      <p>${msg || 'Aucun wallet à afficher pour le moment.'}</p>
+      <button onclick="triggerRefresh()" class="btn btn-primary btn-sm">Lancer une analyse</button>
+    </td></tr>`;
+  } else if(state === 'error'){
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state empty-state--error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p>${msg || 'Erreur de chargement des données.'}</p>
+      <button onclick="loadData()" class="btn btn-primary btn-sm">Réessayer</button>
+    </td></tr>`;
+  }
+}
+
+function _showKpiSkeletons(){
+  const ids = ['stat-volume','stat-total','stat-mev','hero-wallets','hero-volume','hero-mev'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if(el && !el.querySelector('.skel')){
+      el.innerHTML = '<span class="skel skel--num-l">—</span>';
+    }
+  });
+}
+
 async function loadData(){
+  // Si on est en error/empty et que l'utilisateur clique "Réessayer", remettre des skeletons
+  if(_dashState === 'error' || _dashState === 'empty'){
+    _showKpiSkeletons();
+    const tbody = document.getElementById('tbody');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="8"><span class="skel skel--row" style="width:96%"></span></td></tr><tr><td colspan="8"><span class="skel skel--row" style="width:92%"></span></td></tr><tr><td colspan="8"><span class="skel skel--row" style="width:94%"></span></td></tr>';
+  }
+  _dashState = 'loading';
   try{
-    const r=await fetch('/api/wallets');
-    const data=await r.json();
-    allWallets=(data.wallets||[]).map(w=>{
-      const avg=(w.dune_nb_trades&&w.dune_nb_trades>0)?(w.dune_volume_usd||0)/w.dune_nb_trades:0;
-      const enriched={...w, avg_trade_usd:avg};
-      // smart_score peut déjà venir du back-end ; sinon on calcule en JS
+    const r = await fetch('/api/wallets');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    allWallets = (data.wallets||[]).map(w => {
+      const avg = (w.dune_nb_trades && w.dune_nb_trades > 0) ? (w.dune_volume_usd||0)/w.dune_nb_trades : 0;
+      const enriched = {...w, avg_trade_usd: avg};
       if(enriched.smart_score == null) enriched.smart_score = smartScoreLocal(enriched);
       return enriched;
     });
     if(allWallets.length){
-      maxVol=Math.max(...allWallets.map(w=>w.total_volume_usd||0));
+      _dashState = 'success';
+      maxVol = Math.max(...allWallets.map(w => w.total_volume_usd||0));
       updateStats(data);
       updateCharts(allWallets);
       renderSmartLeaderboard(allWallets);
@@ -2242,8 +2329,20 @@ async function loadData(){
           showToast(`${catEmoji} Baleine détectée · ${addr} · ${fmtV(topVol)} · ${trades} trades/7j`, 'whale', 5200);
         }
       }
+    } else {
+      // Réponse OK mais 0 wallet → vrai vide. Affiche le bouton « Lancer une analyse ».
+      _dashState = 'empty';
+      ['stat-volume','stat-total','stat-mev'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent = '—'; });
+      ['hero-wallets','hero-volume','hero-mev'].forEach(id => { const el=document.getElementById(id); if(el){ el.classList.remove('skel','skel--text','skel--num-l'); el.textContent = '—'; } });
+      _renderTbodyState('empty', 'Pas encore de données — lance une analyse pour scanner l\'océan.');
     }
-  }catch(e){console.error(e);}
+  } catch(e){
+    console.error('[loadData]', e);
+    _dashState = 'error';
+    ['stat-volume','stat-total','stat-mev'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent = '—'; });
+    ['hero-wallets','hero-volume','hero-mev'].forEach(id => { const el=document.getElementById(id); if(el){ el.classList.remove('skel','skel--text','skel--num-l'); el.textContent = '—'; } });
+    _renderTbodyState('error', 'Impossible de charger les wallets — vérifie ta connexion ou réessaie.');
+  }
 }
 
 async function triggerRefresh(){
