@@ -2642,11 +2642,22 @@ async function triggerRefresh(){
     // /api/refresh enchaîne wallets + patterns (cf. _run_analysis.py)
     const r = await fetch(`/api/refresh?chain=${encodeURIComponent(_currentChain)}`, { method: 'POST' });
     const d = await r.json();
+    // Erreur explicite serveur (ex: clés API manquantes → HTTP 400)
+    if(!r.ok || d.status === 'config_error' || d.error){
+      btn.disabled = false;
+      document.getElementById('refresh-icon').classList.remove('spin');
+      showToast(d.error || `Erreur ${r.status} : impossible de lancer l'analyse`, 'error', 6000);
+      return;
+    }
     if(d.status==='running' || d.message==='Analyse lancée') startPoll();
     else{ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
     // Les patterns arrivent à la fin du pipeline — poll discret en parallèle
     _pollPatternsUntilReady();
-  }catch(e){ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
+  }catch(e){
+    btn.disabled = false;
+    document.getElementById('refresh-icon').classList.remove('spin');
+    showToast('Erreur réseau pendant le Sonar', 'error', 4000);
+  }
 }
 
 // ─── Polling patterns indépendant du polling wallets ────────────────────────
