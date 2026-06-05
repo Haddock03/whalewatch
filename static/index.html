@@ -2491,6 +2491,10 @@ function _applyChainTheme(chain){
     // Background avec opacité faible de la couleur d'accent
     chip.style.background = a.color + '15'; // 15 = ~8% en hex
   }
+  // Met à jour le <title> de l'onglet — utile pour la nav multi-onglets
+  // Format : "WhaleWatch · Arbitrum — ETH On-Chain Radar"
+  const chainName = chain.charAt(0).toUpperCase() + chain.slice(1);
+  document.title = `WhaleWatch · ${chainName} — On-Chain Radar`;
 }
 function onChainChange(chain){
   if(chain === _currentChain) return;
