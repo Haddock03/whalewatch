@@ -1966,17 +1966,30 @@ function _scheduleAutoRefresh(){
   _autoTimer = setTimeout(()=>{ if(!poll) triggerRefresh(); }, AUTO_REFRESH_MS);
 }
 
+function _humanAge(ms){
+  const sec = Math.floor(ms/1000);
+  if(sec < 60)        return `il y a ${sec}s`;
+  if(sec < 3600)      return `il y a ${Math.floor(sec/60)}m`;
+  if(sec < 86400)     return `il y a ${Math.floor(sec/3600)}h`;
+  return `il y a ${Math.floor(sec/86400)}j`;
+}
 function _startLiveCounter(){
   setInterval(()=>{
     const el = document.getElementById('last-updated');
     const cd = document.getElementById('refresh-countdown');
-    if(!el) return;
+    const chip = document.getElementById('live-chip');
     const now = Date.now();
     if(_lastUpdatedAt){
-      const sec = Math.floor((now - _lastUpdatedAt)/1000);
-      if(sec < 60)        el.textContent = `il y a ${sec}s`;
-      else if(sec < 3600) el.textContent = `il y a ${Math.floor(sec/60)}m`;
-      else                el.textContent = `il y a ${Math.floor(sec/3600)}h`;
+      const age = _humanAge(now - _lastUpdatedAt);
+      if(el) el.textContent = age;
+      // Met à jour la live-chip avec freshness data
+      if(chip){
+        const a = (CHAIN_ACCENT[_currentChain] || CHAIN_ACCENT.ethereum);
+        chip.textContent = `LIVE · ${a.label} · ${age}`;
+      }
+    } else if(chip){
+      const a = (CHAIN_ACCENT[_currentChain] || CHAIN_ACCENT.ethereum);
+      chip.textContent = `LIVE · 7j · ${a.label}`;
     }
     if(cd && _nextRefreshAt){
       const remain = _nextRefreshAt - now;
@@ -2478,6 +2491,7 @@ function onChainChange(chain){
   _applyChainTheme(chain);
   // Reset state + reload everything
   _whaleAlertShown = false;
+  _lastUpdatedAt = null;  // évite d'afficher l'âge de l'ancienne chain
   _showKpiSkeletons();
   const tbody = document.getElementById('tbody');
   if(tbody) tbody.innerHTML = '<tr><td colspan="8"><span class="skel skel--row" style="width:96%"></span></td></tr><tr><td colspan="8"><span class="skel skel--row" style="width:92%"></span></td></tr>';
