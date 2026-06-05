@@ -126,6 +126,7 @@ Le dashboard a un sélecteur de chain dans le header avec un dot coloré (brand 
 | `GET /api/wallet/{addr}?chain=X` | Détail wallet sur X |
 | `GET /api/wallet/{addr}/trades?chain=X` | Trades du wallet sur X |
 | `POST /api/refresh?chain=X` | Lance un Sonar pour X |
+| `GET /api/health` | Health check pour load balancer (status par chain, âge cache) |
 
 ## Smart Money Score
 
