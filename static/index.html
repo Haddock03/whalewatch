@@ -571,7 +571,7 @@
         <span class="stat-emoji" aria-hidden="true">🌊</span>
       </div>
       <p id="stat-volume" class="stat-value tabular-nums"><span class="skel skel--num-l">—</span></p>
-      <p class="stat-sub">Volume DEX Ethereum</p>
+      <p id="stat-volume-sub" class="stat-sub">Volume DEX Ethereum</p>
     </div>
 
     <div class="stat stat--cyan">
@@ -2504,6 +2504,14 @@ function _applyChainTheme(chain){
   // Format : "WhaleWatch · Arbitrum — ETH On-Chain Radar"
   const chainName = chain.charAt(0).toUpperCase() + chain.slice(1);
   document.title = `WhaleWatch · ${chainName} — On-Chain Radar`;
+  // Met à jour les sous-titres KPI qui mentionnent la chain
+  const sub = document.getElementById('stat-volume-sub');
+  if(sub){
+    // Mapping des labels d'affichage de la chain (BNB Chain en deux mots)
+    const labels = {ethereum:'Ethereum', arbitrum:'Arbitrum', base:'Base',
+                    optimism:'Optimism', polygon:'Polygon', bnb:'BNB Chain'};
+    sub.textContent = `Volume DEX ${labels[chain] || chainName}`;
+  }
 }
 async function loadChainOverview(){
   // Petit widget qui montre les 6 chains avec leurs volumes — clic = switch.
