@@ -477,11 +477,12 @@
     <span class="live-chip">LIVE · 7j</span>
 
     <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
-      <a href="/"      class="nav-link is-active">🏠 Dashboard</a>
-      <a href="/pro/live"   class="nav-link nav-link--pro">⚡ Pro</a>
-      <a href="/why"   class="nav-link">🌊 Why</a>
-      <a href="/bot"   class="nav-link">🤖 Bot</a>
-      <a href="/guide" class="nav-link">📘 Guide</a>
+      <a href="/"            class="nav-link is-active">Dashboard</a>
+      <a href="/pro/live"    class="nav-link nav-link--pro">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
 
     <!-- Pro / Free toggle -->
@@ -592,6 +593,12 @@
     </div>
 
   </section>
+
+  <!-- P1.2 — sources des chiffres -->
+  <p class="fs-xs text-muted" style="text-align:right;margin-top:-12px;margin-bottom:var(--s-4)">
+    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Sources : <a href="https://dune.com/queries" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">Dune Analytics</a> · <a href="https://etherscan.io/labelcloud" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">Etherscan tags</a> · <a href="https://www.coingecko.com/" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">CoinGecko</a> — <a href="/methodology" style="color:var(--blue);text-decoration:underline">méthode complète →</a>
+  </p>
 
   <!-- ═══ TRADING ZONES ════════════════════════════════════════════════════ -->
   <section class="card card-pad-lg hidden mb-5" id="zones-card">
@@ -744,9 +751,13 @@
         <div class="pro-lock-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
-        <h4>Débloque le Smart Money Leaderboard</h4>
+        <h4>Aperçu Pro — Smart Money Leaderboard</h4>
         <p>Score d'alpha par wallet (volume × diversité × non-MEV), wallets à surveiller en priorité, alertes temps réel. Pour comprendre les flux, pas pour copier aveuglément.</p>
-        <button onclick="toggleProMode()">⚡ Activer le mode Pro</button>
+        <button onclick="toggleProMode()">Activer l'aperçu Pro (gratuit)</button>
+        <p class="fs-xs text-muted" style="margin-top:var(--s-3);text-align:center">
+          Aperçu gratuit pendant la phase beta — tarification à venir.<br>
+          <a href="/methodology#score" style="color:var(--blue);text-decoration:underline">Détail du score</a>
+        </p>
       </div>
     </div>
   </section>
@@ -778,6 +789,7 @@
       <div class="filters" id="filter-chips">
         <button class="chip is-active" data-cat="all"             onclick="setCat('all',this)">Tous</button>
         <button class="chip chip--smart" data-cat="smart"         onclick="setCat('smart',this)">⚡ Smart Money</button>
+        <button class="chip" data-cat="no-infra"                  onclick="setCat('no-infra',this)" title="Cache CEX, bridges, routers DEX, market makers, MEV bots">Hors infra</button>
         <button class="chip" data-cat="MEV Bot"                  onclick="setCat('MEV Bot',this)">Prédateurs</button>
         <button class="chip" data-cat="DEX Protocol"             onclick="setCat('DEX Protocol',this)">DEX</button>
         <button class="chip" data-cat="Market Maker"             onclick="setCat('Market Maker',this)">Market Maker</button>
@@ -841,12 +853,14 @@
       <span class="brand-sub">Ethereum On-Chain Radar</span>
     </a>
     <nav class="nav">
-      <a href="/"      class="nav-link">Dashboard</a>
-      <a href="/guide" class="nav-link">Guide</a>
-      <a href="/bot"   class="nav-link">Bot</a>
-      <a href="/why"   class="nav-link">Why</a>
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
-    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+    <p class="site-footer-tag">Contenu éducatif — pas un conseil financier · DEX on-chain seulement · DYOR</p>
   </div>
 </footer>
 
@@ -1011,26 +1025,26 @@ function smartTier(s){
 function renderSmartLeaderboard(wallets){
   const host = document.getElementById('smart-leaderboard');
   if(!host) return;
+  // P1.1 — exclut TOUTE l'infrastructure (CEX, bridges, routers, MM, MEV)
+  // pas seulement MEV Bot. Le « Smart Money Leaderboard » ne doit montrer
+  // que des wallets dont l'activité ressemble à de l'alpha discrétionnaire.
   const ranked = wallets
-    .map(w => ({ ...w, _s: smartScore(w) }))
-    .filter(w => w.category !== 'MEV Bot' && w._s >= 40)
+    .map(w => ({ ...w, _s: smartScore(w), _type: classifyWalletType(w) }))
+    .filter(w => !w._type.infra && w._s >= 40)
     .sort((a,b) => b._s - a._s)
     .slice(0, 8);
   if(!ranked.length){
-    host.innerHTML = '<p class="text-muted fs-sm" style="padding:var(--s-4) 0;text-align:center">Pas encore de données — lance un Sonar.</p>';
+    host.innerHTML = '<p class="text-muted fs-sm" style="padding:var(--s-4) 0;text-align:center">Pas encore de wallets passant les filtres infra — lance un Sonar.</p>';
     return;
   }
   host.innerHTML = ranked.map((w, i) => {
     const tier = smartTier(w._s);
-    const typeBadge = w.is_contract === false
-      ? '<span class="tag tag--unk">EOA</span>'
-      : '<span class="tag tag--sc">SC</span>';
     return `<div class="smart-row" onclick="openModal('${w.address}')" style="cursor:pointer">
       <span class="rank-pill">${i+1}</span>
       <span class="addr">${truncAddr(w.address)}</span>
       <span class="vol">${formatUSDShort(w.total_volume_usd||0)}</span>
       <span class="smart-score ${tier.cls}">${w._s}</span>
-      ${typeBadge}
+      <span class="${w._type.cls}">${w._type.label}</span>
     </div>`;
   }).join('');
 }
@@ -1066,6 +1080,31 @@ function catClass(cat){
   if(cat==='Other')         return 'tag tag--other';
   return 'tag tag--unk';
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// P1.1 — Classification granulaire wallet_type (frontend)
+// Distingue l'« alpha » (EOA + smart contracts opaques) de l'« infrastructure »
+// (CEX, bridges, routers DEX, market makers, MEV bots) pour la fiabilité du
+// leaderboard. Détection par regex sur le label + category Dune.
+// ═════════════════════════════════════════════════════════════════════════════
+const _RX_ROUTER = /(router|aggregator|1inch|paraswap|0x protocol|cowswap|kyber|metamask swap|universal router|swaprouter)/i;
+const _RX_BRIDGE = /(bridge|stargate|across|hop|wormhole|synapse|debridge|orbiter|li[\s.-]?fi|connext)/i;
+const _RX_CEX    = /(binance|coinbase|kraken|bybit|okx|kucoin|huobi|bitfinex|gate\.io|crypto\.com|gemini|bitstamp|cex|exchange[: ])/i;
+const _RX_MM     = /(market maker|wintermute|jump trading|jane street|amber|gsr|cumberland|flow traders|alameda)/i;
+const _RX_MEV    = /(mev|sandwich|jaredfromsubway|frontrunner|backrun|atomic arb)/i;
+
+function classifyWalletType(w){
+  const cat = w.category || 'Unknown';
+  const lbl = (w.label || '') + ' ' + (w.contract_name || '');
+  if(cat === 'MEV Bot' || _RX_MEV.test(lbl))    return { key:'mev',     label:'MEV',     cls:'tag tag--mev',    infra:true };
+  if(cat === 'Market Maker' || _RX_MM.test(lbl))return { key:'mm',      label:'MM',      cls:'tag tag--mm',     infra:true };
+  if(_RX_CEX.test(lbl))                         return { key:'cex',     label:'CEX',     cls:'tag tag--cex',    infra:true };
+  if(_RX_BRIDGE.test(lbl))                      return { key:'bridge',  label:'Bridge',  cls:'tag tag--bridge', infra:true };
+  if(cat === 'DEX Protocol' || _RX_ROUTER.test(lbl)) return { key:'router',  label:'Router',  cls:'tag tag--router', infra:true };
+  if(cat === 'Smart Contract' || w.is_contract === true) return { key:'contract', label:'Contract', cls:'tag tag--sc',  infra:false };
+  return { key:'eoa', label:'EOA', cls:'tag tag--eoa', infra:false };
+}
+function isInfra(w){ return classifyWalletType(w).infra; }
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Charts
@@ -1180,13 +1219,11 @@ function renderTable(wallets){
       ? `<span class="font-mono font-bold tabular-nums" style="color:${tier.color};font-size:13px">#${w.rank}</span>`
       : `<span class="font-mono tabular-nums" style="color:var(--muted)">${w.rank}</span>`;
     const tierBadge=`<span class="tier ${tier.cls}" title="${tier.label}"><span class="emoji">${tier.emoji}</span>${tier.label}</span>`;
-    const typeBadge=w.is_contract===true
-      ? '<span class="badge badge--sc">SC</span>'
-      : w.is_contract===false
-        ? '<span class="badge badge--eoa">EOA</span>'
-        : '';
+    // P1.1 — badge type granulaire (EOA/Contract/Router/Bridge/CEX/MM/MEV)
+    const wt = classifyWalletType(w);
+    const typeBadge = `<span class="${wt.cls} ${wt.infra ? 'tag--infra' : ''}" title="${wt.infra ? 'Infrastructure — pas un signal d’alpha' : 'Wallet potentiellement actif'}">${wt.label}</span>`;
     const label=w.label&&w.label!=='Unknown'?w.label:'Unknown';
-    const catBadge=w.category?`<span class="${catClass(w.category)}">${w.category}</span>`:'';
+    const catBadge='';
     const avgTrade=(w.dune_nb_trades&&w.dune_nb_trades>0)
       ? formatUSD((w.dune_volume_usd||0)/w.dune_nb_trades)
       : null;
@@ -2037,7 +2074,9 @@ function applyFilters(){
   filtered=allWallets.filter(w=>{
     let mc;
     if(catFilter==='smart'){
-      mc = (w.category !== 'MEV Bot') && ((w.smart_score ?? smartScore(w)) >= 55);
+      mc = !isInfra(w) && ((w.smart_score ?? smartScore(w)) >= 55);
+    } else if(catFilter==='no-infra'){
+      mc = !isInfra(w);
     } else {
       mc = catFilter==='all' || (w.category||'Unknown')===catFilter;
     }
@@ -2056,9 +2095,11 @@ function sortBy(field){
 function updateFilterCounts(wallets){
   const counts={};
   wallets.forEach(w=>{ const c=w.category||'Unknown'; counts[c]=(counts[c]||0)+1; });
+  const nonInfra = wallets.filter(w => !isInfra(w)).length;
   const total=wallets.length;
   const labels={
     'all':            `Tous · ${total}`,
+    'no-infra':       `Hors infra · ${nonInfra}`,
     'MEV Bot':        `Prédateurs · ${counts['MEV Bot']||0}`,
     'DEX Protocol':   `DEX · ${counts['DEX Protocol']||0}`,
     'Market Maker':   `Market Maker · ${counts['Market Maker']||0}`,

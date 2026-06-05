@@ -53,12 +53,13 @@
       </span>
     </a>
     <span class="live-chip">BOT · guide</span>
-    <nav class="nav" style="margin-left:auto">
-      <a href="/"      class="nav-link">🏠 Dashboard</a>
-      <a href="/pro/live"   class="nav-link nav-link--pro">⚡ Pro</a>
-      <a href="/guide" class="nav-link">📘 Guide</a>
-      <a href="/bot"   class="nav-link is-active">🤖 Bot</a>
-      <a href="/why"   class="nav-link">🌊 Why</a>
+    <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link nav-link--pro">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link is-active">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
   </div>
   <div id="read-progress" class="read-bar"></div>
@@ -174,6 +175,11 @@
         <div class="alert alert--info mt-4">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <span>Commence par <strong>une seule stratégie</strong>, maîtrise-la, puis diversifie. Le multi-stratégie non maîtrisé est la première cause d'échec.</span>
+        </div>
+        <!-- P2.3 — lien éducatif → produit -->
+        <div class="alert mt-3" style="background:rgba(75,212,255,.05);border-color:rgba(75,212,255,.30);color:var(--cyan)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
+          <span>Sandwich, frontrun, backrun = MEV sur DEX. Pour voir lesquels sont actifs <em>en ce moment</em> sur Ethereum, le <a href="/" style="color:var(--cyan);text-decoration:underline">radar du dashboard</a> les liste avec leur volume cumulé (catégorie « Prédateurs »).</span>
         </div>
       </div>
     </section>
@@ -640,7 +646,7 @@ alert(<span class="st">f"CIRCUIT BREAKER — DD: </span>{drawdown:.1f}<span clas
         </div>
         <div class="alert alert--success mt-4">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>Pour débuter : <strong>CCXT + Freqtrade</strong> sur un VPS Hetzner. Stack simple, documentée, et suffisante pour aller profitable rapidement.</span>
+          <span>Pour débuter : <strong>CCXT + Freqtrade</strong> sur un VPS Hetzner. Stack simple, documentée, et suffisante pour <strong>démarrer proprement et en sécurité</strong>. La rentabilité, elle, dépend de la stratégie, des frais et de la discipline — pas de l'outil.</span>
         </div>
       </div>
     </section>
@@ -663,12 +669,14 @@ alert(<span class="st">f"CIRCUIT BREAKER — DD: </span>{drawdown:.1f}<span clas
       <span class="brand-sub">Ethereum On-Chain Radar</span>
     </a>
     <nav class="nav">
-      <a href="/"      class="nav-link">Dashboard</a>
-      <a href="/guide" class="nav-link">Guide</a>
-      <a href="/bot"   class="nav-link">Bot</a>
-      <a href="/why"   class="nav-link">Why</a>
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
-    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+    <p class="site-footer-tag">Contenu éducatif — pas un conseil financier · DEX on-chain seulement · DYOR</p>
   </div>
 </footer>
 

@@ -31,6 +31,7 @@ PAGES = {
     "/why":           "why.html",         "/why.html":         "why.html",
     "/guide":         "guide.html",       "/guide.html":       "guide.html",
     "/bot":           "bot.html",         "/bot.html":         "bot.html",
+    "/methodology":   "methodology.html", "/methodology.html": "methodology.html",
     "/pro/live":      "pro_live.html",
     "/pro/backtest":  "pro_backtest.html",
     "/pro/watchlist": "pro_watchlist.html",

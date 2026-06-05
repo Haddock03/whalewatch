@@ -670,12 +670,18 @@ main { view-transition-name: page-main; transition: opacity .18s ease; }
   white-space: nowrap;
   border: 1px solid;
 }
-.tag--mev   { background: rgba(255,122,156,.10); color: #ffadc1; border-color: rgba(255,122,156,.30); }
-.tag--dex   { background: rgba(122,169,255,.10); color: #adc8ff; border-color: rgba(122,169,255,.30); }
-.tag--mm    { background: rgba(196,125,255,.10); color: #dab5ff; border-color: rgba(196,125,255,.30); }
-.tag--sc    { background: rgba(255,217,112,.10); color: #ffe39a; border-color: rgba(255,217,112,.30); }
-.tag--other { background: rgba(123,170,207,.10); color: #b8d3e4; border-color: rgba(123,170,207,.25); }
-.tag--unk   { background: rgba(78,122,158,.18); color: #98b6ce; border-color: rgba(78,122,158,.30); }
+.tag--mev    { background: rgba(255,122,156,.10); color: #ffadc1; border-color: rgba(255,122,156,.30); }
+.tag--dex    { background: rgba(122,169,255,.10); color: #adc8ff; border-color: rgba(122,169,255,.30); }
+.tag--mm     { background: rgba(196,125,255,.10); color: #dab5ff; border-color: rgba(196,125,255,.30); }
+.tag--sc     { background: rgba(255,217,112,.10); color: #ffe39a; border-color: rgba(255,217,112,.30); }
+.tag--other  { background: rgba(123,170,207,.10); color: #b8d3e4; border-color: rgba(123,170,207,.25); }
+.tag--unk    { background: rgba(78,122,158,.18); color: #98b6ce; border-color: rgba(78,122,158,.30); }
+/* P1.1 — distinguer infrastructure (CEX/Bridge/Router) du vrai alpha (EOA) */
+.tag--router { background: rgba(122,169,255,.10); color: #adc8ff; border-color: rgba(122,169,255,.30); }
+.tag--bridge { background: rgba(255,176,80,.10);  color: #ffd6a0; border-color: rgba(255,176,80,.30);  }
+.tag--cex    { background: rgba(255,160,80,.12);  color: #ffd3a8; border-color: rgba(255,160,80,.32);  }
+.tag--eoa    { background: rgba(46,212,168,.10);  color: #9affc1; border-color: rgba(46,212,168,.30);  }
+.tag--infra  { opacity: .92; }
 
 .badge{
   display: inline-block;

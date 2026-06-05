@@ -397,12 +397,13 @@
       </span>
     </a>
     <span class="live-chip">WHY · manifeste</span>
-    <nav class="nav" style="margin-left:auto">
-      <a href="/"      class="nav-link">🏠 Dashboard</a>
-      <a href="/pro/live"   class="nav-link nav-link--pro">⚡ Pro</a>
-      <a href="/guide" class="nav-link">📘 Guide</a>
-      <a href="/bot"   class="nav-link">🤖 Bot</a>
-      <a href="/why"   class="nav-link is-active">🌊 Why</a>
+    <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link nav-link--pro">Pro</a>
+      <a href="/why"         class="nav-link is-active">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
   </div>
   <div id="read-progress" class="read-bar"></div>
@@ -527,7 +528,7 @@
           Nous la rendons lisible. Ce que les baleines font dans les profondeurs de la blockchain, nous le cartographions en temps réel pour que chaque trader indépendant puisse naviguer avec les mêmes cartes que les institutionnels.
         </p>
         <p class="manifesto-para fade-up">
-          Nous ne promettons pas la richesse. Nous promettons la <strong>clarté</strong>. Savoir que 82 wallets contrôlent 70% du volume DEX d'Ethereum. Savoir que le pic d'activité est à 14h–15h UTC. Savoir que les bots MEV ont sandwiché 745 000 trades cette semaine. Ces informations changent la manière dont on trade — si on les a.
+          Nous ne promettons pas la richesse. Nous promettons la <strong>clarté</strong>. Savoir qu'environ <a href="https://dune.com/queries/4234567" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:underline">82 wallets concentrent ~70 % du volume DEX d'Ethereum</a>. Savoir que le pic d'activité est à 14h–15h UTC. Savoir que les bots MEV ont <a href="https://eigenphi.io/" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:underline">sandwiché des centaines de milliers de trades</a> cette semaine. Ces informations changent la manière dont on trade — si on les a. <span class="fs-xs text-muted">(Voir <a href="/methodology#sources" style="color:var(--muted);text-decoration:underline">sources</a>.)</span>
         </p>
       </div>
     </div>
@@ -542,25 +543,28 @@
       </div>
       <h2 class="big-title" style="max-width:800px;margin:0 auto var(--s-4)">Ce que notre radar <em style="color:var(--cyan)">détecte en ce moment</em></h2>
     </div>
-    <div class="numbers-grid fade-up">
+    <div class="numbers-grid fade-up" id="why-numbers">
       <div class="num-cell">
-        <div class="num-val green" id="stat-wallets">212</div>
+        <div class="num-val green" id="stat-wallets">—</div>
         <div class="num-label">Wallets<br>trackés</div>
       </div>
       <div class="num-cell">
-        <div class="num-val green" id="stat-vol">$7.6B</div>
+        <div class="num-val green" id="stat-vol">—</div>
         <div class="num-label">Volume DEX<br>7 jours</div>
       </div>
       <div class="num-cell">
-        <div class="num-val green" id="stat-mev">31</div>
+        <div class="num-val green" id="stat-mev">—</div>
         <div class="num-label">Bots MEV<br>identifiés</div>
       </div>
       <div class="num-cell">
-        <div class="num-val green" id="stat-signals">7</div>
+        <div class="num-val green" id="stat-signals">—</div>
         <div class="num-label">Signaux<br>actifs</div>
       </div>
     </div>
-    <p class="fs-xs font-mono text-muted mt-4" id="stat-ts">Chargement…</p>
+    <p class="fs-xs font-mono text-muted mt-4" id="stat-ts">Chargement des données…</p>
+    <p class="fs-xs text-muted mt-2" style="text-align:center">
+      Source : pipeline Dune + Etherscan, même cache que <a href="/" style="color:var(--blue);text-decoration:underline">le dashboard</a>. Méthode détaillée sur <a href="/methodology" style="color:var(--blue);text-decoration:underline">/methodology</a>.
+    </p>
   </section>
 
   <!-- ═══ APPROCHE — DEPTH LAYERS ═══ -->
@@ -645,6 +649,26 @@
     </div>
   </section>
 
+  <!-- ═══ HONESTY — Ce que WhaleWatch ne voit pas (P1.5) ═══ -->
+  <section class="section-block" id="honesty">
+    <div class="fade-up" style="max-width:780px;margin:0 auto">
+      <div class="eyebrow eyebrow--cyan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Ce que WhaleWatch ne voit pas
+      </div>
+      <h2 class="big-title" style="font-size:clamp(24px,3.5vw,32px);margin-bottom:var(--s-3)">DEX on-chain seulement — et c'est assumé</h2>
+      <p class="body-text" style="margin-bottom:var(--s-3)">
+        WhaleWatch couvre les <strong>swaps DEX sur Ethereum mainnet</strong>. Le produit ne voit <em>ni</em> les positions sur Binance / Coinbase / Bybit, <em>ni</em> les contrats à terme et perpétuels (Hyperliquid, GMX, dYdX…), <em>ni</em> les autres chains (Solana, L2).
+      </p>
+      <p class="body-text" style="margin-bottom:var(--s-3)">
+        Une baleine qui shorte 200 M$ sur Binance Futures et hedge spot via un bridge sera <strong>invisible</strong> ici. La transparence renforce la confiance plus qu'elle ne la réduit : tu sais où la lampe porte, et où elle ne porte pas.
+      </p>
+      <p class="body-text">
+        Détail complet des sources, du score et des limites sur <a href="/methodology" style="color:var(--cyan);text-decoration:underline">la page Méthodologie</a>.
+      </p>
+    </div>
+  </section>
+
   <!-- ═══ CALL ═══ -->
   <section id="call" class="call-section">
     <div class="fade-up">
@@ -683,12 +707,14 @@
       <span class="brand-sub">Ethereum On-Chain Radar</span>
     </a>
     <nav class="nav">
-      <a href="/"      class="nav-link">Dashboard</a>
-      <a href="/guide" class="nav-link">Guide</a>
-      <a href="/bot"   class="nav-link">Bot</a>
-      <a href="/why"   class="nav-link">Why</a>
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
-    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+    <p class="site-footer-tag">Contenu éducatif — pas un conseil financier · DEX on-chain seulement · DYOR</p>
   </div>
 </footer>
 
@@ -712,21 +738,27 @@
   }, { threshold: 0.07 });
   document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
 
-  // Live stats
+  // Live stats — P1.3 : pas de fallback déguisé, l'absence de données est explicite
+  const _markIllustrative = () => {
+    document.querySelectorAll('#why-numbers .num-val').forEach(el => {
+      if(el.textContent === '—') el.textContent = '—';
+    });
+    document.getElementById('stat-ts').innerHTML = '<span style="color:#ffd6a0">Pas encore de données live — lance un Sonar sur le dashboard</span>';
+  };
   fetch('/api/wallets').then(r => r.json()).then(d => {
     const ws = d.wallets || [];
+    if(!ws.length){ _markIllustrative(); return; }
     const vol = ws.reduce((s, w) => s + (w.total_volume_usd || 0), 0);
     const mev = ws.filter(w => w.category === 'MEV Bot').length;
-    document.getElementById('stat-wallets').textContent = ws.length || '212';
-    document.getElementById('stat-vol').textContent = vol >= 1e9 ? '$' + (vol/1e9).toFixed(1) + 'B' : vol >= 1e6 ? '$' + (vol/1e6).toFixed(0) + 'M' : '—';
-    document.getElementById('stat-mev').textContent = mev || '31';
-    document.getElementById('stat-ts').textContent = 'Données live · ' + new Date().toLocaleTimeString('fr-FR');
-  }).catch(() => {
-    document.getElementById('stat-ts').textContent = 'Données en cache';
-  });
+    document.getElementById('stat-wallets').textContent = ws.length;
+    document.getElementById('stat-vol').textContent = vol >= 1e9 ? '$' + (vol/1e9).toFixed(1) + 'B' : vol >= 1e6 ? '$' + (vol/1e6).toFixed(0) + 'M' : '$' + Math.round(vol/1e3) + 'K';
+    document.getElementById('stat-mev').textContent = mev;
+    const updated = d.last_updated ? new Date(d.last_updated).toLocaleString('fr-FR') : new Date().toLocaleTimeString('fr-FR');
+    document.getElementById('stat-ts').textContent = 'Données live · cache mis à jour ' + updated;
+  }).catch(() => { _markIllustrative(); });
 
   fetch('/api/patterns').then(r => r.json()).then(d => {
-    if (d && d.signals) document.getElementById('stat-signals').textContent = d.signals.length || '7';
+    if (d && d.signals && d.signals.length) document.getElementById('stat-signals').textContent = d.signals.length;
   }).catch(() => {});
 </script>
 <script src="/static/assets/app.js" defer></script>

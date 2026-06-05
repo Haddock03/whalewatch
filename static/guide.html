@@ -196,12 +196,13 @@
       </span>
     </a>
     <span class="live-chip">GUIDE · trader</span>
-    <nav class="nav" style="margin-left:auto">
-      <a href="/"      class="nav-link">🏠 Dashboard</a>
-      <a href="/pro/live"   class="nav-link nav-link--pro">⚡ Pro</a>
-      <a href="/guide" class="nav-link is-active">📘 Guide</a>
-      <a href="/bot"   class="nav-link">🤖 Bot</a>
-      <a href="/why"   class="nav-link">🌊 Why</a>
+    <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link nav-link--pro">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link is-active">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
   </div>
   <div id="read-progress" class="read-bar"></div>
@@ -389,6 +390,14 @@
               <div class="signal"><div class="signal-dot" style="background:var(--c-sc)"></div><div>Open Interest élevé + prix range = <strong>mouvement violent imminent</strong></div></div>
             </div>
           </div>
+        </div>
+        <!-- P2.3 — lien éducatif → produit -->
+        <div class="info-card mt-4" style="border-color:rgba(75,212,255,.30);background:rgba(75,212,255,.04)">
+          <h4 style="color:var(--cyan);display:flex;align-items:center;gap:8px">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 6c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
+            Côté on-chain : voir les baleines DEX dans WhaleWatch
+          </h4>
+          <p>Coinglass et Hyblock montrent les positions <em>off-chain</em> (CEX, perps). Pour le pendant on-chain — qui swap quoi, quand, sur quel DEX — c'est le <a href="/" style="color:var(--cyan);text-decoration:underline">leaderboard du dashboard</a>. Filtre « Hors infra » pour exclure routers et market makers.</p>
         </div>
       </div>
     </section>
@@ -774,12 +783,14 @@
       <span class="brand-sub">Ethereum On-Chain Radar</span>
     </a>
     <nav class="nav">
-      <a href="/"      class="nav-link">Dashboard</a>
-      <a href="/guide" class="nav-link">Guide</a>
-      <a href="/bot"   class="nav-link">Bot</a>
-      <a href="/why"   class="nav-link">Why</a>
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
     </nav>
-    <p class="site-footer-tag">L'information on-chain, pour tous.</p>
+    <p class="site-footer-tag">Contenu éducatif — pas un conseil financier · DEX on-chain seulement · DYOR</p>
   </div>
 </footer>
 
