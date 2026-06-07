@@ -193,14 +193,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "wallets": len(d.get("wallets", []) if d else []),
                     "healthy": healthy,
                 })
-            overall = "ok" if any(c["healthy"] for c in chains_health) else "degraded"
+            overall = "ok" if all(c["healthy"] for c in chains_health) else "degraded"
+            status_code = 200 if overall == "ok" else 503
             return self._json({
                 "status": overall,
                 "uptime_seconds": None,  # could track from process start
                 "timestamp": _utc_now_iso(),
                 "chains": chains_health,
                 "stale_threshold_hours": stale_threshold_hours,
-            })
+            }, status_code)
 
         if path == "/api/status":
             with _lock:
