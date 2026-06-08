@@ -1655,7 +1655,7 @@ async function loadChainOverview(){
       return `<button onclick="onChainChange('${c.key}')" type="button"
         class="chain-mini-card"
         aria-pressed="${isActive}"
-        style="text-align:left;border:1px solid ${isActive ? a.color : 'var(--border)'};background:${isActive ? a.color + '12' : 'rgba(2,12,27,.55)'};border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;gap:4px;color:inherit;font:inherit${isStale ? ';opacity:.75' : ''}">
+        style="text-align:left;border:1px solid ${isActive ? a.color : 'var(--border)'};background:${isActive ? a.color + '12' : 'rgba(2,12,27,.55)'};border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;gap:4px;color:inherit;font:inherit;height:76px;box-sizing:border-box${isStale ? ';opacity:.75' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="width:8px;height:8px;border-radius:50%;background:${a.color};box-shadow:0 0 6px ${a.color}"></span>
