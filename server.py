@@ -370,6 +370,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
 
         if path == "/api/refresh":
+            # Auth — si REFRESH_TOKEN est défini en env, exige le même token
+            # dans le header X-Refresh-Token. Empêche un visiteur anonyme
+            # de déclencher des Sonars Dune coûteux. En dev local sans token
+            # défini, l'auth est skip.
+            expected_token = os.environ.get("REFRESH_TOKEN", "").strip()
+            if expected_token:
+                provided = self.headers.get("X-Refresh-Token", "").strip()
+                if provided != expected_token:
+                    return self._json({
+                        "error": "Non autorisé — token X-Refresh-Token manquant ou invalide",
+                        "status": "unauthorized",
+                    }, 401)
             # Validation des clés API avant lancement — évite un échec
             # silencieux dans le subprocess que l'utilisateur attend pour rien.
             missing = []
@@ -410,7 +422,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Refresh-Token")
         self.end_headers()
 
 

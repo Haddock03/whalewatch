@@ -2684,16 +2684,57 @@ async function loadData(){
   }
 }
 
+// ─── Sonar refresh token (admin) ─────────────────────────────────────────────
+// L'endpoint /api/refresh est protégé en prod par un token X-Refresh-Token
+// (lu côté server depuis la variable d'env REFRESH_TOKEN). Le token est
+// persisté en localStorage pour ne demander qu'une fois.
+function _getRefreshToken(){
+  try { return localStorage.getItem('ww_refresh_token') || ''; }
+  catch(e){ return ''; }
+}
+function _promptRefreshToken(forceClear){
+  if(forceClear){
+    try { localStorage.removeItem('ww_refresh_token'); } catch(e){}
+  }
+  const cur = _getRefreshToken();
+  const token = window.prompt(
+    cur ? 'Token X-Refresh-Token (actuel rejeté). Re-saisis-le :'
+        : 'Token X-Refresh-Token requis pour lancer un Sonar :',
+    cur
+  );
+  if(!token) return '';
+  try { localStorage.setItem('ww_refresh_token', token.trim()); } catch(e){}
+  return token.trim();
+}
+
 async function triggerRefresh(){
   const btn=document.getElementById('btn-refresh');
   btn.disabled=true;
   document.getElementById('refresh-icon').classList.add('spin');
   try{
-    // /api/refresh enchaîne wallets + patterns (cf. _run_analysis.py)
-    const r = await fetch(`/api/refresh?chain=${encodeURIComponent(_currentChain)}`, { method: 'POST' });
+    let token = _getRefreshToken();
+    // 1er essai : avec le token actuel (peut être vide en dev local sans REFRESH_TOKEN)
+    let r = await fetch(`/api/refresh?chain=${encodeURIComponent(_currentChain)}`, {
+      method: 'POST',
+      headers: token ? { 'X-Refresh-Token': token } : {}
+    });
+    // Si 401, on prompt et on retente
+    if(r.status === 401){
+      const fresh = _promptRefreshToken(true);
+      if(!fresh){
+        btn.disabled = false;
+        document.getElementById('refresh-icon').classList.remove('spin');
+        showToast('Sonar annulé — token requis', 'error', 3000);
+        return;
+      }
+      r = await fetch(`/api/refresh?chain=${encodeURIComponent(_currentChain)}`, {
+        method: 'POST',
+        headers: { 'X-Refresh-Token': fresh }
+      });
+    }
     const d = await r.json();
     // Erreur explicite serveur (ex: clés API manquantes → HTTP 400)
-    if(!r.ok || d.status === 'config_error' || d.error){
+    if(!r.ok || d.status === 'config_error' || d.status === 'unauthorized' || d.error){
       btn.disabled = false;
       document.getElementById('refresh-icon').classList.remove('spin');
       showToast(d.error || `Erreur ${r.status} : impossible de lancer l'analyse`, 'error', 6000);
