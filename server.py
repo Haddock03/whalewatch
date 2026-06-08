@@ -183,14 +183,18 @@ def run_patterns(n, days):
 # le code utilise innerHTML à plusieurs endroits. À planifier après refacto.
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    # script-src : ajout cloudflareinsights.com (analytics auto-injecté par
+    # Cloudflare/Railway via le proxy). Sans ça → erreur console.
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net "
+    "https://static.cloudflareinsights.com; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com data:; "
     "img-src 'self' data: blob: https:; "
-    # CoinGecko expose plusieurs sous-domaines : api.coingecko.com pour
-    # les prix, coin-images.coingecko.com / assets.coingecko.com pour
-    # les logos. On élargit pour éviter les violations CSP côté ticker.
-    "connect-src 'self' https://api.coingecko.com https://*.coingecko.com; "
+    # connect-src : ajout cdn.jsdelivr.net pour autoriser le fetch du
+    # sourcemap de Chart.js par les DevTools (sinon erreur Lighthouse).
+    # CoinGecko reste pour fallback ; en pratique on passe par /api/prices.
+    "connect-src 'self' https://api.coingecko.com https://*.coingecko.com "
+    "https://cdn.jsdelivr.net https://static.cloudflareinsights.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'; "
@@ -274,9 +278,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif content_type == "application/json":
             self.send_header("Cache-Control", "no-store")
         elif self.path.startswith("/static/"):
-            # Assets statiques : long cache. Pour invalider, change le path
-            # (e.g. /static/assets/whale.css?v=2).
-            self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+            # Assets statiques : cache 1 jour avec revalidation. Au-delà,
+            # le browser fait un If-Modified-Since pour vérifier. Évite
+            # le piège "ancien JS cached en immutable" après un deploy.
+            # Pour un cache plus agressif : ajouter ?v=X au src dans le HTML
+            # à chaque update du fichier (cache busting manuel).
+            self.send_header("Cache-Control", "public, max-age=86400, must-revalidate")
         for k, v in (extra_headers or {}).items():
             self.send_header(k, v)
         self.end_headers()
