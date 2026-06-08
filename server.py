@@ -124,6 +124,51 @@ def run_patterns(n, days):
         print(f"[patterns] {e}", flush=True)
 
 
+# ─── En-têtes de sécurité HTTP ──────────────────────────────────────────────
+# Appliqués à toutes les réponses servies par Handler._send().
+# Audit Lighthouse 08/06/2026 : 5 audits Trust & Safety à passer.
+#
+# CSP : pour ne pas casser l'existant, on autorise :
+#   - script-src : 'self' + cdn.jsdelivr.net (Chart.js) + 'unsafe-inline'
+#     (le code a beaucoup de JS inline ; passer à des nonces serait un
+#     chantier dédié — à voir dans une future itération)
+#   - style-src  : 'self' + fonts.googleapis + 'unsafe-inline'
+#   - font-src   : 'self' + fonts.gstatic + data:
+#   - img-src    : 'self' + https: + data: (logos CoinGecko sur urls variables)
+#   - connect-src: 'self' + api.coingecko (XHR/fetch prix live)
+#   - frame-ancestors 'none' : anti-clickjacking
+#   - base-uri / form-action 'self' : hardening
+# Trusted Types n'est PAS activé (`require-trusted-types-for 'script'`) car
+# le code utilise innerHTML à plusieurs endroits. À planifier après refacto.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com data:; "
+    "img-src 'self' data: blob: https:; "
+    "connect-src 'self' https://api.coingecko.com; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
+
+# HSTS : 2 ans + preload + sous-domaines. Envoyé toujours ; en HTTP local
+# le navigateur l'ignore (pas de risque). En HTTPS prod (Railway) il
+# force le HTTPS pour 2 ans.
+_HSTS = "max-age=63072000; includeSubDomains; preload"
+
+_SECURITY_HEADERS = {
+    "Content-Security-Policy":          _CSP,
+    "Strict-Transport-Security":        _HSTS,
+    "Cross-Origin-Opener-Policy":       "same-origin",
+    "X-Frame-Options":                  "DENY",        # garde-fou hérité
+    "X-Content-Type-Options":           "nosniff",     # anti MIME-sniffing
+    "Referrer-Policy":                  "strict-origin-when-cross-origin",
+    "Permissions-Policy":               "geolocation=(), microphone=(), camera=()",
+}
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     # ── Silence les logs verbeux par défaut ─────────────────────────────
     def log_message(self, fmt, *args):
@@ -135,6 +180,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        # En-têtes de sécurité (audit Lighthouse Trust & Safety)
+        for k, v in _SECURITY_HEADERS.items():
+            self.send_header(k, v)
         for k, v in (extra_headers or {}).items():
             self.send_header(k, v)
         self.end_headers()
