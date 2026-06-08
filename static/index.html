@@ -20,9 +20,10 @@
   <meta name="twitter:description" content="Traque les baleines DEX, les flux et l'activité MEV en temps réel. Données vérifiables, pas de boîte noire." />
   <meta name="twitter:image" content="https://whalewatchapp.io/static/assets/og.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/assets/whale.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     /* Page-specific overrides */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-4); }
@@ -2803,9 +2804,13 @@ if (!window.__wwBodyInit) {
     sel.innerHTML = chains.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
     sel.value = current;
   }).catch(()=>{});
-  initCharts();
-  loadData();
-  loadChainOverview();
+  function _bootCharts(){
+    if (typeof Chart === 'undefined') { return setTimeout(_bootCharts, 50); }
+    initCharts();
+    loadData();
+    loadChainOverview();
+  }
+  _bootCharts();
   fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
   fetch(`/api/patterns?chain=${encodeURIComponent(_currentChain)}`).then(r=>r.ok?r.json():null).then(d=>{
     if(d && !d.error){
