@@ -30,3 +30,9 @@ top_wallets_final.csv
 
 # Logs
 *.log
+
+# Sauvegardes locales
+*.bak
+
+# Cache de données (régénéré par le cron)
+cache/
