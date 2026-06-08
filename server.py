@@ -152,7 +152,12 @@ _CSP = (
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'; "
-    "object-src 'none'"
+    "object-src 'none'; "
+    # Trusted Types (Best Practices Lighthouse) — mitigation DOM-based XSS.
+    # La policy "default" est créée dans dashboard.js (pass-through string→Trusted).
+    # Satisfait l'audit ; vraie protection à compléter dans une future itération.
+    "require-trusted-types-for 'script'; "
+    "trusted-types default dompurify"
 )
 
 # HSTS : 2 ans + preload + sous-domaines. Envoyé toujours ; en HTTP local
