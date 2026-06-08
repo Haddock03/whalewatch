@@ -4,7 +4,9 @@ Serveur HTTP standalone WhaleWatch — stdlib uniquement, zéro dépendance exte
 Sert le frontend (static/) et expose l'API.
 L'analyse (Dune + pandas) tourne en subprocess séparé.
 """
+import gzip
 import http.server
+import io
 import json
 import os
 import subprocess
@@ -174,11 +176,45 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
+    # Types MIME compressibles via gzip (audit Lighthouse P1.4 — TTFB).
+    # On compresse seulement si :
+    #   - body ≥ 1024 bytes (en-dessous, gzip ajoute plus d'overhead qu'il
+    #     n'économise de bande passante)
+    #   - le client annonce gzip dans Accept-Encoding
+    #   - le type MIME est compressible (text, json, JS, CSS, SVG, XML)
+    _GZIPPABLE_PREFIXES = (
+        "text/", "application/json", "application/javascript",
+        "application/xml", "image/svg+xml",
+    )
+
+    def _accepts_gzip(self):
+        ae = (self.headers.get("Accept-Encoding") or "").lower()
+        return "gzip" in ae
+
+    def _maybe_gzip(self, body: bytes, content_type: str):
+        """Compresse `body` en gzip si éligible. Renvoie (body, encoding_or_None)."""
+        if len(body) < 1024 or not self._accepts_gzip():
+            return body, None
+        if not any(content_type.startswith(p) for p in self._GZIPPABLE_PREFIXES):
+            return body, None
+        buf = io.BytesIO()
+        # compresslevel 6 = bon compromis ratio/CPU pour du contenu servi à la volée
+        with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=6) as gz:
+            gz.write(body)
+        return buf.getvalue(), "gzip"
+
     # ── Helpers de réponse ──────────────────────────────────────────────
     def _send(self, body: bytes, content_type: str, status: int = 200, extra_headers=None):
+        # Gzip compression (P1.4) — réduit le TTFB et la taille des bytes
+        # servis (HTML/JSON/CSS/JS/SVG).
+        body, encoding = self._maybe_gzip(body, content_type)
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        if encoding:
+            self.send_header("Content-Encoding", encoding)
+            # Vary indique aux caches que la réponse dépend du Accept-Encoding
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Access-Control-Allow-Origin", "*")
         # En-têtes de sécurité (audit Lighthouse Trust & Safety)
         for k, v in _SECURITY_HEADERS.items():

@@ -508,16 +508,11 @@
       <span class="pro-toggle-label">FREE</span>
     </button>
 
-    <!-- Center status (transient — affiche pendant le Sonar) -->
+    <!-- Status indicator (affiche si un Sonar tourne côté serveur via cron) -->
     <div id="status-bar" class="hidden flex items-center gap-2" style="font-size:var(--fs-xs);color:var(--aqua);margin-left:var(--s-3)">
       <svg class="spin" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="30 10" opacity=".4"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
       <span id="status-text">Sonar actif…</span>
     </div>
-
-    <button id="btn-refresh" onclick="triggerRefresh()" class="btn btn-primary btn-sm" style="margin-left:var(--s-2); display:none" title="Lance un Sonar pour la chain active">
-      <svg id="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15 0M20 15a9 9 0 0 1-15 0"/></svg>
-      <span id="btn-refresh-label">Sonar</span>
-    </button>
   </div>
   <div id="progress-line" class="progress-line hidden"></div>
 </header>
@@ -2009,15 +2004,9 @@ async function fetchLivePrices(){
 // Auto refresh
 // ═════════════════════════════════════════════════════════════════════════════
 let _lastUpdatedAt = null;
-let _autoTimer = null;
+// Auto-refresh manuel retiré (Sonars lancés par le cron côté serveur).
+// On garde _nextRefreshAt à null pour ne pas casser les helpers qui le lisent.
 let _nextRefreshAt = null;
-const AUTO_REFRESH_MS = WW_CONFIG.AUTO_REFRESH_MS;
-
-function _scheduleAutoRefresh(){
-  if(_autoTimer) clearTimeout(_autoTimer);
-  _nextRefreshAt = Date.now() + AUTO_REFRESH_MS;
-  _autoTimer = setTimeout(()=>{ if(!poll) triggerRefresh(); }, AUTO_REFRESH_MS);
-}
 
 function _humanAge(ms){
   const sec = Math.floor(ms/1000);
@@ -2480,7 +2469,7 @@ function _renderTbodyState(state, msg){
     tbody.innerHTML = `<tr><td colspan="8" class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
       <p>${msg || 'Aucun wallet à afficher pour le moment.'}</p>
-      <button onclick="triggerRefresh()" class="btn btn-primary btn-sm">Lancer une analyse</button>
+      <p class="fs-xs text-muted mt-3">Une nouvelle analyse sera lancée automatiquement par le pipeline.</p>
     </td></tr>`;
   } else if(state === 'error'){
     tbody.innerHTML = `<tr><td colspan="8" class="empty-state empty-state--error">
@@ -2566,9 +2555,7 @@ function _applyChainTheme(chain){
                   optimism:'Optimism', polygon:'Polygon', bnb:'BNB Chain',
                   avalanche:'Avalanche'};
   if(sub) sub.textContent = `Volume DEX ${labels[chain] || chainName}`;
-  // Met à jour le label du bouton Sonar pour qu'il indique la chain visée
-  const btnLabel = document.getElementById('btn-refresh-label');
-  if(btnLabel) btnLabel.textContent = `Sonar · ${a.label}`;
+  // Note : btn-refresh-label retiré avec le bouton Sonar
 }
 async function loadChainOverview(){
   // Petit widget qui montre les 6 chains avec leurs volumes — clic = switch.
@@ -2684,72 +2671,10 @@ async function loadData(){
   }
 }
 
-// ─── Sonar refresh token (admin) ─────────────────────────────────────────────
-// L'endpoint /api/refresh est protégé en prod par un token X-Refresh-Token
-// (lu côté server depuis la variable d'env REFRESH_TOKEN). Le token est
-// persisté en localStorage pour ne demander qu'une fois.
-function _getRefreshToken(){
-  try { return localStorage.getItem('ww_refresh_token') || ''; }
-  catch(e){ return ''; }
-}
-function _promptRefreshToken(forceClear){
-  if(forceClear){
-    try { localStorage.removeItem('ww_refresh_token'); } catch(e){}
-  }
-  const cur = _getRefreshToken();
-  const token = window.prompt(
-    cur ? 'Token X-Refresh-Token (actuel rejeté). Re-saisis-le :'
-        : 'Token X-Refresh-Token requis pour lancer un Sonar :',
-    cur
-  );
-  if(!token) return '';
-  try { localStorage.setItem('ww_refresh_token', token.trim()); } catch(e){}
-  return token.trim();
-}
-
-async function triggerRefresh(){
-  const btn=document.getElementById('btn-refresh');
-  btn.disabled=true;
-  document.getElementById('refresh-icon').classList.add('spin');
-  try{
-    let token = _getRefreshToken();
-    // 1er essai : avec le token actuel (peut être vide en dev local sans REFRESH_TOKEN)
-    let r = await fetch(`/api/refresh?chain=${encodeURIComponent(_currentChain)}`, {
-      method: 'POST',
-      headers: token ? { 'X-Refresh-Token': token } : {}
-    });
-    // Si 401, on prompt et on retente
-    if(r.status === 401){
-      const fresh = _promptRefreshToken(true);
-      if(!fresh){
-        btn.disabled = false;
-        document.getElementById('refresh-icon').classList.remove('spin');
-        showToast('Sonar annulé — token requis', 'error', 3000);
-        return;
-      }
-      r = await fetch(`/api/refresh?chain=${encodeURIComponent(_currentChain)}`, {
-        method: 'POST',
-        headers: { 'X-Refresh-Token': fresh }
-      });
-    }
-    const d = await r.json();
-    // Erreur explicite serveur (ex: clés API manquantes → HTTP 400)
-    if(!r.ok || d.status === 'config_error' || d.status === 'unauthorized' || d.error){
-      btn.disabled = false;
-      document.getElementById('refresh-icon').classList.remove('spin');
-      showToast(d.error || `Erreur ${r.status} : impossible de lancer l'analyse`, 'error', 6000);
-      return;
-    }
-    if(d.status==='running' || d.message==='Analyse lancée') startPoll();
-    else{ btn.disabled=false; document.getElementById('refresh-icon').classList.remove('spin'); }
-    // Les patterns arrivent à la fin du pipeline — poll discret en parallèle
-    _pollPatternsUntilReady();
-  }catch(e){
-    btn.disabled = false;
-    document.getElementById('refresh-icon').classList.remove('spin');
-    showToast('Erreur réseau pendant le Sonar', 'error', 4000);
-  }
-}
+// Note : le bouton Sonar a été retiré du UI (sonars lancés par cron côté
+// serveur). Les fonctions triggerRefresh / _getRefreshToken /
+// _promptRefreshToken ont été supprimées. Le polling patterns reste actif
+// pour récupérer les patterns à la prochaine analyse complétée.
 
 // ─── Polling patterns indépendant du polling wallets ────────────────────────
 let _patternsPoll = null;
@@ -2795,26 +2720,25 @@ function startPoll(){
 }
 
 async function doPoll(){
+  // Poll discret du status — affiche la barre si un Sonar tourne côté
+  // serveur (lancé par le cron). Le bouton Sonar UI est retiré, mais
+  // l'utilisateur peut voir qu'une analyse est en cours.
   try{
     const r=await fetch('/api/status');
     const d=await r.json();
-    document.getElementById('status-text').textContent=d.progress||d.status||'En cours…';
+    const textEl = document.getElementById('status-text');
+    if(textEl) textEl.textContent = d.progress || d.status || 'En cours…';
     if(d.status==='completed'){
       clearInterval(poll); poll=null;
-      document.getElementById('status-bar').classList.add('hidden');
-      document.getElementById('progress-line').classList.add('hidden');
-      document.getElementById('btn-refresh').disabled=false;
-      document.getElementById('refresh-icon').classList.remove('spin');
+      document.getElementById('status-bar')?.classList.add('hidden');
+      document.getElementById('progress-line')?.classList.add('hidden');
       await loadData();
-      _scheduleAutoRefresh();  // prochain refresh auto 5min après cette complétion
       showToast('Analyse terminée — données mises à jour','success');
     }else if(d.status==='error'){
       clearInterval(poll); poll=null;
-      document.getElementById('status-bar').classList.add('hidden');
-      document.getElementById('progress-line').classList.add('hidden');
-      document.getElementById('status-text').textContent='Erreur · '+d.error;
-      document.getElementById('btn-refresh').disabled=false;
-      document.getElementById('refresh-icon').classList.remove('spin');
+      document.getElementById('status-bar')?.classList.add('hidden');
+      document.getElementById('progress-line')?.classList.add('hidden');
+      if(textEl) textEl.textContent = 'Erreur · ' + d.error;
     }
   }catch(e){}
 }
@@ -2904,7 +2828,7 @@ if (!window.__wwBodyInit) {
   }).catch(()=>{ _pollPatternsUntilReady(); });
   _startLiveCounter();
   _startPriceRefresh();
-  _scheduleAutoRefresh();
+  // _scheduleAutoRefresh retiré avec le bouton Sonar (cron côté serveur)
   _startAlertsPolling();
   _startCryptoTicker();
 } else {
