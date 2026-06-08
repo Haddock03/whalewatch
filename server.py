@@ -12,6 +12,8 @@ import os
 import subprocess
 import sys
 import threading
+import time
+import urllib.request
 from datetime import datetime, timezone
 from urllib.parse import urlparse, parse_qs
 
@@ -72,6 +74,43 @@ _lock = threading.Lock()
 def set_state(**kw):
     with _lock:
         _state.update(kw)
+
+
+# ── CoinGecko proxy ─────────────────────────────────────────────────────────
+# On proxify les appels CoinGecko (prix live + ticker) côté serveur pour :
+#   1. Éviter les erreurs CORS / 429 dans la console du browser (qui
+#      dégradent le score Best Practices Lighthouse).
+#   2. Mutualiser les requêtes — 1 appel serveur sert tous les visiteurs
+#      pendant la durée du cache.
+# Cache mémoire 60s. Si CoinGecko renvoie une erreur, on sert la dernière
+# réponse valide pour éviter le clignotement.
+_CG_CACHE = {}  # url → {"data": ..., "ts": ..., "stale_ok_until": ...}
+_CG_LOCK = threading.Lock()
+
+def _cg_fetch(url, cache_seconds=60, stale_seconds=600, timeout=8):
+    now = time.time()
+    with _CG_LOCK:
+        entry = _CG_CACHE.get(url)
+        if entry and (now - entry["ts"]) < cache_seconds:
+            return entry["data"], None
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "WhaleWatch/1.0 (+https://whalewatchapp.io)",
+            "Accept": "application/json",
+        })
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            raw = r.read()
+        data = json.loads(raw)
+        with _CG_LOCK:
+            _CG_CACHE[url] = {"data": data, "ts": now}
+        return data, None
+    except Exception as e:
+        # Servir la dernière réponse valide si elle existe et n'est pas trop vieille
+        with _CG_LOCK:
+            entry = _CG_CACHE.get(url)
+            if entry and (now - entry["ts"]) < stale_seconds:
+                return entry["data"], None
+        return None, str(e)
 
 
 def load_json(path, default=None):
@@ -305,6 +344,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "chains": chains_health,
                 "stale_threshold_hours": stale_threshold_hours,
             }, status_code)
+
+        if path == "/api/prices":
+            # Proxy CoinGecko simple price (ETH + BTC). Cache 60s côté serveur.
+            data, err = _cg_fetch(
+                "https://api.coingecko.com/api/v3/simple/price"
+                "?ids=ethereum,bitcoin&vs_currencies=usd",
+                cache_seconds=60
+            )
+            if data is not None:
+                return self._json(data)
+            return self._json({"error": err or "unavailable"}, 503)
+
+        if path == "/api/ticker":
+            # Proxy CoinGecko top 10 markets. Cache 120s côté serveur.
+            data, err = _cg_fetch(
+                "https://api.coingecko.com/api/v3/coins/markets"
+                "?vs_currency=usd&order=market_cap_desc&per_page=10&page=1"
+                "&sparkline=false&price_change_percentage=24h",
+                cache_seconds=120
+            )
+            if data is not None:
+                return self._json(data)
+            return self._json({"error": err or "unavailable"}, 503)
 
         if path == "/api/status":
             with _lock:

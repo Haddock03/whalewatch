@@ -1061,9 +1061,12 @@ function _setPriceEl(id, raw, str){
   }
 }
 async function fetchLivePrices(){
+  // Proxify via /api/prices (server-side cache 60s) pour éviter les
+  // erreurs CORS/429 dans la console qui dégradent Lighthouse BP.
   try{
-    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin&vs_currencies=usd');
-    const d=await r.json();
+    const r = await fetch('/api/prices');
+    if(!r.ok) return;
+    const d = await r.json();
     if(d?.bitcoin?.usd){
       const raw=d.bitcoin.usd;
       _setPriceEl('btc-price', raw, fmtPrice(raw));
@@ -1074,7 +1077,7 @@ async function fetchLivePrices(){
       _setPriceEl('eth-price', raw, fmtPrice(raw));
       _setPriceEl('stat-eth',  raw, fmtPrice(raw));
     }
-  }catch(e){}
+  }catch(e){ /* silencieux */ }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1138,7 +1141,8 @@ async function loadCryptoTicker(){
   if(!track) return;
   let coins = [];
   try {
-    const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h');
+    // Proxify via /api/ticker (server-side cache 120s).
+    const r = await fetch('/api/ticker');
     if(r.ok) coins = await r.json();
   } catch(e) {}
   if(!coins.length) coins = CT_FALLBACK;

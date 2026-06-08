@@ -198,7 +198,7 @@
     const btcEl = document.getElementById('btc-price');
     if (!ethEl && !btcEl) return;
     try {
-      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin&vs_currencies=usd');
+      const r = await fetch('/api/prices');
       if (!r.ok) return;
       const d = await r.json();
       // N'écrase pas le contenu si le dashboard (index.html) gère déjà via _setPriceEl
