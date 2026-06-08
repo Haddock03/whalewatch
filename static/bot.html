@@ -203,10 +203,10 @@
       <div class="section-card-body">
         <div class="grid-2">
           <div class="info-card">
-            <h4>
+            <h3>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Permissions à accorder
-            </h4>
+            </h3>
             <ul>
               <li><strong style="color:var(--green)">Read</strong> — lecture du solde, positions, historique</li>
               <li><strong style="color:var(--green)">Trade</strong> — créer et annuler des ordres</li>
@@ -214,10 +214,10 @@
             </ul>
           </div>
           <div class="info-card" style="--c-accent: var(--c-mev); --c-accent-bg: rgba(255,107,135,.06); --c-accent-border: rgba(255,107,135,.22)">
-            <h4>
+            <h3>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               Permissions à ne JAMAIS accorder
-            </h4>
+            </h3>
             <ul>
               <li><strong style="color:var(--c-mev)">Withdraw</strong> — permet de vider le compte</li>
               <li><strong style="color:var(--c-mev)">Transfer</strong> — déplacement entre wallets</li>
@@ -292,10 +292,10 @@ exchange = ccxt.binance({<span class="st">'apiKey'</span>: os.getenv(<span class
         </div>
         <div class="grid-2 mt-5">
           <div class="info-card">
-            <h4>
+            <h3>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Sources de données
-            </h4>
+            </h3>
             <ul>
               <li>CCXT historique OHLCV (binance, bybit…)</li>
               <li>CryptoCompare API — gratuit jusqu'à 2000 points</li>
@@ -304,10 +304,10 @@ exchange = ccxt.binance({<span class="st">'apiKey'</span>: os.getenv(<span class
             </ul>
           </div>
           <div class="info-card">
-            <h4>
+            <h3>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
               Méthode walk-forward
-            </h4>
+            </h3>
             <ul>
               <li>Train sur 70% des données (optimisation paramètres)</li>
               <li>Validate sur 15% (ajustement)</li>
@@ -358,15 +358,15 @@ exchange = ccxt.binance({<span class="st">'apiKey'</span>: os.getenv(<span class
       <div class="section-card-body">
         <div class="grid-3">
           <div class="info-card">
-            <h4>Stop-loss dur</h4>
+            <h3>Stop-loss dur</h3>
             <p>Ordre de vente automatique placé à l'ouverture de chaque position. Non négociable — jamais désactivé, jamais déplacé vers le bas « en espérant ».</p>
           </div>
           <div class="info-card">
-            <h4>Taille de position</h4>
+            <h3>Taille de position</h3>
             <p>Risque max par trade = 1–2% du capital. Calcul : <code class="mono" style="color:var(--c-sc)">taille = (capital × 0.01) / (prix_entrée - stop_loss)</code></p>
           </div>
           <div class="info-card">
-            <h4>Max drawdown journalier</h4>
+            <h3>Max drawdown journalier</h3>
             <p>Si le bot perd X% dans la journée, il s'arrête automatiquement jusqu'au lendemain. Évite les « death spirals » en cas de bug ou marché chaotique.</p>
           </div>
         </div>
@@ -476,7 +476,7 @@ exchange = ccxt.binance({<span class="st">'apiKey'</span>: os.getenv(<span class
       <div class="section-card-body">
         <div class="grid-2">
           <div class="info-card">
-            <h4>Quoi logger</h4>
+            <h3>Quoi logger</h3>
             <ul>
               <li>Chaque ordre passé (prix, taille, timestamp)</li>
               <li>Chaque signal généré (même non exécuté)</li>
@@ -486,7 +486,7 @@ exchange = ccxt.binance({<span class="st">'apiKey'</span>: os.getenv(<span class
             </ul>
           </div>
           <div class="info-card">
-            <h4>Alertes à configurer</h4>
+            <h3>Alertes à configurer</h3>
             <ul>
               <li>Trade exécuté → notification immédiate</li>
               <li>Drawdown &gt; 5% → alerte warning</li>
@@ -617,7 +617,7 @@ alert(<span class="st">f"CIRCUIT BREAKER — DD: </span>{drawdown:.1f}<span clas
         <div class="section-divider"></div>
         <div class="grid-3">
           <div class="info-card">
-            <h4>Stack recommandée</h4>
+            <h3>Stack recommandée</h3>
             <ul>
               <li>Python 3.11 + CCXT</li>
               <li>pandas + ta-lib (indicateurs)</li>
@@ -626,7 +626,7 @@ alert(<span class="st">f"CIRCUIT BREAKER — DD: </span>{drawdown:.1f}<span clas
             </ul>
           </div>
           <div class="info-card">
-            <h4>Déploiement</h4>
+            <h3>Déploiement</h3>
             <ul>
               <li>Docker container isolé</li>
               <li>systemd restart automatique</li>
@@ -635,7 +635,7 @@ alert(<span class="st">f"CIRCUIT BREAKER — DD: </span>{drawdown:.1f}<span clas
             </ul>
           </div>
           <div class="info-card">
-            <h4>Monitoring</h4>
+            <h3>Monitoring</h3>
             <ul>
               <li>healthchecks.io (gratuit)</li>
               <li>Grafana + InfluxDB (métriques)</li>

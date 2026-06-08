@@ -405,7 +405,7 @@
     <button class="sig-filter"           data-f="done"  onclick="setFilter('done',this)">Terminés</button>
     <div class="sig-sort">
       Tri
-      <select id="sort-mode" onchange="renderGrid()">
+      <select id="sort-mode" onchange="renderGrid()" aria-label="Tri des signaux">
         <option value="recent">Récents</option>
         <option value="rr">Best R/R</option>
         <option value="conf">Best confiance</option>

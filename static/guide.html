@@ -268,7 +268,7 @@
       <div class="section-card-body">
         <div class="grid-2">
           <div class="info-card">
-            <h4>RSI — Relative Strength Index</h4>
+            <h3>RSI — Relative Strength Index</h3>
             <div class="formula">
               RSI = <span class="hl">100</span> − 100 / (1 + RS)<br>
               RS = moyenne gains / moyenne pertes (14 périodes)
@@ -284,7 +284,7 @@
           </div>
 
           <div class="info-card">
-            <h4>EMA — Exponential Moving Average</h4>
+            <h3>EMA — Exponential Moving Average</h3>
             <p>Moyenne mobile qui pondère davantage les prix récents. Plus réactive que la SMA.</p>
             <div class="metric-row mt-3"><span class="metric-label">EMA 20</span><span class="metric-val">Tendance court terme (swing)</span></div>
             <div class="metric-row"><span class="metric-label">EMA 50</span><span class="metric-val">Tendance moyen terme</span></div>
@@ -302,7 +302,7 @@
 
         <div class="grid-3">
           <div class="info-card">
-            <h4>MACD</h4>
+            <h3>MACD</h3>
             <p><strong style="color:var(--text)">MACD Line</strong> = EMA12 − EMA26<br>
             <strong style="color:var(--text)">Signal</strong> = EMA9 du MACD</p>
             <div class="mt-3">
@@ -312,14 +312,14 @@
             </div>
           </div>
           <div class="info-card">
-            <h4>Bollinger Bands</h4>
+            <h3>Bollinger Bands</h3>
             <p>Bandes = EMA20 ± 2 déviations standards</p>
             <div class="signal"><div class="signal-dot" style="background:var(--c-mev)"></div><div>Prix touche la bande <strong>haute</strong> = surachat possible</div></div>
             <div class="signal"><div class="signal-dot" style="background:var(--green)"></div><div>Prix touche la bande <strong>basse</strong> = survente possible</div></div>
             <div class="signal"><div class="signal-dot" style="background:var(--blue)"></div><div><strong>Squeeze</strong> (bandes resserrées) = explosion de volatilité imminente</div></div>
           </div>
           <div class="info-card">
-            <h4>Volume</h4>
+            <h3>Volume</h3>
             <p>Confirme ou infirme les mouvements de prix</p>
             <div class="signal"><div class="signal-dot" style="background:var(--green)"></div><div>Prix ↑ + Volume ↑ = <strong>tendance validée</strong></div></div>
             <div class="signal"><div class="signal-dot" style="background:var(--c-sc)"></div><div>Prix ↑ + Volume ↓ = <strong>pullback probable</strong></div></div>
@@ -375,7 +375,7 @@
           <div>
             <div class="divider-label">Liquidation Maps</div>
             <div class="info-card mb-3">
-              <h4>Comment ça fonctionne</h4>
+              <h3>Comment ça fonctionne</h3>
               <ul class="checklist">
                 <li>Les traders avec levier (10x, 20x, 50x) ont un prix de <strong>liquidation forcée</strong></li>
                 <li>Quand le prix atteint cette zone, la position est <strong>fermée automatiquement</strong> — créant de la pression supplémentaire</li>
@@ -384,7 +384,7 @@
               </ul>
             </div>
             <div class="info-card">
-              <h4>Stratégie pratique</h4>
+              <h3>Stratégie pratique</h3>
               <div class="signal"><div class="signal-dot" style="background:var(--green)"></div><div>Grande zone de liquidations SHORT au-dessus → le prix sera <strong>attiré vers le haut</strong> pour les déclencher</div></div>
               <div class="signal"><div class="signal-dot" style="background:var(--c-mev)"></div><div>Grande zone de liquidations LONG en dessous → risque de <strong>chute rapide</strong></div></div>
               <div class="signal"><div class="signal-dot" style="background:var(--c-sc)"></div><div>Open Interest élevé + prix range = <strong>mouvement violent imminent</strong></div></div>
@@ -393,10 +393,10 @@
         </div>
         <!-- P2.3 — lien éducatif → produit -->
         <div class="info-card mt-4" style="border-color:rgba(75,212,255,.30);background:rgba(75,212,255,.04)">
-          <h4 style="color:var(--cyan);display:flex;align-items:center;gap:8px">
+          <h3 style="color:var(--cyan);display:flex;align-items:center;gap:8px">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 6c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/></svg>
             Côté on-chain : voir les baleines DEX dans WhaleWatch
-          </h4>
+          </h3>
           <p>Coinglass et Hyblock montrent les positions <em>off-chain</em> (CEX, perps). Pour le pendant on-chain — qui swap quoi, quand, sur quel DEX — c'est le <a href="/" style="color:var(--cyan);text-decoration:underline">leaderboard du dashboard</a>. Filtre « Hors infra » pour exclure routers et market makers.</p>
         </div>
       </div>
@@ -442,7 +442,7 @@
           <div>
             <div class="divider-label">ATR — Average True Range</div>
             <div class="info-card mb-3">
-              <h4>Formule</h4>
+              <h3>Formule</h3>
               <div class="formula">
                 ATR = moy. mobile(<span class="hl">14</span>) de True Range<br>
                 TR = max(H-L, |H-Cprec|, |L-Cprec|)
@@ -450,7 +450,7 @@
               <p>L'ATR mesure l'amplitude moyenne des mouvements. Un ATR élevé = terrain de jeu pour les traders. Un ATR faible = marché endormi.</p>
             </div>
             <div class="info-card">
-              <h4>Altcoins Small Cap</h4>
+              <h3>Altcoins Small Cap</h3>
               <div class="signal"><div class="signal-dot" style="background:var(--green)"></div><div>Mouvements de <strong>10–50%</strong> en quelques heures possibles</div></div>
               <div class="signal"><div class="signal-dot" style="background:var(--c-mev)"></div><div>Risque de <strong>manipulation</strong> par les équipes/whales</div></div>
               <div class="signal"><div class="signal-dot" style="background:var(--c-sc)"></div><div>Toujours vérifier le <strong>top holders</strong> → si &gt; 50% = 1 adresse, danger</div></div>
@@ -549,7 +549,7 @@
         </table>
         <div class="grid-2 mt-5">
           <div class="info-card">
-            <h4>Impact des frais sur la rentabilité</h4>
+            <h3>Impact des frais sur la rentabilité</h3>
             <div class="formula">
               Sur 100 trades/jour à $10K :<br>
               Binance (0.04%) = <span class="hl">$40/jour</span> = $14,600/an<br>
@@ -559,7 +559,7 @@
             <p class="mt-3">Utiliser les tokens natifs (BNB, OKB) pour réduire les frais de 25–30%.</p>
           </div>
           <div class="info-card">
-            <h4>Checklist sécurité</h4>
+            <h3>Checklist sécurité</h3>
             <ul class="checklist">
               <li>Activer <strong>2FA (Authenticator)</strong> — jamais SMS seul</li>
               <li>Whitelister <strong>adresses de retrait</strong></li>
@@ -649,7 +649,7 @@
           <div>
             <div class="divider-label">BTC Dominance (BTC.D)</div>
             <div class="info-card mb-3">
-              <h4>Lecture de BTC.D</h4>
+              <h3>Lecture de BTC.D</h3>
               <div class="metric-row"><span class="metric-label">BTC.D monte</span><span class="metric-val text-red">Capital vers BTC → alts chutent</span></div>
               <div class="metric-row"><span class="metric-label">BTC.D baisse</span><span class="metric-val text-green">Alt season → rotations vers alts</span></div>
               <div class="metric-row"><span class="metric-label">BTC.D &gt; 60%</span><span class="metric-val">Bear market alts — trader BTC/USDT</span></div>
@@ -666,7 +666,7 @@
           <div>
             <div class="divider-label">ETFs Bitcoin/ETH — Flux entrants/sortants</div>
             <div class="info-card mb-3">
-              <h4>Pourquoi c'est important</h4>
+              <h3>Pourquoi c'est important</h3>
               <div class="signal"><div class="signal-dot" style="background:var(--green)"></div><div>Entrées ETF positives = <strong>capital institutionnel</strong> qui entre → signal haussier fort</div></div>
               <div class="signal"><div class="signal-dot" style="background:var(--c-mev)"></div><div>Sorties ETF nettes pendant plusieurs jours = <strong>pression vendeuse institutionnelle</strong></div></div>
               <div class="signal"><div class="signal-dot" style="background:var(--c-sc)"></div><div>Divergence prix/flux ETF = signal de <strong>retournement imminent</strong></div></div>
@@ -702,7 +702,7 @@
       <div class="section-card-body">
         <div class="grid-3 mb-5">
           <div class="info-card" style="--c-accent: var(--green); --c-accent-bg: rgba(46,212,168,.06); --c-accent-border: rgba(46,212,168,.20)">
-            <h4>Bull Market</h4>
+            <h3>Bull Market</h3>
             <ul class="checklist">
               <li><strong>HODL + DCA</strong> surperforment le trading actif</li>
               <li>Acheter les dips sur <strong>EMA50</strong></li>
@@ -712,7 +712,7 @@
             </ul>
           </div>
           <div class="info-card" style="--c-accent: var(--c-sc); --c-accent-bg: rgba(255,198,87,.06); --c-accent-border: rgba(255,198,87,.20)">
-            <h4>Marché Latéral</h4>
+            <h3>Marché Latéral</h3>
             <ul class="checklist">
               <li><strong>Range trading</strong> : acheter support, vendre résistance</li>
               <li>Identifier les bornes avec précision</li>
@@ -722,7 +722,7 @@
             </ul>
           </div>
           <div class="info-card" style="--c-accent: var(--c-mev); --c-accent-bg: rgba(255,107,135,.06); --c-accent-border: rgba(255,107,135,.20)">
-            <h4>Bear Market</h4>
+            <h3>Bear Market</h3>
             <ul class="checklist">
               <li><strong>Cash is king</strong> — stablecoins majority</li>
               <li>Shorter les rebonds sur résistances</li>
@@ -746,7 +746,7 @@
             </tbody>
           </table>
           <div class="info-card">
-            <h4>Halving Cycle BTC</h4>
+            <h3>Halving Cycle BTC</h3>
             <p class="mb-3">Bitcoin se réduit de moitié tous les ~4 ans. Historiquement :</p>
             <div class="metric-row"><span class="metric-label">Mois -12 (pre-halving)</span><span class="metric-val text-yellow">Accumulation — prix monte</span></div>
             <div class="metric-row"><span class="metric-label">Mois 0 (halving)</span><span class="metric-val">Event — prix souvent stable</span></div>
