@@ -183,6 +183,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # En-têtes de sécurité (audit Lighthouse Trust & Safety)
         for k, v in _SECURITY_HEADERS.items():
             self.send_header(k, v)
+        # Cache control — évite que les browsers servent une version stale
+        # des pages HTML après un déploiement.
+        #   Pages HTML  → no-cache, must-revalidate (revalide à chaque fois)
+        #   Assets /static/ → cache 1 an (servis par self.path startswith /static/)
+        #   API JSON    → no-store (toujours frais)
+        if content_type.startswith("text/html"):
+            self.send_header("Cache-Control", "no-cache, must-revalidate")
+        elif content_type == "application/json":
+            self.send_header("Cache-Control", "no-store")
+        elif self.path.startswith("/static/"):
+            # Assets statiques : long cache. Pour invalider, change le path
+            # (e.g. /static/assets/whale.css?v=2).
+            self.send_header("Cache-Control", "public, max-age=31536000, immutable")
         for k, v in (extra_headers or {}).items():
             self.send_header(k, v)
         self.end_headers()
