@@ -23,7 +23,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/assets/whale.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Chart.js retiré du chargement initial : lazy-load via IntersectionObserver
+       déclenché dans _bootCharts (économise ~228 KiB pour les visiteurs qui ne
+       scrollent pas jusqu'à la section charts). Voir _loadChartJsLazy(). -->
+  <!-- <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script> -->
   <style>
     /* Page-specific overrides */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-4); }
@@ -1205,6 +1208,7 @@ function isInfra(w){ return classifyWalletType(w).infra; }
 // Charts
 // ═════════════════════════════════════════════════════════════════════════════
 function initCharts(){
+  if (typeof Chart === 'undefined') return; // Lazy-load : sera rappelé via _loadChartJsLazy
   chartBar = new Chart(document.getElementById('chartBar').getContext('2d'),{
     type:'bar',
     data:{labels:[],datasets:[{data:[],backgroundColor:[],borderRadius:4,borderSkipped:false,maxBarThickness:20}]},
@@ -1243,6 +1247,22 @@ function _barLabel(w){
   return cat+' '+w.address.slice(0,6)+'…'+w.address.slice(-3);
 }
 function updateCharts(wallets){
+  // No-op si Chart.js n'est pas encore chargé (lazy-load) : sera rappelé
+  // par _loadChartJsLazy().onload une fois Chart.js prêt.
+  if (typeof Chart === 'undefined' || !chartBar || !chartPie) {
+    // Continue quand même pour rendre le legend qui ne dépend pas de Chart.js
+    const cats={};
+    wallets.forEach(w=>{const c=w.category||'Unknown'; cats[c]=(cats[c]||0)+1;});
+    const _sortedFallback = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+    const _catTotal = _sortedFallback.reduce((s,[,n])=>s+n,0);
+    const _leg = document.getElementById('legend');
+    if (_leg) _leg.innerHTML = _sortedFallback.map(([cat,n])=>{
+      const pct=_catTotal>0?Math.round(n/_catTotal*100):0;
+      const col=catColor(cat);
+      return `<div class="flex items-center gap-2"><span style="width:10px;height:10px;border-radius:2px;background:${col};display:inline-block;flex-shrink:0"></span><span class="fs-xs text-muted">${cat} · ${n} (${pct}%)</span></div>`;
+    }).join('');
+    return;
+  }
   const top10=[...wallets].sort((a,b)=>(b.total_volume_usd||0)-(a.total_volume_usd||0)).slice(0,10);
   chartBar.data.labels = top10.map(w=>_barLabel(w));
   chartBar.data.datasets[0].data = top10.map(w=>w.total_volume_usd||0);
@@ -2811,13 +2831,46 @@ if (!window.__wwBodyInit) {
     sel.innerHTML = chains.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
     sel.value = current;
   }).catch(()=>{});
-  function _bootCharts(){
-    if (typeof Chart === 'undefined') { return setTimeout(_bootCharts, 50); }
-    initCharts();
-    loadData();
-    loadChainOverview();
+  // ─── Lazy-load Chart.js ─────────────────────────────────────────────
+  // Chart.js (~228 KiB minified) n'est plus chargé au boot. Il est
+  // injecté à la demande quand le user scrolle vers la section des charts,
+  // ou en fallback après 3s d'inactivité (requestIdleCallback).
+  let _chartJsPromise = null;
+  function _loadChartJsLazy(){
+    if (_chartJsPromise) return _chartJsPromise;
+    if (typeof Chart !== 'undefined') return _chartJsPromise = Promise.resolve();
+    _chartJsPromise = new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+      s.async = true;
+      s.onload  = () => { initCharts(); if (allWallets && allWallets.length) updateCharts(allWallets); resolve(); };
+      s.onerror = () => { console.warn('[ChartJS] load failed'); resolve(); };
+      document.head.appendChild(s);
+    });
+    return _chartJsPromise;
   }
-  _bootCharts();
+  function _initChartsLazyObserver(){
+    const target = document.getElementById('chartBar')?.closest('.card');
+    if (!target || !('IntersectionObserver' in window)) {
+      // Fallback : charge après 3s ou idle
+      const fallback = () => _loadChartJsLazy();
+      if ('requestIdleCallback' in window) requestIdleCallback(fallback, { timeout: 3000 });
+      else setTimeout(fallback, 3000);
+      return;
+    }
+    const io = new IntersectionObserver((entries, obs) => {
+      if (entries.some(e => e.isIntersecting)) {
+        _loadChartJsLazy();
+        obs.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    io.observe(target);
+  }
+  // loadData() est appelé immédiatement — les charts s'updaterent à la
+  // 2ème occurrence (via le observer ou le fallback idle).
+  loadData();
+  loadChainOverview();
+  _initChartsLazyObserver();
   fetch('/api/status').then(r=>r.json()).then(d=>{ if(d.status==='running') startPoll(); });
   fetch(`/api/patterns?chain=${encodeURIComponent(_currentChain)}`).then(r=>r.ok?r.json():null).then(d=>{
     if(d && !d.error){
@@ -2837,7 +2890,9 @@ if (!window.__wwBodyInit) {
   //  - le tbody/patterns-body sont vides → re-render
   //  - mais on NE recrée PAS les setInterval/setTimeout (déjà actifs en global)
   applyProMode();
-  initCharts();
+  // Si Chart.js était déjà chargé (re-entry après visite charts), on re-init ;
+  // sinon on attendra que le lazy-load déclenche initCharts() à son tour.
+  if (typeof Chart !== 'undefined') initCharts();
   loadData();
   if (window._lastPatterns) {
     renderPatterns(window._lastPatterns);
