@@ -1,29 +1,6 @@
 // Dashboard JS — extrait de index.html pour cache long terme (P1.6).
 // Voir /static/index.html pour l'historique. Modifier ce fichier directement.
 
-// ─── Trusted Types : default policy pass-through ────────────────────────────
-// La CSP contient `require-trusted-types-for 'script'` (Best Practices
-// Lighthouse). Le code existant utilise innerHTML à plusieurs endroits ;
-// pour ne pas casser, on installe une policy "default" qui accepte tout
-// string et le retourne tel quel comme TrustedHTML/TrustedScript.
-//
-// Ceci satisfait la CSP sans changer le code applicatif. La vraie protection
-// contre le DOM-based XSS reste à faire (DOMPurify ou refactor en
-// textContent / templates), mais c'est un chantier distinct.
-//
-// Doit s'exécuter le plus tôt possible (avant tout innerHTML).
-if (window.trustedTypes && window.trustedTypes.createPolicy) {
-  try {
-    window.trustedTypes.createPolicy('default', {
-      createHTML:      (input) => input,
-      createScript:    (input) => input,
-      createScriptURL: (input) => input,
-    });
-  } catch (e) {
-    // policy déjà créée (re-load soft) — ignore
-  }
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // Toast
 // ═════════════════════════════════════════════════════════════════════════════

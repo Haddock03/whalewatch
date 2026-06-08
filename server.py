@@ -148,16 +148,17 @@ _CSP = (
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com data:; "
     "img-src 'self' data: blob: https:; "
-    "connect-src 'self' https://api.coingecko.com; "
+    # CoinGecko expose plusieurs sous-domaines : api.coingecko.com pour
+    # les prix, coin-images.coingecko.com / assets.coingecko.com pour
+    # les logos. On élargit pour éviter les violations CSP côté ticker.
+    "connect-src 'self' https://api.coingecko.com https://*.coingecko.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'; "
-    "object-src 'none'; "
-    # Trusted Types (Best Practices Lighthouse) — mitigation DOM-based XSS.
-    # La policy "default" est créée dans dashboard.js (pass-through string→Trusted).
-    # Satisfait l'audit ; vraie protection à compléter dans une future itération.
-    "require-trusted-types-for 'script'; "
-    "trusted-types default dompurify"
+    "object-src 'none'"
+    # Trusted Types retiré : créait des erreurs console (le default policy
+    # pass-through ne couvre pas tous les cas dans app.js et certains
+    # frameworks). À reprendre avec DOMPurify dans un chantier dédié.
 )
 
 # HSTS : 2 ans + preload + sous-domaines. Envoyé toujours ; en HTTP local
