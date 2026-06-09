@@ -94,7 +94,6 @@ PAGES = {
     "/guide":         "guide.html",       "/guide.html":       "guide.html",
     "/bot":           "bot.html",         "/bot.html":         "bot.html",
     "/methodology":   "methodology.html", "/methodology.html": "methodology.html",
-    "/pro/live":       "pro_live.html",
     "/pro/cockpit":    "pro_cockpit.html",
     "/pro/hot-tokens": "pro_hot_tokens.html",
     "/pro/backtest":   "pro_backtest.html",
@@ -353,6 +352,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # Redirections permanentes pour les URL retirées (préserve bookmarks/SEO).
+        # /pro/live a été tué (faisait doublon avec /pro/cockpit qui le remplace).
+        if path in ("/pro/live", "/pro/live.html"):
+            self.send_response(301)
+            self.send_header("Location", "/pro/cockpit")
+            self.send_header("Cache-Control", "max-age=86400")
+            self.end_headers()
+            return
 
         # Pages
         if path in PAGES:
