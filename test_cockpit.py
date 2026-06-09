@@ -415,6 +415,42 @@ def test_baselines_prune_stale_tokens():
     check("STALE token purgé au load (TTL dépassé)", n_loaded == 1, f"got {n_loaded}")
 
 
+def test_signals_and_hot_carry_hl_perp_symbol():
+    print("\n▶ hl_perp_symbol attaché aux signals et hot tokens (P1 action 1-clic)")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    feed = [
+        # WETH → mappé sur ETH côté HL
+        {"addr": "0xa", "token": "WETH", "side": "buy", "usd": 50000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xb", "token": "WETH", "side": "buy", "usd": 50000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xc", "token": "WETH", "side": "buy", "usd": 50000, "block_time": "2026-06-09T13:55:00Z"},
+        # Token random sans perp HL → mapping = None
+        {"addr": "0xa", "token": "NOPERPCOIN", "side": "buy", "usd": 80000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xb", "token": "NOPERPCOIN", "side": "buy", "usd": 80000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xc", "token": "NOPERPCOIN", "side": "buy", "usd": 80000, "block_time": "2026-06-09T13:55:00Z"},
+    ]
+    scores = {"0xa": 70, "0xb": 70, "0xc": 70}
+    agg = cockpit.aggregate_by_token(feed, scores, now=now)
+    signals = cockpit.build_signals(agg, baselines_1h={"WETH": 10000, "NOPERPCOIN": 10000},
+                                    hl_asset_ctxs={})
+    by_token = {s["token"]: s for s in signals}
+    check("Signal WETH a hl_perp_symbol = 'ETH'",
+          by_token.get("WETH", {}).get("hl_perp_symbol") == "ETH",
+          f"got {by_token.get('WETH', {}).get('hl_perp_symbol')}")
+    check("Signal NOPERPCOIN a hl_perp_symbol = None",
+          by_token.get("NOPERPCOIN", {}).get("hl_perp_symbol") is None,
+          f"got {by_token.get('NOPERPCOIN', {}).get('hl_perp_symbol')}")
+    # Idem pour hot tokens
+    hot = cockpit.build_hot_tokens(agg, baselines_1h={"WETH": 10000, "NOPERPCOIN": 10000},
+                                    min_accel_ratio=1.0, min_inflow_usd=1000)
+    by_token_h = {h["token"]: h for h in hot}
+    check("Hot WETH a hl_perp_symbol = 'ETH'",
+          by_token_h.get("WETH", {}).get("hl_perp_symbol") == "ETH",
+          f"got {by_token_h.get('WETH', {}).get('hl_perp_symbol')}")
+    check("Hot NOPERPCOIN a hl_perp_symbol = None",
+          by_token_h.get("NOPERPCOIN", {}).get("hl_perp_symbol") is None,
+          f"got {by_token_h.get('NOPERPCOIN', {}).get('hl_perp_symbol')}")
+
+
 def test_baselines_load_replaces_chain_not_merges():
     print("\n▶ Baselines — load remplace la chain (idempotence)")
     store = cockpit_worker._BaselineStore()
@@ -470,6 +506,7 @@ def main():
     test_baselines_load_wrong_schema()
     test_baselines_prune_stale_tokens()
     test_baselines_load_replaces_chain_not_merges()
+    test_signals_and_hot_carry_hl_perp_symbol()
 
     print("\n" + "=" * 60)
     if _failures:

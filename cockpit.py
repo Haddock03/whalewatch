@@ -324,7 +324,7 @@ def build_signals(aggregates, baselines_1h, hl_asset_ctxs, now=None):
     Renvoie une liste triée par confidence desc.
     """
     # Import local pour éviter cycle si hyperliquid n'est pas chargé en test
-    from hyperliquid import align_score
+    from hyperliquid import align_score, to_hl_perp
 
     signals = []
     for token, agg in aggregates.items():
@@ -352,6 +352,9 @@ def build_signals(aggregates, baselines_1h, hl_asset_ctxs, now=None):
             "latest_block_time": agg["latest_block_time"],
             "age_min": agg["latest_age_min"],
             "wallets": agg["wallets"],
+            # Symbole perp HL mappé (None si pas de correspondance). Le frontend
+            # l'utilise pour construire le lien Trade-HL 1-clic ; null = bouton caché.
+            "hl_perp_symbol": to_hl_perp(token),
             **ci,  # confidence, tier, decay, components, weights, hl_status, weighted_raw
         })
     signals.sort(key=lambda s: (s["confidence"], s["inflow_usd"]), reverse=True)
@@ -378,6 +381,10 @@ def build_hot_tokens(aggregates, baselines_1h, top_n=None,
       {token, accel_ratio, accel_score, inflow_usd, baseline_usd,
        buy_usd, sell_usd, net_side, n_wallets, top_wallets, latest_age_min}
     """
+    # Import local — évite de forcer l'import de hyperliquid en tests qui n'en
+    # ont pas besoin (et évite un cycle si quelqu'un mock le module).
+    from hyperliquid import to_hl_perp
+
     n = top_n if top_n is not None else HOT_TOP_N
     min_ratio = min_accel_ratio if min_accel_ratio is not None else HOT_MIN_ACCEL_RATIO
     min_inflow = min_inflow_usd if min_inflow_usd is not None else HOT_MIN_INFLOW_USD
@@ -411,6 +418,8 @@ def build_hot_tokens(aggregates, baselines_1h, top_n=None,
             "top_wallets": wallets[:3],
             "latest_age_min": agg["latest_age_min"],
             "trade_count": agg["trade_count"],
+            # Voir build_signals : null si pas de perp HL → bouton caché côté UI.
+            "hl_perp_symbol": to_hl_perp(token),
         })
     out.sort(key=lambda h: (h["accel_ratio"], h["inflow_usd"]), reverse=True)
     return out[:n]

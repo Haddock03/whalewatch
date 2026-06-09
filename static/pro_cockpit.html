@@ -246,6 +246,44 @@
     .ck-empty { text-align: center; padding: var(--s-6) 0; color: var(--muted); }
     .ck-empty-icon { font-size: 32px; margin-bottom: 8px; opacity: .6; }
 
+    /* ── Bouton Trade sur Hyperliquid (P1 — action 1-clic) ── */
+    .ck-hl-trade {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 16px; border-radius: var(--radius-sm);
+      font-size: var(--fs-sm); font-weight: 700; letter-spacing: .02em;
+      text-decoration: none; cursor: pointer;
+      transition: filter .15s ease, transform .15s ease, box-shadow .15s ease;
+      /* Palette HL = vert/cyan (cohérent avec les couleurs d'actions positives
+         du site). Le brand HL réel est plutôt cyan/violet — on s'aligne ici
+         avec notre design system existant pour ne pas casser la palette. */
+      background: linear-gradient(135deg, #00e5b2, #2bd6ff);
+      color: #01060d;
+      box-shadow: 0 4px 14px rgba(0,229,178,.20);
+      border: 1px solid rgba(0,229,178,.45);
+    }
+    .ck-hl-trade:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,229,178,.32); }
+    .ck-hl-trade.is-short {
+      background: linear-gradient(135deg, #ff6b87, #ffc657);
+      box-shadow: 0 4px 14px rgba(255,107,135,.20);
+      border-color: rgba(255,107,135,.45);
+    }
+    .ck-hl-trade.is-short:hover { box-shadow: 0 6px 18px rgba(255,107,135,.32); }
+    .ck-hl-trade.is-neutral {
+      background: rgba(122,153,179,.18);
+      color: var(--text);
+      box-shadow: none;
+      border-color: var(--border-2);
+    }
+    .ck-hl-trade .ck-hl-trade-sym { font-family: var(--font-mono); font-weight: 800; }
+    .ck-hl-trade .ck-hl-trade-arrow { font-size: 12px; opacity: .8; }
+    .ck-hl-na {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 14px; border-radius: var(--radius-sm);
+      font-size: var(--fs-xs); color: var(--muted-2);
+      background: rgba(2,14,28,.30); border: 1px dashed var(--border);
+      cursor: not-allowed;
+    }
+
     /* ── Note explainer ── */
     .ck-explainer {
       padding: var(--s-3); border-radius: var(--radius-sm);
@@ -506,6 +544,25 @@ function decayClass(decay) {
   return 'ck-decay-cold';
 }
 
+// Bouton Trade-HL 1-clic. Ouvre app.hyperliquid.xyz/trade/{SYMBOL} dans un
+// nouvel onglet. Le libellé est directionnel selon net_side du signal — on
+// ne pré-remplit pas le side dans HL (pas de query param documenté), c'est
+// juste un *suggestion* de direction laissée à l'opérateur.
+function renderHlTradeBtn(hlSymbol, netSide) {
+  if (!hlSymbol) {
+    return '<span class="ck-hl-na" title="Pas de perp Hyperliquid pour ce token">⚪ Pas de perp HL</span>';
+  }
+  const url = `https://app.hyperliquid.xyz/trade/${encodeURIComponent(hlSymbol)}`;
+  let cls = '', arrow = '⇗', label = `Trade ${hlSymbol} sur HL`;
+  if (netSide === 'buy')       { cls = '';            arrow = '📈'; label = `Long ${hlSymbol} sur HL`; }
+  else if (netSide === 'sell') { cls = 'is-short';    arrow = '📉'; label = `Short ${hlSymbol} sur HL`; }
+  else                         { cls = 'is-neutral';  arrow = '⇗';  label = `Voir ${hlSymbol} sur HL`; }
+  return `<a class="ck-hl-trade ${cls}" href="${url}" target="_blank" rel="noopener noreferrer" title="Ouvre Hyperliquid dans un nouvel onglet — direction suggérée, vérifie avant d'exécuter">
+    <span class="ck-hl-trade-arrow">${arrow}</span>
+    <span class="ck-hl-trade-sym">${label}</span>
+  </a>`;
+}
+
 function renderSignals(data) {
   const container = document.getElementById('ck-cards');
   const signals = data.signals || [];
@@ -539,6 +596,7 @@ function renderSignals(data) {
         </div>
         <div class="ck-breakdown">${renderBreakdown(s.components || {}, s.weights || {})}</div>
         <div class="ck-netflow">${renderNetFlow(s.buy_usd, s.sell_usd)}</div>
+        <div style="display:flex;justify-content:flex-end">${renderHlTradeBtn(s.hl_perp_symbol, s.net_side)}</div>
         <div class="ck-meta">
           <span><b>${s.n_wallets}</b> wallets distincts</span>
           <span>·</span>

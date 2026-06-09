@@ -174,6 +174,42 @@
     .ht-empty { text-align: center; padding: var(--s-7) 0; color: var(--muted); grid-column: 1/-1; }
     .ht-empty-icon { font-size: 36px; margin-bottom: 10px; opacity: .6; }
 
+    /* ── Bouton Trade sur Hyperliquid (P1 — action 1-clic) ── */
+    /* Mêmes styles que Cockpit, préfixés .ht- pour éviter les collisions de
+       cascading entre les 2 pages si elles partagent un jour des composants. */
+    .ht-hl-trade {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 9px 14px; border-radius: var(--radius-sm);
+      font-size: var(--fs-sm); font-weight: 700;
+      text-decoration: none; cursor: pointer;
+      transition: filter .15s ease, transform .15s ease, box-shadow .15s ease;
+      background: linear-gradient(135deg, #00e5b2, #2bd6ff);
+      color: #01060d;
+      box-shadow: 0 4px 14px rgba(0,229,178,.20);
+      border: 1px solid rgba(0,229,178,.45);
+    }
+    .ht-hl-trade:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,229,178,.32); }
+    .ht-hl-trade.is-short {
+      background: linear-gradient(135deg, #ff6b87, #ffc657);
+      box-shadow: 0 4px 14px rgba(255,107,135,.20);
+      border-color: rgba(255,107,135,.45);
+    }
+    .ht-hl-trade.is-short:hover { box-shadow: 0 6px 18px rgba(255,107,135,.32); }
+    .ht-hl-trade.is-neutral {
+      background: rgba(122,153,179,.18);
+      color: var(--text);
+      box-shadow: none;
+      border-color: var(--border-2);
+    }
+    .ht-hl-trade .ht-hl-sym { font-family: var(--font-mono); font-weight: 800; }
+    .ht-hl-na {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      font-size: var(--fs-xs); color: var(--muted-2);
+      background: rgba(2,14,28,.30); border: 1px dashed var(--border);
+      cursor: not-allowed;
+    }
+
     /* ── Explainer ── */
     .ht-explainer {
       padding: var(--s-3); border-radius: var(--radius-sm);
@@ -341,6 +377,21 @@ function ratioTier(ratio) {
   return 'is-mild';
 }
 
+// Bouton Trade-HL (cf. pro_cockpit.html pour le même pattern)
+function renderHlTradeBtn(hlSymbol, netSide) {
+  if (!hlSymbol) {
+    return '<span class="ht-hl-na" title="Pas de perp Hyperliquid pour ce token">⚪ Pas de perp HL</span>';
+  }
+  const url = `https://app.hyperliquid.xyz/trade/${encodeURIComponent(hlSymbol)}`;
+  let cls = '', arrow = '⇗', label = `Trade ${hlSymbol} sur HL`;
+  if (netSide === 'buy')       { cls = '';            arrow = '📈'; label = `Long ${hlSymbol} sur HL`; }
+  else if (netSide === 'sell') { cls = 'is-short';    arrow = '📉'; label = `Short ${hlSymbol} sur HL`; }
+  else                         { cls = 'is-neutral';  arrow = '⇗';  label = `Voir ${hlSymbol} sur HL`; }
+  return `<a class="ht-hl-trade ${cls}" href="${url}" target="_blank" rel="noopener noreferrer" title="Ouvre Hyperliquid dans un nouvel onglet — direction suggérée, vérifie avant d'exécuter">
+    <span>${arrow}</span><span class="ht-hl-sym">${label}</span>
+  </a>`;
+}
+
 function renderHotCards(hot) {
   const container = document.getElementById('ht-cards');
   if (!hot.length) {
@@ -381,6 +432,7 @@ function renderHotCards(hot) {
             <div class="ht-stat-value">${h.n_wallets}</div>
           </div>
         </div>
+        <div style="display:flex;justify-content:flex-end">${renderHlTradeBtn(h.hl_perp_symbol, h.net_side)}</div>
         <div class="ht-wallets-line">
           <b>${h.trade_count}</b> trades · age <b>${h.latest_age_min ?? '—'}min</b>
           ${walletChips ? '· ' + walletChips : ''}
