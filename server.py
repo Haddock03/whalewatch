@@ -411,7 +411,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "signals": len(cdata.get("signals") or []) if cdata else 0,
                 })
             overall = "ok" if all(c["healthy"] for c in chains_health) else "degraded"
-            status_code = 200 if overall == "ok" else 503
+            # /api/health renvoie TOUJOURS 200. Le 503 doit être réservé aux
+            # pannes serveur (worker crashé, exception, port mort). Stale data
+            # = degraded mais le service répond. Un uptime monitor (Railway,
+            # UptimeRobot, etc.) lit `status` dans le body. Évite que le LB
+            # cut le trafic juste parce que les Sonars Dune sont en retard.
+            status_code = 200
             return self._json({
                 "status": overall,
                 "uptime_seconds": None,  # could track from process start

@@ -25,7 +25,10 @@ from datetime import datetime, timezone
 
 from chains import resolve as resolve_chain
 import cockpit
-import dune_cockpit_feed
+# Source live = Etherscan V2 (Dune était saturé sur le free tier à 60s×3 chains).
+# dune_cockpit_feed reste dans le repo mais n'est PLUS importé ici ni nulle part
+# dans le chemin worker. Voir le warning en tête de dune_cockpit_feed.py.
+import etherscan_cockpit_feed as cockpit_feed
 import hyperliquid
 
 
@@ -219,14 +222,14 @@ def refresh_one_chain(chain_key, progress_cb=None):
         return None
     log(f"{len(addresses)} smart wallets sélectionnés")
 
-    # Fetch Dune feed (chunked-IN)
+    # Fetch feed Etherscan V2 (séquentiel par wallet avec throttle 0.25s)
     try:
-        feed = dune_cockpit_feed.fetch_feed(
+        feed = cockpit_feed.fetch_feed(
             addresses, window_min=cockpit.FEED_WINDOW_MIN,
             chain=chain_key, progress_cb=lambda m: log(m),
         )
     except Exception as e:
-        log(f"erreur Dune: {e}")
+        log(f"erreur Etherscan feed: {e}")
         return None
     log(f"feed {len(feed)} trades")
 

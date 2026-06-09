@@ -1,4 +1,22 @@
 # dune_cockpit_feed.py
+#
+# ⚠️ DÉPRÉCIÉ POUR LE FEED LIVE — NE PAS IMPORTER DEPUIS LE WORKER ⚠️
+#
+# Le free tier Dune (~2500 credits/mois) était saturé par la boucle worker
+# 60s × 3 chains = ~4300 queries/jour. La source live du Cockpit a basculé
+# sur `etherscan_cockpit_feed.py` (Etherscan V2, 100k req/jour free).
+#
+# Ce module est conservé pour :
+#   - inspection / debug du contrat de sortie original
+#   - éventuel switch back si Etherscan a un souci (à la main, hors worker)
+#   - référence sémantique pour le filtre `_classify_side` (stable/non-stable)
+#
+# RÈGLE : aucun import de `dune_cockpit_feed` dans `cockpit_worker.py`,
+# `etherscan_cockpit_feed.py`, `cockpit.py`, ou tout autre module appelé
+# dans la boucle worker. Le seul usage Dune autorisé est le ranking des
+# top wallets (`_run_analysis.py` / `dune_top_wallets.py`) lancé à la main.
+#
+# ─────────────────────────────────────────────────────────────────────────
 # Récupère le feed intraday des trades DEX des top smart wallets pour
 # alimenter le module Cockpit (fenêtre 60min par défaut).
 #

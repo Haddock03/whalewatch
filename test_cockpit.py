@@ -18,11 +18,14 @@ from datetime import datetime, timezone
 
 import os
 import tempfile
+import time
 
 import cockpit
 import cockpit_worker
 import hyperliquid
 import alert_dispatcher
+import etherscan_cockpit_feed
+import token_pricer
 
 
 _failures = []
@@ -756,6 +759,367 @@ def test_baselines_load_replaces_chain_not_merges():
           f"got {arb_baselines}")
 
 
+# ── Token pricer (Etherscan feed migration) ────────────────────────────────
+def test_pricer_stables():
+    print("\n▶ token_pricer : whitelist stables → $1")
+    token_pricer.clear_cache()
+    for s in ("USDC", "USDT", "DAI", "USDC.E", "FDUSD", "FRAX", "BUSD"):
+        p = token_pricer.get_price_usd(None, "ethereum", symbol=s)
+        check(f"{s:8s} → 1.0", p == 1.0, f"got {p}")
+
+
+def test_pricer_native_uses_coingecko_mock(monkeypatch_func=None):
+    print("\n▶ token_pricer : natifs via CoinGecko (mocké)")
+    token_pricer.clear_cache()
+    # Force le cache CoinGecko avec un dict pré-rempli
+    token_pricer._CG_NATIVE_CACHE["data"] = {
+        "ethereum": 1700.0, "bitcoin": 62000.0, "binancecoin": 600.0,
+    }
+    token_pricer._CG_NATIVE_CACHE["ts"] = time.time()
+    check("WETH → 1700",  token_pricer.get_price_usd(None, "ethereum", "WETH") == 1700.0)
+    check("ETH  → 1700",  token_pricer.get_price_usd(None, "ethereum", "ETH") == 1700.0)
+    check("WBTC → 62000", token_pricer.get_price_usd(None, "ethereum", "WBTC") == 62000.0)
+    check("WBNB → 600",   token_pricer.get_price_usd(None, "bnb", "WBNB") == 600.0)
+    check("UNKNOWN_NATIVE → None (pas dans whitelist)",
+          token_pricer.get_price_usd(None, "ethereum", "FOO") is None)
+
+
+def test_pricer_dexscreener_mock():
+    print("\n▶ token_pricer : DexScreener (HTTP mocké)")
+    token_pricer.clear_cache()
+    # Patch _get_json pour simuler la réponse DexScreener
+    original_get_json = token_pricer._get_json
+    pepe_addr = "0x6982508145454ce325ddbe47a25d4ec3d2311933"
+    # Mock : 3 pools, on doit prendre celui avec la plus grosse liquidité
+    def mock_get_json(url, timeout=None):
+        if "tokens" in url:
+            return {"pairs": [
+                {"chainId": "ethereum", "priceUsd": "0.0000025",
+                 "liquidity": {"usd": 50_000}},
+                {"chainId": "ethereum", "priceUsd": "0.0000030",
+                 "liquidity": {"usd": 5_000_000}},   # ← winner
+                {"chainId": "ethereum", "priceUsd": "0.99",  # pool manipulé
+                 "liquidity": {"usd": 500}},          # trop faible, exclu
+                {"chainId": "bsc", "priceUsd": "0.0000028",
+                 "liquidity": {"usd": 3_000_000}},   # autre chain
+            ]}
+        return {}
+    token_pricer._get_json = mock_get_json
+    try:
+        p = token_pricer.get_price_usd(pepe_addr, "ethereum")
+        check("Pool le plus liquide choisi", p == 0.0000030,
+              f"got {p} (attendu 0.0000030 du pool 5M$)")
+        # Vérif cache : 2e appel ne re-fetche pas
+        token_pricer._get_json = lambda url, timeout=None: (_ for _ in ()).throw(Exception("should not be called"))
+        p2 = token_pricer.get_price_usd(pepe_addr, "ethereum")
+        check("2e appel : cache hit (pas de fetch)", p2 == 0.0000030)
+        # Chain BSC : prend le pool BSC
+        token_pricer._get_json = mock_get_json
+        token_pricer.clear_cache()
+        p_bsc = token_pricer.get_price_usd(pepe_addr, "bnb")
+        check("BSC pool (3M$) trouvé", p_bsc == 0.0000028, f"got {p_bsc}")
+    finally:
+        token_pricer._get_json = original_get_json
+
+
+def test_pricer_dexscreener_no_pool():
+    print("\n▶ token_pricer : DexScreener sans pool éligible → None")
+    token_pricer.clear_cache()
+    original_get_json = token_pricer._get_json
+    token_pricer._get_json = lambda url, timeout=None: {"pairs": []}
+    try:
+        p = token_pricer.get_price_usd(
+            "0x0000000000000000000000000000000000000001", "ethereum")
+        check("token sans pool → None", p is None, f"got {p}")
+    finally:
+        token_pricer._get_json = original_get_json
+
+
+# ── Etherscan cockpit feed ─────────────────────────────────────────────────
+def _make_transfer(tx_hash, from_addr, to_addr, sym, decimals, raw_amount,
+                   contract_addr, ts):
+    return {
+        "hash": tx_hash, "from": from_addr, "to": to_addr,
+        "tokenSymbol": sym, "tokenDecimal": str(decimals),
+        "value": str(raw_amount), "contractAddress": contract_addr,
+        "timeStamp": str(int(ts)),
+    }
+
+
+def test_etherscan_feed_stable_for_crypto_buy():
+    print("\n▶ Etherscan feed : stable→crypto (BUY crypto)")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    now = time.time() - 60  # 1 min ago
+    transfers = [
+        # Wallet envoie 5000 USDC → router
+        _make_transfer("0xTX1", wallet, router, "USDC", 6, "5000000000", usdc, now),
+        # Router envoie 3 WETH → wallet
+        _make_transfer("0xTX1", router, wallet, "WETH", 18, "3000000000000000000", weth, now),
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    original_price = token_pricer.get_price_usd
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    token_pricer.get_price_usd = lambda addr, chain, symbol=None: (
+        1.0 if (symbol or "").upper() == "USDC" else
+        1700.0 if (symbol or "").upper() == "WETH" else None
+    )
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("1 entry produite", len(feed) == 1, f"got {len(feed)}")
+        if feed:
+            e = feed[0]
+            check("token = WETH", e["token"] == "WETH", f"got {e['token']}")
+            check("side = buy", e["side"] == "buy", f"got {e['side']}")
+            check("usd ≈ 3 × 1700 = 5100", abs(e["usd"] - 5100.0) < 0.01,
+                  f"got {e['usd']}")
+            check("addr = wallet lowercase", e["addr"] == wallet.lower())
+            check("project = etherscan", e["project"] == "etherscan")
+            check("block_time iso", e["block_time"].endswith("Z"))
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+        token_pricer.get_price_usd = original_price
+
+
+def test_etherscan_feed_crypto_to_crypto_two_entries():
+    print("\n▶ Etherscan feed : crypto↔crypto (2 entries opposées)")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    wbtc = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+    now = time.time() - 60
+    transfers = [
+        _make_transfer("0xTX2", wallet, router, "WETH", 18, "10000000000000000000", weth, now),  # 10 WETH
+        _make_transfer("0xTX2", router, wallet, "WBTC", 8, "26000000", wbtc, now),               # 0.26 WBTC
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    original_price = token_pricer.get_price_usd
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    token_pricer.get_price_usd = lambda addr, chain, symbol=None: (
+        1700.0 if (symbol or "").upper() == "WETH" else
+        62000.0 if (symbol or "").upper() == "WBTC" else None
+    )
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("2 entries produites", len(feed) == 2, f"got {len(feed)}")
+        sides = {(e["token"], e["side"]) for e in feed}
+        check("WBTC en BUY", ("WBTC", "buy") in sides, f"got {sides}")
+        check("WETH en SELL", ("WETH", "sell") in sides, f"got {sides}")
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+        token_pricer.get_price_usd = original_price
+
+
+def test_etherscan_feed_skip_stable_stable():
+    print("\n▶ Etherscan feed : stable↔stable → skip")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    usdt = "0xdac17f958d2ee523a2206206994597c13d831ec7"
+    now = time.time() - 60
+    transfers = [
+        _make_transfer("0xTX3", wallet, router, "USDC", 6, "1000000000", usdc, now),
+        _make_transfer("0xTX3", router, wallet, "USDT", 6, "1000000000", usdt, now),
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("USDC↔USDT → 0 entries", len(feed) == 0, f"got {len(feed)}")
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+
+
+def test_etherscan_feed_skip_one_sided():
+    print("\n▶ Etherscan feed : transfert seul (claim/airdrop) → skip")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    sender = "0x9999999999999999999999999999999999999999"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    now = time.time() - 60
+    transfers = [
+        # Wallet reçoit USDC mais n'envoie rien dans cette tx
+        _make_transfer("0xTX4", sender, wallet, "USDC", 6, "1000000000", usdc, now),
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("Transfert simple (pas swap) → 0 entries", len(feed) == 0,
+              f"got {len(feed)}")
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+
+
+def test_etherscan_feed_skip_old_trades():
+    print("\n▶ Etherscan feed : trades hors fenêtre → skip")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    # 2h ago, donc HORS de la fenêtre 60min
+    old_ts = time.time() - 7200
+    transfers = [
+        _make_transfer("0xTX5", wallet, router, "USDC", 6, "5000000000", usdc, old_ts),
+        _make_transfer("0xTX5", router, wallet, "WETH", 18, "3000000000000000000", weth, old_ts),
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("Trade > 60min ago → filtré", len(feed) == 0, f"got {len(feed)}")
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+
+
+def test_etherscan_feed_skip_below_min_usd():
+    print("\n▶ Etherscan feed : trade sous MIN_TRADE_USD → skip")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    now = time.time() - 60
+    # 100 USDC → trade $100, sous le MIN_TRADE_USD=1000
+    transfers = [
+        _make_transfer("0xTX6", wallet, router, "USDC", 6, "100000000", usdc, now),
+        _make_transfer("0xTX6", router, wallet, "WETH", 18, "60000000000000000", weth, now),
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    original_price = token_pricer.get_price_usd
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    token_pricer.get_price_usd = lambda addr, chain, symbol=None: (
+        1.0 if (symbol or "").upper() == "USDC" else
+        1700.0 if (symbol or "").upper() == "WETH" else None
+    )
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("Trade $102 < MIN_TRADE_USD → filtré", len(feed) == 0,
+              f"got {len(feed)} entries (usd={feed[0]['usd'] if feed else 'N/A'})")
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+        token_pricer.get_price_usd = original_price
+
+
+def test_etherscan_feed_skip_when_pricer_returns_none():
+    print("\n▶ Etherscan feed : pricer None → trade ignoré")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    unknown = "0xdeadbeef00000000000000000000000000000000"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    now = time.time() - 60
+    transfers = [
+        _make_transfer("0xTX7", wallet, router, "USDC", 6, "5000000000", usdc, now),
+        _make_transfer("0xTX7", router, wallet, "UNKNOWN", 18, "1000000000000000000", unknown, now),
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    original_price = token_pricer.get_price_usd
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    token_pricer.get_price_usd = lambda addr, chain, symbol=None: (
+        1.0 if (symbol or "").upper() == "USDC" else None
+    )
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("Pricer None pour UNKNOWN → trade ignoré", len(feed) == 0,
+              f"got {len(feed)}")
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+        token_pricer.get_price_usd = original_price
+
+
+def test_etherscan_feed_matches_dune_format():
+    print("\n▶ Etherscan feed : format de sortie IDENTIQUE au feed Dune")
+    wallet = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    now = time.time() - 60
+    transfers = [
+        _make_transfer("0xTX8", wallet, router, "USDC", 6, "5000000000", usdc, now),
+        _make_transfer("0xTX8", router, wallet, "WETH", 18, "3000000000000000000", weth, now),
+    ]
+    original = etherscan_cockpit_feed.get_token_transfers
+    original_price = token_pricer.get_price_usd
+    etherscan_cockpit_feed.get_token_transfers = lambda *a, **k: transfers
+    token_pricer.get_price_usd = lambda addr, chain, symbol=None: (
+        1.0 if (symbol or "").upper() == "USDC" else
+        1700.0 if (symbol or "").upper() == "WETH" else None
+    )
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet], window_min=60,
+                                                  chain="ethereum")
+        check("1 entry attendue", len(feed) == 1)
+        if feed:
+            entry = feed[0]
+            expected_keys = {"addr", "token", "side", "usd", "project", "block_time"}
+            actual = set(entry.keys())
+            check("clés IDENTIQUES au feed Dune",
+                  actual == expected_keys,
+                  f"manquantes={expected_keys - actual} en plus={actual - expected_keys}")
+            check("types corrects",
+                  isinstance(entry["addr"], str)
+                  and isinstance(entry["token"], str)
+                  and entry["side"] in ("buy", "sell")
+                  and isinstance(entry["usd"], (int, float))
+                  and isinstance(entry["project"], str)
+                  and isinstance(entry["block_time"], str))
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+        token_pricer.get_price_usd = original_price
+
+
+def test_etherscan_feed_consumed_by_aggregate_by_token():
+    print("\n▶ Etherscan feed → aggregate_by_token sans modif")
+    wallet1 = "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    wallet2 = "0xbb2fc483527b8ef99eb5d9b44875f005ba1fae13"
+    router = "0x1111111111111111111111111111111111111111"
+    weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    now = time.time() - 60
+    # 2 wallets achètent WETH
+    fixtures = {
+        wallet1: [
+            _make_transfer("0xA", wallet1, router, "USDC", 6, "5000000000", usdc, now),
+            _make_transfer("0xA", router, wallet1, "WETH", 18, "3000000000000000000", weth, now),
+        ],
+        wallet2: [
+            _make_transfer("0xB", wallet2, router, "USDC", 6, "10000000000", usdc, now),
+            _make_transfer("0xB", router, wallet2, "WETH", 18, "6000000000000000000", weth, now),
+        ],
+    }
+    original = etherscan_cockpit_feed.get_token_transfers
+    original_price = token_pricer.get_price_usd
+    etherscan_cockpit_feed.get_token_transfers = lambda addr, **k: fixtures.get(addr.lower(), [])
+    token_pricer.get_price_usd = lambda addr, chain, symbol=None: (
+        1.0 if (symbol or "").upper() == "USDC" else
+        1700.0 if (symbol or "").upper() == "WETH" else None
+    )
+    try:
+        feed = etherscan_cockpit_feed.fetch_feed([wallet1, wallet2], window_min=60,
+                                                  chain="ethereum")
+        check("2 entries (1 par wallet)", len(feed) == 2, f"got {len(feed)}")
+        # Vérifie que cockpit.aggregate_by_token peut consommer ce feed sans erreur
+        scores = {wallet1: 75, wallet2: 70}
+        agg = cockpit.aggregate_by_token(feed, scores)
+        weth_agg = agg.get("WETH")
+        check("WETH agrégé", weth_agg is not None)
+        check("WETH 2 wallets distincts (full)",
+              len(weth_agg.get("wallets") or []) == 2,
+              f"got {weth_agg.get('wallets')}")
+        check("WETH buy_usd > 0",
+              (weth_agg.get("buy_usd") or 0) > 0, f"got {weth_agg.get('buy_usd')}")
+    finally:
+        etherscan_cockpit_feed.get_token_transfers = original
+        token_pricer.get_price_usd = original_price
+
+
 # ── Run all ────────────────────────────────────────────────────────────────
 def main():
     test_decay()
@@ -790,6 +1154,25 @@ def main():
     test_dispatch_history_anti_spam()
     test_alert_payload_build()
     test_alert_tick_respects_threshold()
+    test_pricer_stables()
+    test_pricer_native_uses_coingecko_mock()
+    test_pricer_dexscreener_mock()
+    test_pricer_dexscreener_no_pool()
+    # Les tests Etherscan feed mockent get_token_transfers donc n'ont pas
+    # besoin d'une vraie clé. On en pose une factice pour passer le guard
+    # de fetch_feed qui raise si ETHERSCAN_API_KEY est vide.
+    if not os.environ.get("ETHERSCAN_API_KEY"):
+        os.environ["ETHERSCAN_API_KEY"] = "test-key-for-mocked-tests"
+        etherscan_cockpit_feed.ETHERSCAN_API_KEY = "test-key-for-mocked-tests"
+    test_etherscan_feed_stable_for_crypto_buy()
+    test_etherscan_feed_crypto_to_crypto_two_entries()
+    test_etherscan_feed_skip_stable_stable()
+    test_etherscan_feed_skip_one_sided()
+    test_etherscan_feed_skip_old_trades()
+    test_etherscan_feed_skip_below_min_usd()
+    test_etherscan_feed_skip_when_pricer_returns_none()
+    test_etherscan_feed_matches_dune_format()
+    test_etherscan_feed_consumed_by_aggregate_by_token()
 
     print("\n" + "=" * 60)
     if _failures:
