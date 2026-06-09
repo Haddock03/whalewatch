@@ -1,0 +1,270 @@
+#!/usr/bin/env python3
+# test_cockpit.py
+# Tests de régression pour le module Cockpit (P0).
+#
+# Aligné sur la convention test_scoring.py : pas de framework — fonctions
+# `assert` + récap final. Exit 1 si au moins un test échoue.
+#
+# Couvre :
+#   - Decay exponentiel (half-life 20 min → multiplicateur 0.5 à 20min)
+#   - Redistribution des poids quand hl_perp = None
+#   - Convergence sigmoid (monotonie + ancrage threshold≈50)
+#   - Tiers (Faible / Modéré / Fort / Très fort)
+#   - Mapping HL whitelist (wrapped, memecoin k-version, miss → None)
+#   - Net flow score (cas extrêmes 100% buy / 100% sell / 50/50)
+#   - Agrégation par token (convergence fenêtre courte, classification side)
+import sys
+from datetime import datetime, timezone
+
+import cockpit
+import hyperliquid
+
+
+_failures = []
+
+
+def check(name, cond, detail=""):
+    status = "OK" if cond else "FAIL"
+    print(f"  [{status}] {name}" + (f"  ({detail})" if detail and not cond else ""))
+    if not cond:
+        _failures.append(name)
+
+
+# ── Decay ──────────────────────────────────────────────────────────────────
+def test_decay():
+    print("\n▶ Decay exponentiel (half-life 20min)")
+    # full score 100, hl_perp = 100 pour ne pas redistribuer
+    sub = {"convergence": 100, "wallet_quality": 100, "net_flow": 100,
+           "acceleration": 100, "hl_perp": 100}
+    c0  = cockpit.confidence_index(sub, age_min=0,  half_life_min=20)
+    c20 = cockpit.confidence_index(sub, age_min=20, half_life_min=20)
+    c40 = cockpit.confidence_index(sub, age_min=40, half_life_min=20)
+    check("age=0 → confidence=100", c0["confidence"] == 100, f"got {c0['confidence']}")
+    check("age=20 → decay≈0.5",      abs(c20["decay"] - 0.5)   < 1e-6, f"got {c20['decay']}")
+    check("age=20 → confidence=50",  c20["confidence"] == 50,  f"got {c20['confidence']}")
+    check("age=40 → decay≈0.25",     abs(c40["decay"] - 0.25)  < 1e-6, f"got {c40['decay']}")
+    check("age=40 → confidence=25",  c40["confidence"] == 25,  f"got {c40['confidence']}")
+
+
+# ── Redistribution des poids quand HL=N/A ──────────────────────────────────
+def test_hl_redistribution():
+    print("\n▶ Redistribution des poids quand hl_perp = None")
+    # Tous les autres sub-scores à 80, hl_perp = None
+    sub = {"convergence": 80, "wallet_quality": 80, "net_flow": 80,
+           "acceleration": 80, "hl_perp": None}
+    ci = cockpit.confidence_index(sub, age_min=0, half_life_min=20)
+    # hl_perp doit être marqué N/A
+    check("hl_status == 'na'", ci["hl_status"] == "na")
+    # Le poids hl_perp doit être 0 après redistribution
+    check("eff_weights[hl_perp] == 0", ci["weights"]["hl_perp"] == 0.0)
+    # La somme des poids des 4 autres doit valoir la somme initiale des 5
+    initial_sum = (cockpit.W_CONVERGENCE + cockpit.W_QUALITY
+                   + cockpit.W_NETFLOW + cockpit.W_ACCEL + cockpit.W_HL)
+    eff_sum_others = (ci["weights"]["convergence"] + ci["weights"]["wallet_quality"]
+                      + ci["weights"]["net_flow"] + ci["weights"]["acceleration"])
+    check("Σ(eff_weights des 4 autres) ≈ Σ(poids initiaux 5)",
+          abs(eff_sum_others - initial_sum) < 1e-3,
+          f"got {eff_sum_others:.4f} vs {initial_sum:.4f}")
+    # Les ratios entre les 4 sub-scores doivent être préservés (W_CONV / W_QUALITY)
+    initial_ratio = cockpit.W_CONVERGENCE / cockpit.W_QUALITY
+    eff_ratio = ci["weights"]["convergence"] / ci["weights"]["wallet_quality"]
+    check("Ratio convergence/quality préservé",
+          abs(initial_ratio - eff_ratio) < 1e-3,
+          f"got {eff_ratio:.4f} vs {initial_ratio:.4f}")
+    # Avec tous les autres = 80 → confidence = 80 (poids redistribués ne change rien
+    # si tous les composants ont la même valeur)
+    check("Confidence == 80 quand tous les 4 sub-scores = 80",
+          ci["confidence"] == 80, f"got {ci['confidence']}")
+
+
+# ── Pas de redistribution si hl_perp != None ───────────────────────────────
+def test_hl_kept_when_available():
+    print("\n▶ Poids non-redistribués quand hl_perp disponible")
+    sub = {"convergence": 0, "wallet_quality": 0, "net_flow": 0,
+           "acceleration": 0, "hl_perp": 100}
+    ci = cockpit.confidence_index(sub, age_min=0, half_life_min=20)
+    check("hl_status == 'available'", ci["hl_status"] == "available")
+    check("eff_weights[hl_perp] == W_HL",
+          abs(ci["weights"]["hl_perp"] - cockpit.W_HL) < 1e-6)
+    # confidence = 100 * W_HL / Σ = 100 * 0.20 / 1.00 = 20
+    expected = round(100 * cockpit.W_HL / 1.0)
+    check(f"Confidence ≈ {expected} (hl seul contribue)",
+          abs(ci["confidence"] - expected) <= 1, f"got {ci['confidence']}")
+
+
+# ── Convergence sigmoid ────────────────────────────────────────────────────
+def test_convergence_sigmoid():
+    print("\n▶ Convergence sigmoid (monotonie + ancrage threshold)")
+    c0 = cockpit.convergence_score(0, threshold=3)
+    c1 = cockpit.convergence_score(1, threshold=3)
+    c3 = cockpit.convergence_score(3, threshold=3)
+    c6 = cockpit.convergence_score(6, threshold=3)
+    c20 = cockpit.convergence_score(20, threshold=3)
+    check("n=0 → 0",            c0 == 0.0, f"got {c0}")
+    check("monotone n=1<3<6<20", c1 < c3 < c6 < c20, f"{c1},{c3},{c6},{c20}")
+    check("n=threshold ≈ 50",   abs(c3 - 50.0) < 1e-6, f"got {c3}")
+    check("n=2*threshold ≈ 75 (±2)",  abs(c6 - 75.0) < 2.5, f"got {c6}")
+    check("asymptote vers 100",  c20 > 90.0 and c20 <= 100.0, f"got {c20}")
+
+
+# ── Tiers ──────────────────────────────────────────────────────────────────
+def test_tiers():
+    print("\n▶ Tiers de confidence")
+    check("39 → Faible",      cockpit.tier_for(39) == "Faible")
+    check("40 → Modéré",      cockpit.tier_for(40) == "Modéré")
+    check("59 → Modéré",      cockpit.tier_for(59) == "Modéré")
+    check("60 → Fort",        cockpit.tier_for(60) == "Fort")
+    check("79 → Fort",        cockpit.tier_for(79) == "Fort")
+    check("80 → Très fort",   cockpit.tier_for(80) == "Très fort")
+    check("100 → Très fort",  cockpit.tier_for(100) == "Très fort")
+
+
+# ── Net flow ───────────────────────────────────────────────────────────────
+def test_net_flow():
+    print("\n▶ Net flow score")
+    check("100% buy → 100",  cockpit.net_flow_score(100, 0)   == 100.0)
+    check("100% sell → 100", cockpit.net_flow_score(0, 100)   == 100.0)
+    check("50/50 → 0",       cockpit.net_flow_score(50, 50)   == 0.0)
+    check("80/20 → 60",      cockpit.net_flow_score(80, 20)   == 60.0)
+    check("buy=0 sell=0 → 0", cockpit.net_flow_score(0, 0)    == 0.0)
+
+
+# ── Acceleration ───────────────────────────────────────────────────────────
+def test_acceleration():
+    print("\n▶ Acceleration score")
+    check("baseline=None → 50 (neutre)", cockpit.acceleration_score(100, None) == 50.0)
+    check("baseline=0 → 50 (neutre)",    cockpit.acceleration_score(100, 0) == 50.0)
+    s1 = cockpit.acceleration_score(100, 100)   # ratio 1 → 33
+    s2 = cockpit.acceleration_score(200, 100)   # ratio 2 → 67
+    s3 = cockpit.acceleration_score(500, 100)   # ratio capped 3 → 100
+    check("ratio=1 → ~33",         abs(s1 - 33.3) < 1.0, f"got {s1}")
+    check("ratio=2 → ~67",         abs(s2 - 66.7) < 1.0, f"got {s2}")
+    check("ratio>=3 (capped) → 100", s3 == 100.0, f"got {s3}")
+
+
+# ── Wallet quality ─────────────────────────────────────────────────────────
+def test_wallet_quality():
+    print("\n▶ Wallet quality score")
+    check("[] → 0",            cockpit.wallet_quality_score([]) == 0.0)
+    check("[80,70,90] → 80",   cockpit.wallet_quality_score([80, 70, 90]) == 80.0)
+    check("clamp à 100",       cockpit.wallet_quality_score([110, 150]) == 100.0)
+
+
+# ── Mapping HL ─────────────────────────────────────────────────────────────
+def test_hl_mapping():
+    print("\n▶ Mapping HL whitelist")
+    check("WETH → ETH",   hyperliquid.to_hl_perp("WETH") == "ETH")
+    check("weth → ETH (case)", hyperliquid.to_hl_perp("weth") == "ETH")
+    check("WBTC → BTC",   hyperliquid.to_hl_perp("WBTC") == "BTC")
+    check("BTCB → BTC",   hyperliquid.to_hl_perp("BTCB") == "BTC")
+    check("WBNB → BNB",   hyperliquid.to_hl_perp("WBNB") == "BNB")
+    check("stETH → ETH",  hyperliquid.to_hl_perp("stETH") == "ETH")
+    check("PEPE → kPEPE", hyperliquid.to_hl_perp("PEPE") == "kPEPE")
+    check("BONK → kBONK", hyperliquid.to_hl_perp("BONK") == "kBONK")
+    check("SOL → SOL",    hyperliquid.to_hl_perp("SOL") == "SOL")
+    check("USDC → None (stable)", hyperliquid.to_hl_perp("USDC") is None)
+    check("RANDOMTOKEN → None",    hyperliquid.to_hl_perp("RANDOMTOKEN") is None)
+    check("'' → None",            hyperliquid.to_hl_perp("") is None)
+    check("None → None",          hyperliquid.to_hl_perp(None) is None)
+
+
+# ── Aggregation feed → tokens ──────────────────────────────────────────────
+def test_aggregate_by_token():
+    print("\n▶ Agrégation feed → tokens")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    feed = [
+        # 3 wallets distincts achètent ETH dans la fenêtre 30min
+        {"addr": "0xa", "token": "ETH", "side": "buy",  "usd": 50000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xb", "token": "ETH", "side": "buy",  "usd": 80000, "block_time": "2026-06-09T13:50:00Z"},
+        {"addr": "0xc", "token": "ETH", "side": "buy",  "usd": 30000, "block_time": "2026-06-09T13:40:00Z"},
+        # 1 sell dans la fenêtre full mais hors conv_window (35min de retard)
+        {"addr": "0xd", "token": "ETH", "side": "sell", "usd": 10000, "block_time": "2026-06-09T13:25:00Z"},
+        # 1 wallet sur PEPE
+        {"addr": "0xa", "token": "PEPE","side": "buy",  "usd": 12000, "block_time": "2026-06-09T13:48:00Z"},
+    ]
+    scores = {"0xa": 78, "0xb": 71, "0xc": 66, "0xd": 70}
+    agg = cockpit.aggregate_by_token(feed, scores, conv_window_min=30, now=now)
+    eth = agg.get("ETH")
+    check("ETH présent", eth is not None)
+    check("ETH n_wallets_distinct == 3 (sur conv_window)",
+          eth and eth["n_wallets_distinct"] == 3,
+          f"got {eth['n_wallets_distinct'] if eth else 'absent'}")
+    check("ETH buy_usd == 160000", eth and eth["buy_usd"] == 160000.0)
+    check("ETH sell_usd == 10000", eth and eth["sell_usd"] == 10000.0)
+    check("ETH net_side == 'buy'", eth and eth["net_side"] == "buy")
+    check("ETH wallets_smart_scores includes 4 entries (all addrs)",
+          eth and len(eth["wallets_smart_scores"]) == 4,
+          f"got {len(eth['wallets_smart_scores']) if eth else 'absent'}")
+    pepe = agg.get("PEPE")
+    check("PEPE n_wallets_distinct == 1", pepe and pepe["n_wallets_distinct"] == 1)
+
+
+# ── Build signals (filtre convergence) ─────────────────────────────────────
+def test_build_signals_filter():
+    print("\n▶ build_signals filtre convergence (seuil N=3)")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    feed = [
+        # 2 wallets distincts seulement sur DOGE → sous le seuil
+        {"addr": "0xa", "token": "DOGE", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xb", "token": "DOGE", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+        # 3 wallets distincts sur SOL → au seuil
+        {"addr": "0xa", "token": "SOL", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xb", "token": "SOL", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xc", "token": "SOL", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+    ]
+    scores = {"0xa": 70, "0xb": 70, "0xc": 70}
+    agg = cockpit.aggregate_by_token(feed, scores, now=now)
+    signals = cockpit.build_signals(agg, baselines_1h={}, hl_asset_ctxs={})
+    tokens = {s["token"] for s in signals}
+    check("SOL devient signal (n=3)", "SOL" in tokens, f"got {tokens}")
+    check("DOGE filtré (n=2 < seuil)", "DOGE" not in tokens, f"got {tokens}")
+
+
+# ── Select smart wallets ──────────────────────────────────────────────────
+def test_select_smart_wallets():
+    print("\n▶ Sélection des smart wallets depuis cache results")
+    cache_data = {
+        "wallets": [
+            {"address": "0xa", "smart_score": 80, "category": "Other"},
+            {"address": "0xB", "smart_score": 66, "category": "Other"},  # case insensitive
+            {"address": "0xc", "smart_score": 90, "category": "MEV Bot"},  # filtré infra
+            {"address": "0xd", "smart_score": 50, "category": "Other"},   # sous seuil
+            {"address": "0xe", "smart_score": 70, "category": "CEX"},      # filtré infra
+        ]
+    }
+    addrs, scores = cockpit.select_smart_wallets(cache_data, min_score=65)
+    check("0xa retenu (80)",  "0xa" in addrs, f"got {addrs}")
+    check("0xb retenu lowercased (66)", "0xb" in addrs, f"got {addrs}")
+    check("0xc filtré (MEV Bot)",       "0xc" not in addrs, f"got {addrs}")
+    check("0xd filtré (sous seuil 65)", "0xd" not in addrs, f"got {addrs}")
+    check("0xe filtré (CEX)",           "0xe" not in addrs, f"got {addrs}")
+    check("scores[0xa] == 80", scores.get("0xa") == 80)
+
+
+# ── Run all ────────────────────────────────────────────────────────────────
+def main():
+    test_decay()
+    test_hl_redistribution()
+    test_hl_kept_when_available()
+    test_convergence_sigmoid()
+    test_tiers()
+    test_net_flow()
+    test_acceleration()
+    test_wallet_quality()
+    test_hl_mapping()
+    test_aggregate_by_token()
+    test_build_signals_filter()
+    test_select_smart_wallets()
+
+    print("\n" + "=" * 60)
+    if _failures:
+        print(f"❌ {len(_failures)} test(s) failed:")
+        for f in _failures:
+            print(f"   - {f}")
+        sys.exit(1)
+    else:
+        print("✅ All cockpit tests passed.")
+
+
+if __name__ == "__main__":
+    main()

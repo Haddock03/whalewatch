@@ -39,6 +39,39 @@ def _chain_paths(chain_param):
         cfg = resolve_chain(DEFAULT_CHAIN)
     return cfg["key"], cfg["cache_path"], cfg["patterns_path"]
 
+
+# Seuil de fraîcheur du cache Cockpit. Au-delà de 3× l'intervalle de refresh,
+# on considère le cache « stale » et on alerte le frontend. La var d'env est
+# la même que celle utilisée par cockpit_worker — modifier l'un modifie
+# automatiquement le seuil de l'autre.
+_COCKPIT_REFRESH_SEC = int(os.environ.get("COCKPIT_REFRESH_INTERVAL_SEC", "60"))
+_COCKPIT_STALE_AFTER_SEC = max(180, 3 * _COCKPIT_REFRESH_SEC)
+
+
+def _cockpit_cache_meta(payload):
+    """Calcule age + flag stale pour un payload cockpit lu depuis le cache JSON.
+    Renvoie un dict { cache_age_seconds, is_stale, stale_threshold_seconds }.
+    Si pas de generated_at, considère stale=True (worker n'a jamais tourné)."""
+    from datetime import datetime, timezone
+    gen = payload.get("generated_at") if payload else None
+    if not gen:
+        return {
+            "cache_age_seconds": None,
+            "is_stale": True,
+            "stale_threshold_seconds": _COCKPIT_STALE_AFTER_SEC,
+        }
+    try:
+        dt = datetime.fromisoformat(gen.replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - dt).total_seconds()
+    except (ValueError, AttributeError, TypeError):
+        return {"cache_age_seconds": None, "is_stale": True,
+                "stale_threshold_seconds": _COCKPIT_STALE_AFTER_SEC}
+    return {
+        "cache_age_seconds": round(age, 1),
+        "is_stale": age > _COCKPIT_STALE_AFTER_SEC,
+        "stale_threshold_seconds": _COCKPIT_STALE_AFTER_SEC,
+    }
+
 # Routes statiques → fichiers HTML
 PAGES = {
     "/":              "index.html",       "/index.html":       "index.html",
@@ -47,6 +80,7 @@ PAGES = {
     "/bot":           "bot.html",         "/bot.html":         "bot.html",
     "/methodology":   "methodology.html", "/methodology.html": "methodology.html",
     "/pro/live":      "pro_live.html",
+    "/pro/cockpit":   "pro_cockpit.html",
     "/pro/backtest":  "pro_backtest.html",
     "/pro/watchlist": "pro_watchlist.html",
     "/pro/guide":     "pro_guide.html",
@@ -342,6 +376,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "wallets": len(d.get("wallets", []) if d else []),
                     "healthy": healthy,
                 })
+            # Santé du Cockpit : chains activées + fraîcheur de leur cache.
+            # Considéré healthy si le cache existe et n'est pas stale (cf.
+            # _cockpit_cache_meta).
+            cockpit_health = []
+            enabled = [c.strip() for c in
+                       os.environ.get("COCKPIT_ENABLED_CHAINS", "ethereum,arbitrum,bnb").split(",")
+                       if c.strip()]
+            for ch in enabled:
+                cp = os.path.join(CACHE_DIR, f"cockpit_{ch}.json")
+                cdata = load_json(cp, None)
+                cmeta = _cockpit_cache_meta(cdata)
+                cockpit_health.append({
+                    "chain": ch,
+                    "has_cache": cdata is not None,
+                    "age_seconds": cmeta["cache_age_seconds"],
+                    "is_stale": cmeta["is_stale"],
+                    "signals": len(cdata.get("signals") or []) if cdata else 0,
+                })
             overall = "ok" if all(c["healthy"] for c in chains_health) else "degraded"
             status_code = 200 if overall == "ok" else 503
             return self._json({
@@ -350,6 +402,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "timestamp": _utc_now_iso(),
                 "chains": chains_health,
                 "stale_threshold_hours": stale_threshold_hours,
+                "cockpit": {
+                    "enabled_chains": enabled,
+                    "stale_threshold_seconds": _COCKPIT_STALE_AFTER_SEC,
+                    "chains": cockpit_health,
+                },
             }, status_code)
 
         if path == "/api/prices":
@@ -443,6 +500,78 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._json(read_alerts())
             except Exception as e:
                 return self._json({"error": str(e), "alerts": []}, 200)
+
+        # ── Cockpit (P0) ──────────────────────────────────────────────────
+        # 3 endpoints qui lisent UNIQUEMENT le cache JSON écrit par le
+        # worker (cockpit_worker.py). Aucune query Dune/HL ici → poll user
+        # = O(1), zéro latence externe.
+        #
+        # Chaque endpoint enrichit la réponse avec cache_age_seconds et
+        # is_stale pour que le frontend puisse alerter visuellement si le
+        # worker s'est arrêté (cache > 3× l'intervalle de refresh).
+        if path in ("/api/cockpit/feed", "/api/cockpit/signals",
+                    "/api/cockpit/config"):
+            chain = parse_qs(parsed.query).get("chain", [DEFAULT_CHAIN])[0]
+            # Valide la chain (résolution lève ValueError sinon)
+            try:
+                resolve_chain(chain)
+            except ValueError:
+                return self._json({"error": f"chain inconnue: {chain}"}, 400)
+            cockpit_path = os.path.join(CACHE_DIR, f"cockpit_{chain}.json")
+            payload = load_json(cockpit_path, None)
+            if payload is None:
+                # Worker pas encore passé OU chain pas activée dans
+                # COCKPIT_ENABLED_CHAINS — on renvoie un squelette vide
+                # pour que le frontend affiche un état "loading" propre.
+                # is_stale=True force le bandeau d'alerte UI.
+                return self._json({
+                    "chain": chain,
+                    "generated_at": None,
+                    "signals": [],
+                    "convergence_radar": [],
+                    "feed": [],
+                    "hl_available": False,
+                    "status": "warming_up",
+                    "cache_age_seconds": None,
+                    "is_stale": True,
+                    "stale_threshold_seconds": _COCKPIT_STALE_AFTER_SEC,
+                })
+            meta = _cockpit_cache_meta(payload)
+            if path == "/api/cockpit/feed":
+                return self._json({
+                    "chain": payload["chain"],
+                    "generated_at": payload["generated_at"],
+                    "feed_window_min": payload.get("feed_window_min"),
+                    "feed": payload.get("feed") or [],
+                    "smart_wallets_count": payload.get("smart_wallets_count"),
+                    "feed_trades_count": payload.get("feed_trades_count"),
+                    **meta,
+                })
+            if path == "/api/cockpit/signals":
+                return self._json({
+                    "chain": payload["chain"],
+                    "generated_at": payload["generated_at"],
+                    "signals": payload.get("signals") or [],
+                    "convergence_radar": payload.get("convergence_radar") or [],
+                    "hl_available": payload.get("hl_available", False),
+                    "conv_window_min": payload.get("conv_window_min"),
+                    "conv_threshold": payload.get("conv_threshold"),
+                    "half_life_min": payload.get("half_life_min"),
+                    **meta,
+                })
+            # /api/cockpit/config
+            return self._json({
+                "chain": payload["chain"],
+                "feed_window_min":  payload.get("feed_window_min"),
+                "conv_window_min":  payload.get("conv_window_min"),
+                "conv_threshold":   payload.get("conv_threshold"),
+                "half_life_min":    payload.get("half_life_min"),
+                "min_smart_score":  payload.get("min_smart_score"),
+                "weights":          payload.get("weights") or {},
+                "hl_available":     payload.get("hl_available", False),
+                "generated_at":     payload.get("generated_at"),
+                **meta,
+            })
 
         if path.startswith("/api/wallet/") and path.endswith("/trades"):
             addr = path[len("/api/wallet/"):-len("/trades")]
@@ -564,5 +693,16 @@ if __name__ == "__main__":
         print(f"⚠️  Clés API manquantes : {', '.join(missing_keys)}", flush=True)
         print(f"    Le serveur tourne mais /api/refresh renverra une erreur 400.", flush=True)
         print(f"    Configure-les via .env (voir .env.example et README).", flush=True)
+
+    # ── Cockpit worker ──────────────────────────────────────────────────
+    # Démarrage du thread daemon qui refresh cache/cockpit_<chain>.json
+    # toutes les COCKPIT_REFRESH_INTERVAL_SEC (60s par défaut).
+    # No-op si WW_DISABLE_COCKPIT=1 ou si DUNE_API_KEY est absente.
+    try:
+        import cockpit_worker
+        cockpit_worker.start_background()
+    except Exception as e:
+        print(f"[cockpit] worker failed to start: {e}", flush=True)
+
     print(f"WhaleWatch — http://0.0.0.0:{port}", flush=True)
     http.server.ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

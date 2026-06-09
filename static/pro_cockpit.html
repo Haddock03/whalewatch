@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro · Cockpit — WhaleWatch</title>
+  <meta name="description" content="Cockpit intraday WhaleWatch Pro : convergence smart money, net flow live, Confidence Index 0-100 avec confirmation perp Hyperliquid. Pour scalp informé." />
+  <meta name="theme-color" content="#020c1b" />
+  <link rel="canonical" href="https://whalewatchapp.io/pro/cockpit" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WhaleWatch" />
+  <meta property="og:url" content="https://whalewatchapp.io/pro/cockpit" />
+  <meta property="og:title" content="WhaleWatch Pro · Cockpit" />
+  <meta property="og:description" content="Convergence smart money + Confidence Index + perp Hyperliquid — radar intraday pour scalp informé." />
+  <meta property="og:image" content="https://whalewatchapp.io/static/assets/og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="WhaleWatch Pro · Cockpit" />
+  <meta name="twitter:description" content="Convergence smart money + Confidence Index — radar intraday." />
+  <meta name="twitter:image" content="https://whalewatchapp.io/static/assets/og.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <style>
+    /* ═══ COCKPIT — top metrics + confidence cards + radar + feed ═══════════ */
+
+    /* ── Hero ── */
+    .ck-hero { padding: var(--s-6) var(--s-6) var(--s-5); text-align: center; max-width: 760px; margin: 0 auto; }
+    .ck-hero h1 { font-size: var(--fs-3xl); margin: var(--s-3) 0; color: #fff; }
+    .ck-hero h1 .accent { background: linear-gradient(90deg, var(--aqua), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .ck-hero p { color: var(--muted); max-width: 600px; margin: 0 auto var(--s-4); }
+    .ck-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px;
+      background: rgba(255,198,87,.10); color: var(--c-sc);
+      border: 1px solid rgba(255,198,87,.30);
+      font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* ── Bandeau cache stale ── */
+    .ck-stale-banner {
+      display: none;
+      align-items: center; gap: var(--s-2); flex-wrap: wrap;
+      padding: var(--s-3) var(--s-4);
+      background: linear-gradient(135deg, rgba(255,107,135,.12), rgba(255,198,87,.06));
+      border: 1px solid rgba(255,107,135,.40);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-3);
+      color: var(--coral);
+      font-size: var(--fs-sm); font-weight: 600;
+    }
+    .ck-stale-banner.is-visible { display: flex; }
+    .ck-stale-banner .ck-stale-ico {
+      font-size: 20px; line-height: 1;
+      animation: stalePulse 1.4s ease-in-out infinite;
+    }
+    .ck-stale-banner b { color: #fff; }
+    .ck-stale-banner .ck-stale-detail { color: var(--muted); font-weight: 500; margin-left: var(--s-2); font-size: var(--fs-xs); }
+    @keyframes stalePulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+
+    /* ── Toolbar (chain selector + status) ── */
+    .ck-toolbar {
+      display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+      padding: var(--s-3) var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-4);
+    }
+    .ck-toolbar-label { font-size: 11px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+    .ck-toolbar select {
+      padding: 6px 28px 6px 12px; border-radius: var(--radius-sm);
+      background: var(--bg-soft); border: 1px solid var(--border-2);
+      color: var(--text); font-family: var(--font); font-size: var(--fs-sm); font-weight: 600;
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237a99b3' stroke-width='1.5' fill='none'/></svg>");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+    .ck-toolbar .ck-status {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+      font-size: var(--fs-xs); color: var(--muted-2); font-family: var(--font-mono);
+    }
+    .ck-toolbar .ck-status .live-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .ck-toolbar .ck-status.is-warming .live-dot { background: var(--c-sc); box-shadow: 0 0 8px var(--c-sc); }
+    .ck-toolbar .ck-status.is-error .live-dot { background: var(--coral); box-shadow: 0 0 8px var(--coral); }
+
+    /* ── Top metrics row ── */
+    .ck-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--s-3);
+      margin-bottom: var(--s-4);
+    }
+    @media (max-width: 900px) { .ck-metrics { grid-template-columns: repeat(2, 1fr); } }
+    .ck-metric {
+      padding: var(--s-3) var(--s-4);
+      background: linear-gradient(135deg, rgba(46,212,168,.05), rgba(0,226,255,.03));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .ck-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-2); font-weight: 700; }
+    .ck-metric-value { font-family: var(--font-mono); font-weight: 700; font-size: 22px; color: var(--text); margin-top: 4px; }
+    .ck-metric-sub { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 3px; }
+
+    /* ── Section title ── */
+    .ck-section-title {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: var(--s-4) 0 var(--s-3); gap: var(--s-2); flex-wrap: wrap;
+    }
+    .ck-section-title h2 { color: #fff; font-weight: 700; font-size: var(--fs-xl); margin: 0; }
+    .ck-section-title .ck-section-hint { font-size: var(--fs-xs); color: var(--muted); }
+
+    /* ── Grid Confidence Cards ── */
+    .ck-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-4); }
+    @media (max-width: 1100px) { .ck-cards { grid-template-columns: 1fr; } }
+
+    .ck-card {
+      padding: var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      display: flex; flex-direction: column; gap: var(--s-3);
+      position: relative; overflow: hidden;
+    }
+    .ck-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: transparent;
+    }
+    .ck-card.is-strong::before  { background: linear-gradient(90deg, var(--green), var(--aqua)); }
+    .ck-card.is-mid::before     { background: linear-gradient(90deg, var(--c-sc), transparent); }
+    .ck-card.is-weak::before    { background: linear-gradient(90deg, var(--muted-2), transparent); }
+    .ck-card.is-very-strong::before { background: linear-gradient(90deg, var(--green), var(--aqua), var(--gold)); }
+
+    .ck-card-head { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+    .ck-token { font-family: var(--font-mono); font-weight: 700; font-size: 26px; color: var(--text); }
+    .ck-side {
+      padding: 4px 10px; border-radius: var(--radius-sm);
+      font-size: 11px; font-weight: 800; letter-spacing: .08em;
+    }
+    .ck-side--buy  { background: rgba(46,212,168,.18); color: var(--green); border: 1px solid rgba(46,212,168,.35); }
+    .ck-side--sell { background: rgba(255,107,135,.18); color: var(--coral); border: 1px solid rgba(255,107,135,.35); }
+    .ck-side--neutral { background: rgba(122,153,179,.18); color: var(--muted); border: 1px solid rgba(122,153,179,.35); }
+
+    .ck-confidence-wrap { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .ck-confidence-num { font-family: var(--font-mono); font-weight: 800; font-size: 36px; line-height: 1; }
+    .ck-confidence-tier {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700;
+      padding: 3px 9px; border-radius: 999px;
+    }
+    .tier--weak       { color: var(--muted); background: rgba(122,153,179,.12); border: 1px solid rgba(122,153,179,.30); }
+    .tier--mid        { color: var(--c-sc); background: rgba(255,198,87,.12); border: 1px solid rgba(255,198,87,.30); }
+    .tier--strong     { color: var(--green); background: rgba(46,212,168,.14); border: 1px solid rgba(46,212,168,.30); }
+    .tier--very-strong{ color: var(--gold); background: rgba(255,215,100,.16); border: 1px solid rgba(255,215,100,.40); }
+
+    /* ── Breakdown 5 composants ── */
+    .ck-breakdown {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: var(--s-3); border-radius: var(--radius-sm);
+      background: rgba(2,14,28,.40); border: 1px solid var(--border);
+    }
+    .ck-bdrow { display: grid; grid-template-columns: 110px 1fr 50px 36px; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); }
+    .ck-bdrow .ck-bdlabel { color: var(--muted); font-weight: 600; font-size: 11px; }
+    .ck-bdrow .ck-bdbar {
+      height: 6px; border-radius: 3px;
+      background: rgba(122,153,179,.15); position: relative; overflow: hidden;
+    }
+    .ck-bdrow .ck-bdbar > span {
+      position: absolute; top: 0; bottom: 0; left: 0;
+      background: linear-gradient(90deg, var(--aqua), var(--green));
+      border-radius: 3px; transition: width .3s ease;
+    }
+    .ck-bdrow .ck-bdbar.is-na > span {
+      background: repeating-linear-gradient(45deg, rgba(122,153,179,.4) 0 4px, transparent 4px 8px);
+    }
+    .ck-bdrow .ck-bdval { font-family: var(--font-mono); font-weight: 700; text-align: right; color: var(--text); }
+    .ck-bdrow .ck-bdval.is-na { color: var(--muted-2); font-weight: 600; }
+    .ck-bdrow .ck-bdweight { font-family: var(--font-mono); text-align: right; color: var(--muted-2); font-size: 10px; }
+
+    /* ── Mini net-flow gauge ── */
+    .ck-netflow {
+      display: flex; align-items: center; gap: var(--s-2);
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      background: rgba(2,14,28,.30); border: 1px solid var(--border);
+      font-size: var(--fs-xs);
+    }
+    .ck-netflow-label { color: var(--muted-2); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+    .ck-netflow-bar {
+      flex: 1; height: 8px; border-radius: 4px; background: rgba(122,153,179,.15);
+      position: relative; overflow: hidden;
+      display: flex;
+    }
+    .ck-netflow-bar .buy  { background: var(--green); height: 100%; }
+    .ck-netflow-bar .sell { background: var(--coral); height: 100%; }
+    .ck-netflow-val { font-family: var(--font-mono); font-weight: 700; color: var(--text); }
+
+    /* ── Meta row ── */
+    .ck-meta {
+      display: flex; flex-wrap: wrap; gap: var(--s-2);
+      font-size: 10px; color: var(--muted); font-family: var(--font-mono);
+      border-top: 1px dashed var(--border); padding-top: 8px;
+    }
+    .ck-meta span { display: inline-flex; align-items: center; gap: 4px; }
+    .ck-meta b { color: var(--text); font-weight: 700; }
+    .ck-meta .ck-decay-strong { color: var(--green); }
+    .ck-meta .ck-decay-fading { color: var(--c-sc); }
+    .ck-meta .ck-decay-cold { color: var(--coral); }
+
+    /* ── Convergence Radar ── */
+    .ck-radar {
+      padding: var(--s-3) var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .ck-radar-list { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+    .ck-radar-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 999px;
+      background: rgba(2,14,28,.40); border: 1px solid var(--border);
+      font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600;
+    }
+    .ck-radar-chip .ck-radar-token { color: var(--text); }
+    .ck-radar-chip .ck-radar-n { color: var(--aqua); font-weight: 800; }
+    .ck-radar-chip.is-buy  { border-color: rgba(46,212,168,.40); }
+    .ck-radar-chip.is-sell { border-color: rgba(255,107,135,.40); }
+
+    /* ── Live Feed table ── */
+    .ck-feed-wrap {
+      padding: var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .ck-feed { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    .ck-feed th { text-align: left; padding: 8px 10px; color: var(--muted-2); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); font-weight: 600; }
+    .ck-feed td { padding: 9px 10px; border-bottom: 1px solid rgba(26,85,138,.30); }
+    .ck-feed tr:hover td { background: rgba(0,226,255,.04); }
+    .ck-feed .ck-tok { font-family: var(--font-mono); font-weight: 700; color: var(--text); }
+    .ck-feed .ck-addr { font-family: var(--font-mono); color: var(--aqua); font-size: 12px; }
+    .ck-feed .ck-usd { text-align: right; font-family: var(--font-mono); font-weight: 600; }
+    .ck-feed .ck-score { text-align: right; font-family: var(--font-mono); font-weight: 600; color: var(--gold); }
+    .ck-feed .ck-time { font-family: var(--font-mono); color: var(--muted-2); font-size: 11px; }
+
+    .ck-empty { text-align: center; padding: var(--s-6) 0; color: var(--muted); }
+    .ck-empty-icon { font-size: 32px; margin-bottom: 8px; opacity: .6; }
+
+    /* ── Note explainer ── */
+    .ck-explainer {
+      padding: var(--s-3); border-radius: var(--radius-sm);
+      background: rgba(255,198,87,.06); border: 1px solid rgba(255,198,87,.20);
+      color: var(--muted); font-size: var(--fs-xs); line-height: 1.6;
+      margin-top: var(--s-4);
+    }
+    .ck-explainer strong { color: var(--c-sc); }
+    .ck-explainer a { color: var(--aqua); }
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · cockpit</span>
+      </span>
+    </a>
+    <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link nav-link--pro is-active">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
+    </nav>
+    <div class="header-prices">
+      <span><span class="lbl">Ξ</span><span class="val" id="eth-price">—</span></span>
+      <span><span class="lbl">₿</span><span class="val" id="btc-price">—</span></span>
+      <span class="updated mono" id="header-clock">— UTC</span>
+    </div>
+  </div>
+</header>
+<div class="site-header-spacer"></div>
+
+<main class="container" style="padding-top:var(--s-5);padding-bottom:var(--s-8)">
+  <section class="ck-hero">
+    <div class="ck-eyebrow">🎯 WhaleWatch Pro · Cockpit</div>
+    <h1>Smart money <span class="accent">convergent</span>, intraday.</h1>
+    <p>Quand plusieurs wallets <strong>Smart Money Score ≥ 65</strong> touchent le même token sur une fenêtre courte, le Cockpit le détecte, mesure la conviction et croise avec le funding perp Hyperliquid. <em>Aide à la décision, pas conseil financier — <a href="/methodology#disclaimer" style="color:var(--cyan);text-decoration:underline">disclaimer</a>.</em></p>
+  </section>
+
+  <!-- Sub-nav Pro -->
+  <nav class="pro-subnav" aria-label="Sections Pro">
+    <a href="/pro/live"      class="pro-subnav-link"><span class="live-dot"></span> Live</a>
+    <a href="/pro/cockpit"   class="pro-subnav-link is-active">🎯 Cockpit</a>
+    <a href="/pro/backtest"  class="pro-subnav-link">📊 Backtest</a>
+    <a href="/pro/watchlist" class="pro-subnav-link">👁 Watchlist</a>
+    <a href="/pro/guide"     class="pro-subnav-link">📘 Guide Pro</a>
+  </nav>
+
+  <!-- Bandeau alerte cache stale (caché par défaut, JS le toggle) -->
+  <div id="ck-stale-banner" class="ck-stale-banner" role="alert" aria-live="polite">
+    <span class="ck-stale-ico">⚠️</span>
+    <span><b>Données pas à jour.</b> Le worker n'a pas rafraîchi le cache depuis <span id="ck-stale-age">—</span>.</span>
+    <span class="ck-stale-detail" id="ck-stale-detail">Les signaux affichés peuvent être obsolètes — vérifie le statut backend.</span>
+  </div>
+
+  <!-- Toolbar : chain + statut refresh -->
+  <div class="ck-toolbar">
+    <span class="ck-toolbar-label">Chain</span>
+    <select id="ck-chain" aria-label="Chain">
+      <option value="ethereum">Ethereum</option>
+      <option value="arbitrum">Arbitrum</option>
+      <option value="bnb">BNB Chain</option>
+    </select>
+    <span class="ck-toolbar-label" style="margin-left:var(--s-3)">Confirm perp HL</span>
+    <span id="ck-hl-status" style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--muted-2)">—</span>
+    <div class="ck-status" id="ck-status">
+      <span class="live-dot" style="width:8px;height:8px;border-radius:50%"></span>
+      <span id="ck-status-text">Chargement…</span>
+    </div>
+  </div>
+
+  <!-- Top metrics -->
+  <div class="ck-metrics">
+    <div class="ck-metric">
+      <div class="ck-metric-label">Signaux actifs</div>
+      <div class="ck-metric-value" id="ck-m-signals">—</div>
+      <div class="ck-metric-sub" id="ck-m-signals-sub">— convergents (≥ <span id="ck-m-thresh">3</span>)</div>
+    </div>
+    <div class="ck-metric">
+      <div class="ck-metric-label">Fenêtre feed</div>
+      <div class="ck-metric-value" id="ck-m-window">— min</div>
+      <div class="ck-metric-sub">convergence <span id="ck-m-convwin">—</span>min</div>
+    </div>
+    <div class="ck-metric">
+      <div class="ck-metric-label">Smart wallets actifs</div>
+      <div class="ck-metric-value" id="ck-m-wallets">—</div>
+      <div class="ck-metric-sub">score ≥ <span id="ck-m-minscore">65</span></div>
+    </div>
+    <div class="ck-metric">
+      <div class="ck-metric-label">Trades trackés</div>
+      <div class="ck-metric-value" id="ck-m-trades">—</div>
+      <div class="ck-metric-sub" id="ck-m-updated">—</div>
+    </div>
+  </div>
+
+  <!-- Convergence Radar -->
+  <div class="ck-section-title">
+    <h2>📡 Convergence Radar</h2>
+    <div class="ck-section-hint">Tokens touchés par ≥ <span id="ck-radar-n">3</span> wallets distincts sur la fenêtre courte.</div>
+  </div>
+  <div class="ck-radar">
+    <div class="ck-radar-list" id="ck-radar"></div>
+  </div>
+
+  <!-- Confidence Cards -->
+  <div class="ck-section-title">
+    <h2>🎯 Confidence Index</h2>
+    <div class="ck-section-hint">5 composants (4 si pas de perp HL pour ce token, poids redistribué). Decay half-life = <span id="ck-half-life">20</span>min.</div>
+  </div>
+  <div class="ck-cards" id="ck-cards"></div>
+
+  <!-- Live Feed -->
+  <div class="ck-section-title">
+    <h2>🔁 Smart Money Live Feed</h2>
+    <div class="ck-section-hint">Trades ≥ $1K des smart wallets, fenêtre 60min, tri récent.</div>
+  </div>
+  <div class="ck-feed-wrap">
+    <table class="ck-feed">
+      <thead>
+        <tr>
+          <th>Token</th>
+          <th>Side</th>
+          <th>Wallet</th>
+          <th style="text-align:right">Score</th>
+          <th style="text-align:right">$ USD</th>
+          <th>DEX</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="ck-feed"></tbody>
+    </table>
+  </div>
+
+  <div class="ck-explainer">
+    💡 <strong>Comment lire :</strong> chaque Confidence Card mesure 5 signaux complémentaires (profondeur de convergence, qualité des wallets, conviction net flow, accélération du flux, alignement perp Hyperliquid). Le score décroît avec le temps (half-life 20min) — un signal vieux de 40min vaut un quart de sa valeur initiale. <strong>Tokens sans perp HL :</strong> le composant est neutralisé et son poids redistribué — pas de pénalité.
+  </div>
+</main>
+
+<!-- ═══ FOOTER ══════════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Multi-chain On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/live"    class="nav-link">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
+    </nav>
+    <p class="site-footer-tag">Contenu éducatif — pas un conseil financier · DEX on-chain seulement · DYOR</p>
+  </div>
+</footer>
+
+<script>
+// ═══ COCKPIT — poll + render ════════════════════════════════════════════════
+// Poll 45s : signals + feed depuis le backend (cache JSON).
+// État chain persisté en localStorage 'ww_chain' (cohérent avec le reste du site).
+const CK_POLL_MS = 45000;
+const COCKPIT_CHAINS = ['ethereum', 'arbitrum', 'bnb'];
+
+const fmtUSD = v => {
+  const a = Math.abs(v || 0);
+  if (a >= 1e9) return '$' + (a/1e9).toFixed(2) + 'B';
+  if (a >= 1e6) return '$' + (a/1e6).toFixed(2) + 'M';
+  if (a >= 1e3) return '$' + (a/1e3).toFixed(1) + 'K';
+  return '$' + Math.round(a);
+};
+const fmtAddr = a => a ? a.slice(0, 8) + '…' + a.slice(-4) : '—';
+const fmtPctSign = (b, s) => {
+  const total = (b || 0) + (s || 0);
+  if (!total) return '50/50';
+  return `${Math.round((b/total)*100)}% / ${Math.round((s/total)*100)}%`;
+};
+
+function tierClass(conf) {
+  if (conf >= 80) return ['tier--very-strong', 'is-very-strong'];
+  if (conf >= 60) return ['tier--strong', 'is-strong'];
+  if (conf >= 40) return ['tier--mid', 'is-mid'];
+  return ['tier--weak', 'is-weak'];
+}
+function tierLabel(conf) {
+  if (conf >= 80) return 'Très fort';
+  if (conf >= 60) return 'Fort';
+  if (conf >= 40) return 'Modéré';
+  return 'Faible';
+}
+
+function getCurrentChain() {
+  const stored = localStorage.getItem('ww_chain');
+  if (stored && COCKPIT_CHAINS.includes(stored)) return stored;
+  return 'ethereum';
+}
+
+function setStatus(text, mode) {
+  const el = document.getElementById('ck-status');
+  const txt = document.getElementById('ck-status-text');
+  el.classList.remove('is-warming', 'is-error');
+  if (mode === 'warming') el.classList.add('is-warming');
+  if (mode === 'error')   el.classList.add('is-error');
+  txt.textContent = text;
+}
+
+function renderBreakdown(components, weights) {
+  // Ordre fixe pour cohérence visuelle
+  const ORDER = [
+    ['convergence',    'Convergence',    'convergence'],
+    ['wallet_quality', 'Qualité wallets','wallet_quality'],
+    ['net_flow',       'Net flow',       'net_flow'],
+    ['acceleration',   'Accélération',   'acceleration'],
+    ['hl_perp',        'Perp HL',        'hl_perp'],
+  ];
+  return ORDER.map(([key, label]) => {
+    const val = components[key];
+    const w = weights[key];
+    const isNA = (val === null || val === undefined);
+    const pct = isNA ? 0 : Math.max(0, Math.min(100, val));
+    return `
+      <div class="ck-bdrow">
+        <span class="ck-bdlabel">${label}</span>
+        <div class="ck-bdbar ${isNA ? 'is-na' : ''}"><span style="width:${pct}%"></span></div>
+        <span class="ck-bdval ${isNA ? 'is-na' : ''}">${isNA ? 'N/A' : Math.round(val)}</span>
+        <span class="ck-bdweight">${Math.round((w || 0) * 100)}%</span>
+      </div>`;
+  }).join('');
+}
+
+function renderNetFlow(buy, sell) {
+  const total = (buy || 0) + (sell || 0);
+  if (!total) return '<span style="color:var(--muted-2)">Pas de flux</span>';
+  const buyPct = (buy / total) * 100;
+  const sellPct = 100 - buyPct;
+  return `
+    <span class="ck-netflow-label">Net</span>
+    <div class="ck-netflow-bar">
+      <div class="buy"  style="width:${buyPct}%"></div>
+      <div class="sell" style="width:${sellPct}%"></div>
+    </div>
+    <span class="ck-netflow-val">${fmtPctSign(buy, sell)}</span>`;
+}
+
+function decayClass(decay) {
+  if (decay >= 0.7) return 'ck-decay-strong';
+  if (decay >= 0.4) return 'ck-decay-fading';
+  return 'ck-decay-cold';
+}
+
+function renderSignals(data) {
+  const container = document.getElementById('ck-cards');
+  const signals = data.signals || [];
+  if (!signals.length) {
+    container.innerHTML = `
+      <div style="grid-column:1/-1" class="ck-empty">
+        <div class="ck-empty-icon">📡</div>
+        <div>Aucun signal de convergence pour l'instant.</div>
+        <div style="margin-top:6px;font-size:11px">Le worker recalcule toutes les 60s — reviens dans un instant.</div>
+      </div>`;
+    return;
+  }
+  container.innerHTML = signals.map(s => {
+    const [tierCls, bandCls] = tierClass(s.confidence);
+    const sideCls = s.net_side === 'buy' ? 'ck-side--buy'
+                  : s.net_side === 'sell' ? 'ck-side--sell'
+                  : 'ck-side--neutral';
+    const sideLabel = (s.net_side || 'neutral').toUpperCase();
+    const hlBadge = s.hl_status === 'na'
+      ? '<span style="color:var(--muted-2)">Perp HL : N/A (poids redistribué)</span>'
+      : '<span style="color:var(--green)">Perp HL : confirmé</span>';
+    return `
+      <div class="ck-card ${bandCls}">
+        <div class="ck-card-head">
+          <span class="ck-token">${s.token}</span>
+          <span class="ck-side ${sideCls}">${sideLabel}</span>
+          <div class="ck-confidence-wrap">
+            <span class="ck-confidence-num">${s.confidence}</span>
+            <span class="ck-confidence-tier ${tierCls}">${s.tier || tierLabel(s.confidence)}</span>
+          </div>
+        </div>
+        <div class="ck-breakdown">${renderBreakdown(s.components || {}, s.weights || {})}</div>
+        <div class="ck-netflow">${renderNetFlow(s.buy_usd, s.sell_usd)}</div>
+        <div class="ck-meta">
+          <span><b>${s.n_wallets}</b> wallets distincts</span>
+          <span>·</span>
+          <span><b>${fmtUSD(s.inflow_usd)}</b> flux total</span>
+          <span>·</span>
+          <span class="${decayClass(s.decay)}">decay <b>${(s.decay * 100).toFixed(0)}%</b></span>
+          <span>·</span>
+          <span>signal il y a <b>${s.age_min ?? '—'}</b>min</span>
+          <span>·</span>
+          <span>${hlBadge}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderRadar(data) {
+  const radar = data.convergence_radar || [];
+  const el = document.getElementById('ck-radar');
+  if (!radar.length) {
+    el.innerHTML = '<span style="color:var(--muted-2);font-size:var(--fs-sm)">Aucun token convergent pour l\'instant.</span>';
+    return;
+  }
+  el.innerHTML = radar.slice(0, 12).map(r => {
+    const sideCls = r.net_side === 'buy' ? 'is-buy' : r.net_side === 'sell' ? 'is-sell' : '';
+    return `
+      <span class="ck-radar-chip ${sideCls}">
+        <span class="ck-radar-token">${r.token}</span>
+        <span class="ck-radar-n">${r.n_wallets}</span>
+        <span style="color:var(--muted-2);font-size:11px">${fmtUSD(r.inflow_usd)}</span>
+      </span>`;
+  }).join('');
+}
+
+function renderFeed(data) {
+  const feed = data.feed || [];
+  const tbody = document.getElementById('ck-feed');
+  if (!feed.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="ck-empty">
+      <div class="ck-empty-icon">🐳</div>
+      <div>Aucun trade smart money récent.</div>
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = feed.slice(0, 50).map(t => `
+    <tr>
+      <td class="ck-tok">${t.token}</td>
+      <td>
+        <span class="ck-side ${t.side === 'buy' ? 'ck-side--buy' : 'ck-side--sell'}">${(t.side || '').toUpperCase()}</span>
+      </td>
+      <td class="ck-addr">${fmtAddr(t.addr)}</td>
+      <td class="ck-score">${t.smart_score || '—'}</td>
+      <td class="ck-usd">${fmtUSD(t.usd)}</td>
+      <td style="font-size:12px;color:var(--muted)">${t.project || '—'}</td>
+      <td class="ck-time">${(t.block_time || '').slice(11, 19) || '—'}</td>
+    </tr>`).join('');
+}
+
+function renderMetrics(signals, feed) {
+  const generated = signals.generated_at;
+  const updatedText = generated
+    ? new Date(generated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC'
+    : '—';
+  document.getElementById('ck-m-signals').textContent = (signals.signals || []).length;
+  document.getElementById('ck-m-signals-sub').innerHTML =
+    `convergents (≥ <span id="ck-m-thresh">${signals.conv_threshold ?? 3}</span>)`;
+  document.getElementById('ck-m-window').textContent = (feed.feed_window_min ?? '—') + ' min';
+  document.getElementById('ck-m-convwin').textContent = signals.conv_window_min ?? '—';
+  document.getElementById('ck-m-wallets').textContent = feed.smart_wallets_count ?? '—';
+  document.getElementById('ck-m-trades').textContent = feed.feed_trades_count ?? '—';
+  document.getElementById('ck-m-updated').textContent = updatedText;
+  // Header sections
+  document.getElementById('ck-half-life').textContent = signals.half_life_min ?? 20;
+  document.getElementById('ck-radar-n').textContent = signals.conv_threshold ?? 3;
+  document.getElementById('ck-hl-status').textContent = signals.hl_available ? 'OK' : 'indisponible';
+  document.getElementById('ck-hl-status').style.color = signals.hl_available ? 'var(--green)' : 'var(--muted-2)';
+}
+
+// Bandeau d'alerte cache stale : déclenche dès que le backend signale
+// is_stale=true (cache > 3× l'intervalle de refresh, soit 180s par défaut).
+// Distingue cold start (generated_at=null) de cache vraiment vieux.
+function renderStaleBanner(signals) {
+  const banner = document.getElementById('ck-stale-banner');
+  const isStale = !!signals.is_stale;
+  const ageSec = signals.cache_age_seconds;
+  const thresholdSec = signals.stale_threshold_seconds || 180;
+
+  if (!isStale) {
+    banner.classList.remove('is-visible');
+    return;
+  }
+
+  let ageText, detail;
+  if (ageSec == null) {
+    // Cold start ou worker jamais passé
+    ageText = 'le démarrage';
+    detail = `Le worker tourne toutes les ${Math.round(thresholdSec/3)}s — premier cycle en cours, patiente ~1min.`;
+  } else if (ageSec < 60) {
+    ageText = `${Math.round(ageSec)}s`;
+    detail = `Seuil stale : ${thresholdSec}s. Vérifie le statut backend si ça persiste.`;
+  } else {
+    const mins = Math.floor(ageSec / 60);
+    const secs = Math.round(ageSec % 60);
+    ageText = `${mins}min ${secs}s`;
+    detail = `Seuil stale : ${Math.round(thresholdSec/60)}min. Vérifie le statut backend (worker arrêté ? Dune en panne ?).`;
+  }
+  document.getElementById('ck-stale-age').textContent = ageText;
+  document.getElementById('ck-stale-detail').textContent = detail;
+  banner.classList.add('is-visible');
+}
+
+async function pollOnce() {
+  const chain = getCurrentChain();
+  try {
+    const [signalsRes, feedRes] = await Promise.all([
+      fetch(`/api/cockpit/signals?chain=${chain}`).then(r => r.ok ? r.json() : null),
+      fetch(`/api/cockpit/feed?chain=${chain}`).then(r => r.ok ? r.json() : null),
+    ]);
+    if (!signalsRes || !feedRes) {
+      setStatus('Erreur API', 'error');
+      return;
+    }
+    if (signalsRes.status === 'warming_up' || feedRes.status === 'warming_up') {
+      setStatus('Worker en chauffe — patiente 60s', 'warming');
+    } else if (!signalsRes.generated_at) {
+      setStatus('Cache vide', 'warming');
+    } else {
+      setStatus(`Maj ${new Date(signalsRes.generated_at).toLocaleTimeString('en-GB')}`, 'ok');
+    }
+    renderMetrics(signalsRes, feedRes);
+    renderStaleBanner(signalsRes);
+    renderSignals(signalsRes);
+    renderRadar(signalsRes);
+    renderFeed(feedRes);
+  } catch (e) {
+    console.error('[cockpit] poll error', e);
+    setStatus('Erreur réseau', 'error');
+  }
+}
+
+function bootChainSelector() {
+  const sel = document.getElementById('ck-chain');
+  sel.value = getCurrentChain();
+  sel.addEventListener('change', () => {
+    localStorage.setItem('ww_chain', sel.value);
+    setStatus('Chargement…', 'warming');
+    pollOnce();
+  });
+}
+
+bootChainSelector();
+pollOnce();
+setInterval(pollOnce, CK_POLL_MS);
+</script>
+<script src="/static/assets/app.js" defer></script>
+
+</body>
+</html>

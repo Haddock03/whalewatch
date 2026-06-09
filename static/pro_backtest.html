@@ -145,6 +145,7 @@
   <!-- Sub-nav Pro -->
   <nav class="pro-subnav" aria-label="Sections Pro">
     <a href="/pro/live"      class="pro-subnav-link"><span class="live-dot"></span> Live</a>
+    <a href="/pro/cockpit"   class="pro-subnav-link">🎯 Cockpit</a>
     <a href="/pro/backtest"  class="pro-subnav-link is-active">📊 Backtest</a>
     <a href="/pro/watchlist" class="pro-subnav-link">👁 Watchlist</a>
     <a href="/pro/guide"     class="pro-subnav-link">📘 Guide Pro</a>
@@ -232,7 +233,7 @@
     <table>
       <thead>
         <tr>
-          <th>Date</th><th>Signal</th><th>Entry</th><th>Exit</th><th>Durée</th><th>P&amp;L</th><th>Cumul</th>
+          <th>Date</th><th>Signal</th><th>Durée</th><th>P&amp;L</th><th>Cumul</th>
         </tr>
       </thead>
       <tbody id="bt-tbody"></tbody>
@@ -284,8 +285,9 @@ function mulberry32(seed) {
 async function fetchAnchorPrice() {
   try {
     const d = await fetch('/api/patterns').then(r => r.ok ? r.json() : null);
-    return d?.mev_price_levels?.buy?.median || 2100;
-  } catch { return 2100; }
+    const v = d?.mev_price_levels?.buy?.median;
+    return (typeof v === 'number' && v > 0) ? v : null;
+  } catch { return null; }
 }
 
 async function runBacktest() {
@@ -364,8 +366,6 @@ async function runBacktest() {
     <tr>
       <td>${t.date.toISOString().slice(0,10)}</td>
       <td><span class="badge badge--${t.side === 'BUY' ? 'buy' : 'sell'}">${t.side}</span></td>
-      <td>$${t.entry.toFixed(2)}</td>
-      <td>$${t.exit.toFixed(2)}</td>
       <td>${t.durationH < 1 ? Math.round(t.durationH*60)+'min' : t.durationH.toFixed(1)+'h'}</td>
       <td class="${t.pnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtUsd(t.pnlUsd)} <span style="opacity:.6">(${fmtPct(t.pnlPct)})</span></td>
       <td>$${Math.round(t.cumulative).toLocaleString('en-US')}</td>
