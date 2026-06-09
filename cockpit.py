@@ -49,6 +49,14 @@ W_NETFLOW     = _env_float("COCKPIT_W_NETFLOW",     0.20)
 W_ACCEL       = _env_float("COCKPIT_W_ACCEL",       0.15)
 W_HL          = _env_float("COCKPIT_W_HL",          0.20)
 
+# Hot Tokens (P1) — module autonome qui liste les tokens en forte
+# accélération, INDÉPENDAMMENT du seuil de convergence du Cockpit.
+# Permet de détecter un token poussé par 1-2 wallets très convaincus,
+# qui serait filtré par le Cockpit faute de convergence.
+HOT_MIN_ACCEL_RATIO = _env_float("HOT_TOKENS_MIN_ACCEL_RATIO", 1.5)
+HOT_MIN_INFLOW_USD  = _env_float("HOT_TOKENS_MIN_INFLOW_USD", 10000.0)
+HOT_TOP_N           = _env_int("HOT_TOKENS_TOP_N", 12)
+
 
 # ── Sub-score normalizers ──────────────────────────────────────────────────
 def convergence_score(n_wallets, threshold=None):
@@ -348,6 +356,64 @@ def build_signals(aggregates, baselines_1h, hl_asset_ctxs, now=None):
         })
     signals.sort(key=lambda s: (s["confidence"], s["inflow_usd"]), reverse=True)
     return signals
+
+
+# ── Hot Tokens (P1) — module autonome accélération ─────────────────────────
+def build_hot_tokens(aggregates, baselines_1h, top_n=None,
+                     min_accel_ratio=None, min_inflow_usd=None):
+    """Classe les tokens par ratio d'accélération inflow_1h / baseline_1h.
+
+    Indépendant du seuil de convergence du Cockpit — un token poussé par
+    1-2 wallets très convaincus peut entrer dans Hot Tokens sans être un
+    signal Cockpit. C'est volontaire : les 2 vues sont complémentaires.
+
+    Filtres v1 :
+      - inflow_1h >= min_inflow_usd (élimine le bruit micro)
+      - accel_ratio >= min_accel_ratio (pas de baseline OU ratio < seuil
+        → exclu, mais une *première fois* sans baseline existante est traitée
+        comme « pas encore évaluable » et exclue plutôt que tirée à 1.0)
+
+    Renvoie une liste triée par accel_ratio desc, tronquée à top_n.
+    Chaque entrée :
+      {token, accel_ratio, accel_score, inflow_usd, baseline_usd,
+       buy_usd, sell_usd, net_side, n_wallets, top_wallets, latest_age_min}
+    """
+    n = top_n if top_n is not None else HOT_TOP_N
+    min_ratio = min_accel_ratio if min_accel_ratio is not None else HOT_MIN_ACCEL_RATIO
+    min_inflow = min_inflow_usd if min_inflow_usd is not None else HOT_MIN_INFLOW_USD
+
+    out = []
+    for token, agg in aggregates.items():
+        inflow = agg["inflow_1h"]
+        if inflow < min_inflow:
+            continue
+        baseline = baselines_1h.get(token)
+        # Pas de baseline → exclu. Ne pas synthétiser un ratio = 1.0 car ça
+        # tromperait l'opérateur sur la pertinence du signal.
+        if not baseline or baseline <= 0:
+            continue
+        ratio = inflow / baseline
+        if ratio < min_ratio:
+            continue
+        # Top wallets : on n'a pas leur poids individuel dans agg, mais on
+        # peut au moins en lister jusqu'à 3 pour donner du contexte.
+        wallets = agg["wallets"] or []
+        out.append({
+            "token": token,
+            "accel_ratio": round(ratio, 2),
+            "accel_score": acceleration_score(inflow, baseline),
+            "inflow_usd": round(inflow, 2),
+            "baseline_usd": round(baseline, 2),
+            "buy_usd": agg["buy_usd"],
+            "sell_usd": agg["sell_usd"],
+            "net_side": agg["net_side"],
+            "n_wallets": len(wallets),
+            "top_wallets": wallets[:3],
+            "latest_age_min": agg["latest_age_min"],
+            "trade_count": agg["trade_count"],
+        })
+    out.sort(key=lambda h: (h["accel_ratio"], h["inflow_usd"]), reverse=True)
+    return out[:n]
 
 
 # ── Utilitaire : sélection des smart wallets depuis results_*.json ─────────

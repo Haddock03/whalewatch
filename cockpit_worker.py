@@ -145,6 +145,11 @@ def refresh_one_chain(chain_key, progress_cb=None):
                                     hl_asset_ctxs=hl_ctxs)
     log(f"{len(signals)} signaux convergents (seuil N={cockpit.CONV_THRESHOLD})")
 
+    # Hot Tokens (P1) — accélération seule, sans seuil de convergence.
+    # Vide tant qu'il n'y a pas de baseline (cold-start ≤ premier tick).
+    hot_tokens = cockpit.build_hot_tokens(aggregates, baselines_1h=baselines)
+    log(f"{len(hot_tokens)} hot tokens (ratio≥{cockpit.HOT_MIN_ACCEL_RATIO}× inflow≥${cockpit.HOT_MIN_INFLOW_USD:.0f})")
+
     # Push baselines après avoir compute (le tick courant ne biaise pas
     # son propre baseline)
     for token, agg in aggregates.items():
@@ -190,6 +195,9 @@ def refresh_one_chain(chain_key, progress_cb=None):
         "signals": signals,
         "convergence_radar": convergence_radar,
         "feed": feed_ui,
+        "hot_tokens": hot_tokens,
+        "hot_min_accel_ratio": cockpit.HOT_MIN_ACCEL_RATIO,
+        "hot_min_inflow_usd": cockpit.HOT_MIN_INFLOW_USD,
         "hl_available": not bool(hl_err),
     }
     _atomic_write_json(_cockpit_cache_path(chain_key), payload)

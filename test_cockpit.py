@@ -241,6 +241,69 @@ def test_select_smart_wallets():
     check("scores[0xa] == 80", scores.get("0xa") == 80)
 
 
+# ── Hot Tokens (P1) ────────────────────────────────────────────────────────
+def test_hot_tokens_filtering():
+    print("\n▶ Hot Tokens — filtres min_inflow / min_accel_ratio / pas de baseline")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    # 4 tokens, chacun teste un filtre
+    feed = [
+        # Token A : accel ratio 2.0 (10K/5K), inflow 10K, devrait passer
+        {"addr": "0xa", "token": "TOKA", "side": "buy", "usd": 10000, "block_time": "2026-06-09T13:55:00Z"},
+        # Token B : accel ratio 1.0 (5K/5K), pas assez accel, devrait être filtré
+        {"addr": "0xb", "token": "TOKB", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+        # Token C : inflow 500 (<min 10K), devrait être filtré
+        {"addr": "0xc", "token": "TOKC", "side": "buy", "usd": 500, "block_time": "2026-06-09T13:55:00Z"},
+        # Token D : pas de baseline → exclu
+        {"addr": "0xd", "token": "TOKD", "side": "buy", "usd": 20000, "block_time": "2026-06-09T13:55:00Z"},
+    ]
+    scores = {"0xa": 70, "0xb": 70, "0xc": 70, "0xd": 70}
+    agg = cockpit.aggregate_by_token(feed, scores, now=now)
+    baselines = {"TOKA": 5000, "TOKB": 5000, "TOKC": 5000}  # TOKD absent
+    hot = cockpit.build_hot_tokens(agg, baselines_1h=baselines,
+                                   min_accel_ratio=1.5, min_inflow_usd=1000)
+    tokens = [h["token"] for h in hot]
+    check("TOKA présent (ratio 2.0)", "TOKA" in tokens, f"got {tokens}")
+    check("TOKB filtré (ratio 1.0 < seuil 1.5)", "TOKB" not in tokens, f"got {tokens}")
+    check("TOKC filtré (inflow trop bas)", "TOKC" not in tokens, f"got {tokens}")
+    check("TOKD filtré (pas de baseline)", "TOKD" not in tokens, f"got {tokens}")
+    if tokens:
+        toka = next(h for h in hot if h["token"] == "TOKA")
+        check("TOKA accel_ratio == 2.0", toka["accel_ratio"] == 2.0, f"got {toka['accel_ratio']}")
+        check("TOKA net_side == 'buy'", toka["net_side"] == "buy")
+        check("TOKA baseline_usd reporté", toka["baseline_usd"] == 5000.0)
+
+
+def test_hot_tokens_sort_and_topn():
+    print("\n▶ Hot Tokens — tri descendant + top_n")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    feed = []
+    # 5 tokens avec ratios différents : 10x, 5x, 3x, 2x, 1.6x
+    for i, (sym, infl) in enumerate([("T10X", 100000), ("T5X", 50000),
+                                      ("T3X", 30000), ("T2X", 20000), ("T1_6X", 16000)]):
+        feed.append({"addr": f"0x{i}", "token": sym, "side": "buy", "usd": infl,
+                     "block_time": "2026-06-09T13:55:00Z"})
+    scores = {f"0x{i}": 70 for i in range(5)}
+    agg = cockpit.aggregate_by_token(feed, scores, now=now)
+    baselines = {"T10X": 10000, "T5X": 10000, "T3X": 10000, "T2X": 10000, "T1_6X": 10000}
+    hot = cockpit.build_hot_tokens(agg, baselines_1h=baselines,
+                                   min_accel_ratio=1.5, min_inflow_usd=1000, top_n=3)
+    tokens = [h["token"] for h in hot]
+    check("top_n=3 limite la liste", len(hot) == 3, f"got {len(hot)}")
+    check("Tri descendant par ratio", tokens == ["T10X", "T5X", "T3X"], f"got {tokens}")
+
+
+def test_hot_tokens_empty_when_no_baseline():
+    print("\n▶ Hot Tokens — vide si aucune baseline (cold start)")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    feed = [
+        {"addr": "0xa", "token": "ANY", "side": "buy", "usd": 50000, "block_time": "2026-06-09T13:55:00Z"},
+    ]
+    scores = {"0xa": 70}
+    agg = cockpit.aggregate_by_token(feed, scores, now=now)
+    hot = cockpit.build_hot_tokens(agg, baselines_1h={})
+    check("Aucun hot token au cold start", len(hot) == 0, f"got {len(hot)}")
+
+
 # ── Run all ────────────────────────────────────────────────────────────────
 def main():
     test_decay()
@@ -255,6 +318,9 @@ def main():
     test_aggregate_by_token()
     test_build_signals_filter()
     test_select_smart_wallets()
+    test_hot_tokens_filtering()
+    test_hot_tokens_sort_and_topn()
+    test_hot_tokens_empty_when_no_baseline()
 
     print("\n" + "=" * 60)
     if _failures:

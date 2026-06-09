@@ -79,11 +79,12 @@ PAGES = {
     "/guide":         "guide.html",       "/guide.html":       "guide.html",
     "/bot":           "bot.html",         "/bot.html":         "bot.html",
     "/methodology":   "methodology.html", "/methodology.html": "methodology.html",
-    "/pro/live":      "pro_live.html",
-    "/pro/cockpit":   "pro_cockpit.html",
-    "/pro/backtest":  "pro_backtest.html",
-    "/pro/watchlist": "pro_watchlist.html",
-    "/pro/guide":     "pro_guide.html",
+    "/pro/live":       "pro_live.html",
+    "/pro/cockpit":    "pro_cockpit.html",
+    "/pro/hot-tokens": "pro_hot_tokens.html",
+    "/pro/backtest":   "pro_backtest.html",
+    "/pro/watchlist":  "pro_watchlist.html",
+    "/pro/guide":      "pro_guide.html",
 }
 
 MIME = {
@@ -510,7 +511,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # is_stale pour que le frontend puisse alerter visuellement si le
         # worker s'est arrêté (cache > 3× l'intervalle de refresh).
         if path in ("/api/cockpit/feed", "/api/cockpit/signals",
-                    "/api/cockpit/config"):
+                    "/api/cockpit/config", "/api/cockpit/hot-tokens"):
             chain = parse_qs(parsed.query).get("chain", [DEFAULT_CHAIN])[0]
             # Valide la chain (résolution lève ValueError sinon)
             try:
@@ -530,6 +531,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "signals": [],
                     "convergence_radar": [],
                     "feed": [],
+                    "hot_tokens": [],
                     "hl_available": False,
                     "status": "warming_up",
                     "cache_age_seconds": None,
@@ -557,6 +559,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "conv_window_min": payload.get("conv_window_min"),
                     "conv_threshold": payload.get("conv_threshold"),
                     "half_life_min": payload.get("half_life_min"),
+                    **meta,
+                })
+            if path == "/api/cockpit/hot-tokens":
+                return self._json({
+                    "chain": payload["chain"],
+                    "generated_at": payload["generated_at"],
+                    "hot_tokens": payload.get("hot_tokens") or [],
+                    "min_accel_ratio": payload.get("hot_min_accel_ratio"),
+                    "min_inflow_usd":  payload.get("hot_min_inflow_usd"),
+                    "feed_window_min": payload.get("feed_window_min"),
+                    "smart_wallets_count": payload.get("smart_wallets_count"),
                     **meta,
                 })
             # /api/cockpit/config
