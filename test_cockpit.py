@@ -415,6 +415,94 @@ def test_baselines_prune_stale_tokens():
     check("STALE token purgé au load (TTL dépassé)", n_loaded == 1, f"got {n_loaded}")
 
 
+def test_liquidity_penalty_tiers():
+    print("\n▶ Pénalité liquidité par tier")
+    check("baseline=None → 0",     cockpit.liquidity_penalty(None) == 0.0)
+    check("baseline=0 → 0",        cockpit.liquidity_penalty(0) == 0.0)
+    check("baseline >= 100K → 0",  cockpit.liquidity_penalty(100_000) == 0.0)
+    check("baseline = 80K → 0.05", cockpit.liquidity_penalty(80_000) == 0.05)
+    check("baseline = 30K → 0.15", cockpit.liquidity_penalty(30_000) == 0.15)
+    check("baseline = 5K → 0.25",  cockpit.liquidity_penalty(5_000) == 0.25)
+
+
+def test_concentration_penalty_tiers():
+    print("\n▶ Pénalité concentration wallets par tier")
+    check("{} → 0", cockpit.concentration_penalty({}) == 0.0)
+    # 50/50 = max_share 0.5 → 0
+    check("équilibré (50/50) → 0",
+          cockpit.concentration_penalty({"a": 100, "b": 100}) == 0.0)
+    # 60/40 = max 0.6 → 0.05
+    check("60/40 → 0.05",
+          cockpit.concentration_penalty({"a": 60, "b": 40}) == 0.05)
+    # 80/20 = max 0.8 → 0.15
+    check("80/20 → 0.15",
+          cockpit.concentration_penalty({"a": 80, "b": 20}) == 0.15)
+    # 95/5 = max 0.95 → 0.20
+    check("95/5 → 0.20",
+          cockpit.concentration_penalty({"a": 95, "b": 5}) == 0.20)
+    # Single wallet = 100% → 0.20 max
+    check("1 seul wallet → 0.20",
+          cockpit.concentration_penalty({"a": 100}) == 0.20)
+
+
+def test_apply_penalties_combined():
+    print("\n▶ Pénalités combinées sur confidence")
+    # Score brut 100, baseline 5K (-25%) ET concentration single wallet (-20%)
+    score, breakdown = cockpit.apply_penalties(100, baseline_usd=5_000,
+                                                wallet_volumes={"a": 100})
+    # Multiplicateur = 0.75 × 0.80 = 0.60 → score 60
+    check("score 100 avec 2 pénalités max → 60",
+          abs(score - 60.0) < 1e-6, f"got {score}")
+    check("breakdown liquidity = 0.25",
+          breakdown["liquidity"] == 0.25)
+    check("breakdown concentration = 0.20",
+          breakdown["concentration"] == 0.20)
+    check("breakdown combined = 0.6",
+          abs(breakdown["combined_multiplier"] - 0.6) < 1e-6,
+          f"got {breakdown['combined_multiplier']}")
+
+
+def test_confidence_with_penalties_visible():
+    print("\n▶ confidence_index expose le breakdown pénalités")
+    sub = {"convergence": 100, "wallet_quality": 100, "net_flow": 100,
+           "acceleration": 100, "hl_perp": 100}
+    ci = cockpit.confidence_index(sub, age_min=0, half_life_min=20,
+                                   baseline_usd=200_000,
+                                   wallet_volumes={"a": 50, "b": 50})
+    check("penalties dict présent", "penalties" in ci)
+    check("Pas de pénalité → score 100",
+          ci["confidence"] == 100, f"got {ci['confidence']}")
+    check("liquidity=0", ci["penalties"]["liquidity"] == 0.0)
+    check("concentration=0", ci["penalties"]["concentration"] == 0.0)
+    # Avec pénalités max
+    ci2 = cockpit.confidence_index(sub, age_min=0, half_life_min=20,
+                                    baseline_usd=5_000,
+                                    wallet_volumes={"a": 100})
+    check("2 pénalités max → score 60",
+          ci2["confidence"] == 60, f"got {ci2['confidence']}")
+    # Pas d'inputs pénalités → comportement legacy (pas de pénalité)
+    ci3 = cockpit.confidence_index(sub, age_min=0, half_life_min=20)
+    check("backward-compat (pas de baseline ni wallet_volumes) → 100",
+          ci3["confidence"] == 100, f"got {ci3['confidence']}")
+
+
+def test_aggregate_tracks_wallet_volumes():
+    print("\n▶ aggregate_by_token expose wallet_volumes")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    feed = [
+        {"addr": "0xa", "token": "X", "side": "buy", "usd": 80000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xb", "token": "X", "side": "buy", "usd": 20000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xa", "token": "X", "side": "sell", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+    ]
+    agg = cockpit.aggregate_by_token(feed, {}, now=now)
+    x = agg.get("X", {})
+    wv = x.get("wallet_volumes") or {}
+    check("wallet_volumes a 2 entrées", len(wv) == 2, f"got {wv}")
+    check("0xa total = 85K (buy 80 + sell 5)", wv.get("0xa") == 85000.0,
+          f"got {wv.get('0xa')}")
+    check("0xb total = 20K", wv.get("0xb") == 20000.0, f"got {wv.get('0xb')}")
+
+
 def test_signals_and_hot_carry_hl_perp_symbol():
     print("\n▶ hl_perp_symbol attaché aux signals et hot tokens (P1 action 1-clic)")
     now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
@@ -507,6 +595,11 @@ def main():
     test_baselines_prune_stale_tokens()
     test_baselines_load_replaces_chain_not_merges()
     test_signals_and_hot_carry_hl_perp_symbol()
+    test_liquidity_penalty_tiers()
+    test_concentration_penalty_tiers()
+    test_apply_penalties_combined()
+    test_confidence_with_penalties_visible()
+    test_aggregate_tracks_wallet_volumes()
 
     print("\n" + "=" * 60)
     if _failures:

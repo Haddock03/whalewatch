@@ -246,6 +246,30 @@
     .ck-empty { text-align: center; padding: var(--s-6) 0; color: var(--muted); }
     .ck-empty-icon { font-size: 32px; margin-bottom: 8px; opacity: .6; }
 
+    /* ── Pénalités contextuelles (P2) ── */
+    .ck-penalties {
+      display: none;
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      background: rgba(255,107,135,.06); border: 1px solid rgba(255,107,135,.22);
+      font-size: 11px; font-family: var(--font-mono); color: var(--coral);
+    }
+    .ck-penalties.is-visible { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .ck-penalty-label {
+      font-family: var(--font); font-size: 10px; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--muted); font-weight: 700;
+    }
+    .ck-penalty-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(255,107,135,.14); color: var(--coral);
+      font-weight: 700; font-size: 10px;
+    }
+    .ck-penalty-result {
+      margin-left: auto; color: var(--muted);
+      font-family: var(--font); font-size: 10px;
+    }
+    .ck-penalty-result b { color: var(--coral); font-family: var(--font-mono); }
+
     /* ── Bouton Trade sur Hyperliquid (P1 — action 1-clic) ── */
     .ck-hl-trade {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -563,6 +587,25 @@ function renderHlTradeBtn(hlSymbol, netSide) {
   </a>`;
 }
 
+// Pénalités contextuelles : affichées uniquement si au moins une est non-nulle.
+// Format compact pour rester en bas de card sans trop charger.
+function renderPenalties(p) {
+  if (!p) return '';
+  const liq = p.liquidity || 0;
+  const conc = p.concentration || 0;
+  if (liq === 0 && conc === 0) return '';
+  const chips = [];
+  if (liq > 0) chips.push(`<span class="ck-penalty-chip" title="Baseline horaire faible → mouvement non-réaliste à l'exécution">💧 Liquidité fine −${Math.round(liq*100)}%</span>`);
+  if (conc > 0) chips.push(`<span class="ck-penalty-chip" title="Un seul wallet pousse > ${conc>=0.15?'80':'60'}% du flux → pas de vraie convergence">🎯 Concentration −${Math.round(conc*100)}%</span>`);
+  const mult = (p.combined_multiplier ?? 1) * 100;
+  return `
+    <div class="ck-penalties is-visible">
+      <span class="ck-penalty-label">Pénalités</span>
+      ${chips.join('')}
+      <span class="ck-penalty-result">conf finale × <b>${mult.toFixed(0)}%</b></span>
+    </div>`;
+}
+
 function renderSignals(data) {
   const container = document.getElementById('ck-cards');
   const signals = data.signals || [];
@@ -595,6 +638,7 @@ function renderSignals(data) {
           </div>
         </div>
         <div class="ck-breakdown">${renderBreakdown(s.components || {}, s.weights || {})}</div>
+        ${renderPenalties(s.penalties)}
         <div class="ck-netflow">${renderNetFlow(s.buy_usd, s.sell_usd)}</div>
         <div style="display:flex;justify-content:flex-end">${renderHlTradeBtn(s.hl_perp_symbol, s.net_side)}</div>
         <div class="ck-meta">

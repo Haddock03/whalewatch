@@ -119,7 +119,8 @@ def wallet_quality_score(smart_scores):
 
 # ── Confidence Index ───────────────────────────────────────────────────────
 def confidence_index(sub_scores, age_min=0.0,
-                     half_life_min=None, weights=None):
+                     half_life_min=None, weights=None,
+                     baseline_usd=None, wallet_volumes=None):
     """Calcule le Confidence Index final + breakdown.
 
     sub_scores : dict { "convergence": 0-100, "wallet_quality": 0-100,
@@ -176,7 +177,15 @@ def confidence_index(sub_scores, age_min=0.0,
     weighted_raw = weighted_sum / weight_total if weight_total > 0 else 0.0
 
     decay = 0.5 ** (max(0.0, age_min) / hl) if hl > 0 else 1.0
-    confidence = round(weighted_raw * decay)
+    confidence_pre_penalty = weighted_raw * decay
+
+    # Pénalités contextuelles (P2) — appliquées en multiplicateur post-decay.
+    confidence_post_penalty, penalty_breakdown = apply_penalties(
+        confidence_pre_penalty,
+        baseline_usd=baseline_usd,
+        wallet_volumes=wallet_volumes,
+    )
+    confidence = round(confidence_post_penalty)
     confidence = max(0, min(100, confidence))
 
     return {
@@ -188,6 +197,7 @@ def confidence_index(sub_scores, age_min=0.0,
         "components": {k: (None if (k == "hl_perp" and hl_value is None) else round(parts[k], 1))
                        for k in parts},
         "hl_status": hl_status,
+        "penalties": penalty_breakdown,
     }
 
 
@@ -199,6 +209,79 @@ def tier_for(confidence):
     if confidence >= 40:
         return "Modéré"
     return "Faible"
+
+
+# ── Pénalités contextuelles (P2) ───────────────────────────────────────────
+# Appliquées comme MULTIPLICATEUR au Confidence Index final, après decay.
+# Ne sont PAS des composants pondérés (pour ne pas alourdir le breakdown 5
+# composants) — ce sont des modulateurs de confiance basés sur le contexte
+# de marché du token et la qualité du signal lui-même.
+
+# Liquidité fine — proxy via baseline_usd (moyenne horaire historique du
+# flux smart money). Si la baseline est très faible, un signal de quelques
+# $10K peut déformer le marché de façon non-réaliste : le wallet n'arrivera
+# pas à exécuter à ces prix.
+#   baseline >= $100K/h → 0 (token liquide)
+#   $50-100K/h          → -5%
+#   $10-50K/h           → -15%
+#   < $10K/h            → -25%
+# Cold-start (pas de baseline) → 0 (pas de pénalité — on n'a pas l'info).
+def liquidity_penalty(baseline_usd):
+    """Renvoie un float dans [0, _LIQ_PENALTY_MAX] représentant la part de
+    confiance à enlever. 0 = pas de pénalité, _LIQ_PENALTY_MAX = pénalité max."""
+    if baseline_usd is None or baseline_usd <= 0:
+        return 0.0
+    if baseline_usd >= 100_000:
+        return 0.0
+    if baseline_usd >= 50_000:
+        return 0.05
+    if baseline_usd >= 10_000:
+        return 0.15
+    return 0.25
+
+
+# Concentration wallets — proxy toxicité / pump unilatéral. Si 1 seul
+# wallet représente >X% du flux, le signal n'est pas vraiment de la
+# convergence smart-money : c'est 1 seul acteur, peu importe les sub-scores.
+#   max_share < 50%  → 0
+#   50-70%           → -5%
+#   70-90%           → -15%
+#   > 90%            → -20%
+def concentration_penalty(wallet_volumes):
+    """wallet_volumes : dict {addr: usd_contributé}.
+    Renvoie un float dans [0, _CONC_PENALTY_MAX]."""
+    if not wallet_volumes:
+        return 0.0
+    total = sum(wallet_volumes.values())
+    if total <= 0:
+        return 0.0
+    max_share = max(wallet_volumes.values()) / total
+    # Seuils inclusifs sur les bornes basses : exactement 50/50 = pas de
+    # pénalité (vrai cas de convergence parfaite), pas le tier suivant.
+    if max_share <= 0.5:
+        return 0.0
+    if max_share <= 0.7:
+        return 0.05
+    if max_share <= 0.9:
+        return 0.15
+    return 0.20
+
+
+def apply_penalties(raw_confidence, baseline_usd, wallet_volumes):
+    """Applique les pénalités multiplicatives au score post-decay.
+
+    Renvoie (score_final, dict_breakdown_penalties).
+    Le dict liste chaque pénalité (valeur 0-1) pour explicabilité UI.
+    """
+    p_liq = liquidity_penalty(baseline_usd)
+    p_conc = concentration_penalty(wallet_volumes)
+    # Multiplicateurs combinés (chaque pénalité est indépendante)
+    multiplier = (1.0 - p_liq) * (1.0 - p_conc)
+    return raw_confidence * multiplier, {
+        "liquidity": round(p_liq, 3),
+        "concentration": round(p_conc, 3),
+        "combined_multiplier": round(multiplier, 4),
+    }
 
 
 # ── Aggregation depuis le feed brut ────────────────────────────────────────
@@ -249,6 +332,7 @@ def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
     by_token = defaultdict(lambda: {
         "wallets_full": set(),
         "wallets_conv": set(),
+        "wallet_volumes": defaultdict(float),  # addr → usd contributé (proxy concentration)
         "buy_usd": 0.0,
         "sell_usd": 0.0,
         "trade_count": 0,
@@ -270,6 +354,7 @@ def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
         bucket["wallets_full"].add(addr)
         if ts is None or ts >= cutoff_conv:
             bucket["wallets_conv"].add(addr)
+        bucket["wallet_volumes"][addr] += usd
         if side == "buy":
             bucket["buy_usd"] += usd
         else:
@@ -294,6 +379,9 @@ def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
             "n_wallets_distinct": len(b["wallets_conv"]),
             "wallets": sorted(b["wallets_full"]),
             "wallets_smart_scores": smart_scores,
+            # Volume contribué par chaque wallet (utilisé par
+            # concentration_penalty pour détecter les pump unilatéraux).
+            "wallet_volumes": dict(b["wallet_volumes"]),
             "buy_usd": round(b["buy_usd"], 2),
             "sell_usd": round(b["sell_usd"], 2),
             "net_usd": round(net_usd, 2),
@@ -339,7 +427,12 @@ def build_signals(aggregates, baselines_1h, hl_asset_ctxs, now=None):
             "hl_perp":        align_score(token, agg["net_side"],
                                           asset_ctxs=hl_asset_ctxs),
         }
-        ci = confidence_index(sub, age_min=agg["latest_age_min"] or 0.0)
+        ci = confidence_index(
+            sub,
+            age_min=agg["latest_age_min"] or 0.0,
+            baseline_usd=baselines_1h.get(token),
+            wallet_volumes=agg.get("wallet_volumes") or {},
+        )
         signals.append({
             "token": token,
             "n_wallets": agg["n_wallets_distinct"],
