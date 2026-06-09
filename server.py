@@ -517,6 +517,45 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 return self._json({"error": str(e), "alerts": []}, 200)
 
+        # ── Hyperliquid status (visibilité de la connexion) ───────────────
+        # Renvoie l'état réel de la connexion HL Info API. Pas de cache fort
+        # ici — on tape directement get_asset_ctxs() qui a son propre cache
+        # 60s côté hyperliquid.py.
+        if path == "/api/cockpit/hl-status":
+            try:
+                import hyperliquid
+                ctxs, err = hyperliquid.get_asset_ctxs()
+                if err or not ctxs:
+                    return self._json({
+                        "connected": False,
+                        "error": err or "no perps returned",
+                        "n_perps": 0,
+                        "sample": [],
+                    }, 503)
+                # Échantillon des perps les plus liquides (BTC/ETH/SOL + 2 mémé)
+                sample_syms = ["BTC", "ETH", "SOL", "kPEPE", "kBONK", "WIF", "DOGE"]
+                sample = []
+                for sym in sample_syms:
+                    c = ctxs.get(sym)
+                    if c:
+                        sample.append({
+                            "symbol": sym,
+                            "funding": c["funding"],
+                            "open_interest": c["open_interest"],
+                            "mark_px": c["mark_px"],
+                        })
+                return self._json({
+                    "connected": True,
+                    "n_perps": len(ctxs),
+                    "sample": sample,
+                    "checked_at": _utc_now_iso(),
+                })
+            except Exception as e:
+                return self._json({
+                    "connected": False, "error": str(e),
+                    "n_perps": 0, "sample": [],
+                }, 503)
+
         # ── Webhook alert subscriptions (P2) ──────────────────────────────
         # Liste publique (mais le secret est dans l'URL webhook elle-même —
         # le créateur de la sub doit garder l'URL privée).

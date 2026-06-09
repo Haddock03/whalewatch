@@ -380,8 +380,11 @@
       <option value="arbitrum">Arbitrum</option>
       <option value="bnb">BNB Chain</option>
     </select>
-    <span class="ck-toolbar-label" style="margin-left:var(--s-3)">Confirm perp HL</span>
-    <span id="ck-hl-status" style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--muted-2)">—</span>
+    <span class="ck-toolbar-label" style="margin-left:var(--s-3)">Hyperliquid</span>
+    <span id="ck-hl-status" style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--muted-2);display:inline-flex;align-items:center;gap:6px">
+      <span id="ck-hl-dot" style="width:6px;height:6px;border-radius:50%;background:var(--muted-2);display:inline-block"></span>
+      <span id="ck-hl-text">vérification…</span>
+    </span>
     <div class="ck-status" id="ck-status">
       <span class="live-dot" style="width:8px;height:8px;border-radius:50%"></span>
       <span id="ck-status-text">Chargement…</span>
@@ -714,8 +717,41 @@ function renderMetrics(signals, feed) {
   // Header sections
   document.getElementById('ck-half-life').textContent = signals.half_life_min ?? 20;
   document.getElementById('ck-radar-n').textContent = signals.conv_threshold ?? 3;
-  document.getElementById('ck-hl-status').textContent = signals.hl_available ? 'OK' : 'indisponible';
-  document.getElementById('ck-hl-status').style.color = signals.hl_available ? 'var(--green)' : 'var(--muted-2)';
+  // L'indicateur HL est mis à jour par pollHlStatus() qui tape /api/cockpit/hl-status
+  // séparément et plus souvent que les signals (qui dépendent du cache worker).
+}
+
+// Poll dédié à l'état HL — indépendant du cache cockpit pour donner un
+// feedback live de la connexion à l'API publique HL même si le worker
+// cockpit est en chauffe / désactivé.
+const CK_HL_POLL_MS = 60000;
+async function pollHlStatus() {
+  try {
+    const r = await fetch('/api/cockpit/hl-status');
+    const d = await r.json();
+    const dotEl = document.getElementById('ck-hl-dot');
+    const txtEl = document.getElementById('ck-hl-text');
+    if (d.connected) {
+      dotEl.style.background = 'var(--green)';
+      dotEl.style.boxShadow = '0 0 6px var(--green)';
+      const sample = (d.sample || []).slice(0, 3).map(s => s.symbol).join('·');
+      txtEl.textContent = `${d.n_perps} perps · ${sample || 'live'}`;
+      txtEl.style.color = 'var(--green)';
+      txtEl.title = `Connecté à api.hyperliquid.xyz — ${d.n_perps} perps actifs (sample : ${(d.sample || []).map(s => s.symbol).join(', ')})`;
+    } else {
+      dotEl.style.background = 'var(--coral)';
+      dotEl.style.boxShadow = '0 0 6px var(--coral)';
+      txtEl.textContent = 'indisponible';
+      txtEl.style.color = 'var(--coral)';
+      txtEl.title = d.error || 'connexion HL impossible';
+    }
+  } catch (e) {
+    const dotEl = document.getElementById('ck-hl-dot');
+    const txtEl = document.getElementById('ck-hl-text');
+    dotEl.style.background = 'var(--muted-2)';
+    txtEl.textContent = 'erreur';
+    txtEl.style.color = 'var(--muted-2)';
+  }
 }
 
 // Bandeau d'alerte cache stale : déclenche dès que le backend signale
@@ -792,7 +828,9 @@ function bootChainSelector() {
 
 bootChainSelector();
 pollOnce();
+pollHlStatus();
 setInterval(pollOnce, CK_POLL_MS);
+setInterval(pollHlStatus, CK_HL_POLL_MS);
 </script>
 <script src="/static/assets/app.js" defer></script>
 
