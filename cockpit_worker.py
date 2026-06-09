@@ -44,6 +44,12 @@ ENABLED_CHAINS = [c.strip() for c in
 # on garde une approximation : 60 ticks = 1h baseline. À ajuster.
 BASELINE_TICKS = int(os.environ.get("COCKPIT_BASELINE_TICKS", "60"))
 
+# Nombre minimum de smart wallets éligibles pour qu'une chain soit traitée.
+# Avant : hardcodé à 5 → bnb (4 wallets ≥ score 65) était skip systématiquement.
+# Défaut 3 = permissif mais préserve une vraie convergence multi-wallet.
+# Mettre à 1 pour debug, ou monter à 10+ si la qualité du signal prime.
+MIN_SMART_WALLETS_PER_CHAIN = int(os.environ.get("COCKPIT_MIN_WALLETS_PER_CHAIN", "3"))
+
 # TTL après lequel un token sans nouvelle valeur est purgé du fichier baselines.
 # Évite la croissance illimitée du JSON sur disque sur les chains à long uptime.
 # Défaut 6h : un token qui n'a pas eu de smart-money flow depuis 6h n'est plus
@@ -215,10 +221,17 @@ def refresh_one_chain(chain_key, progress_cb=None):
     results = _load_results_cache(chain_key)
     if not results:
         log("skip — pas de cache wallets")
+        _record_pass(chain_key, ok=False, error="no results cache",
+                     smart_wallets=0, feed_trades=0, signals=0)
         return None
     addresses, scores = cockpit.select_smart_wallets(results)
-    if len(addresses) < 5:
-        log(f"skip — {len(addresses)} smart wallets seulement (<5)")
+    if len(addresses) < MIN_SMART_WALLETS_PER_CHAIN:
+        log(f"skip — {len(addresses)} smart wallets (<{MIN_SMART_WALLETS_PER_CHAIN})")
+        _record_pass(chain_key, ok=False,
+                     error=f"only {len(addresses)} smart wallets eligible "
+                           f"(<{MIN_SMART_WALLETS_PER_CHAIN}, set "
+                           f"COCKPIT_MIN_WALLETS_PER_CHAIN to override)",
+                     smart_wallets=len(addresses), feed_trades=0, signals=0)
         return None
     log(f"{len(addresses)} smart wallets sélectionnés")
 
@@ -230,6 +243,8 @@ def refresh_one_chain(chain_key, progress_cb=None):
         )
     except Exception as e:
         log(f"erreur Etherscan feed: {e}")
+        _record_pass(chain_key, ok=False, error=f"etherscan feed: {e}",
+                     smart_wallets=len(addresses), feed_trades=0, signals=0)
         return None
     log(f"feed {len(feed)} trades")
 
@@ -307,6 +322,9 @@ def refresh_one_chain(chain_key, progress_cb=None):
     }
     _atomic_write_json(_cockpit_cache_path(chain_key), payload)
     log(f"cache écrit ({len(signals)} signaux)")
+    _record_pass(chain_key, ok=True, error=None,
+                 smart_wallets=len(addresses), feed_trades=len(feed),
+                 signals=len(signals))
 
     # Dispatch des alertes webhook (P2). Appelé inline car les subs filtrent
     # déjà par chain — coût quasi nul si pas de sub configurée. Erreurs HTTP
@@ -344,6 +362,79 @@ def _worker_loop():
 
 _started = False
 _thread = None
+# Tracker d'état pour /api/cockpit/worker-status
+_LAST_PASS = {}     # chain → {ok, timestamp, smart_wallets, feed_trades, signals, error}
+_LAST_PASS_LOCK = threading.Lock()
+
+
+def _record_pass(chain, **kw):
+    with _LAST_PASS_LOCK:
+        entry = _LAST_PASS.setdefault(chain, {})
+        entry.update(kw)
+        entry["timestamp"] = time.time()
+
+
+def get_worker_status():
+    """Snapshot lisible de l'état du worker pour debug en prod.
+    Inclut : si le thread est vivant, par chain l'état du dernier tick
+    (n smart wallets, n trades, n signaux, erreur si présente, âge),
+    présence des caches results_*.json (et leur âge) qui sont la source
+    pour select_smart_wallets, et le statut des clés API requises."""
+    now = time.time()
+    chains_status = []
+    for chain in ENABLED_CHAINS:
+        results_path = None
+        results_age = None
+        results_has_wallets_65 = None
+        try:
+            cfg = resolve_chain(chain)
+            results_path = cfg["cache_path"]
+            try:
+                st = os.stat(results_path)
+                results_age = round(now - st.st_mtime, 0)
+                # Compte les wallets eligibles ≥ MIN_SMART_SCORE sans rebuilder
+                # la liste complète (rapide check pour diag)
+                results = _load_results_cache(chain)
+                if results:
+                    addrs, _ = cockpit.select_smart_wallets(results)
+                    results_has_wallets_65 = len(addrs)
+            except FileNotFoundError:
+                results_age = None
+        except Exception as e:
+            chains_status.append({"chain": chain, "error": str(e)})
+            continue
+        cockpit_cache_path = _cockpit_cache_path(chain)
+        cockpit_age = None
+        try:
+            st = os.stat(cockpit_cache_path)
+            cockpit_age = round(now - st.st_mtime, 0)
+        except FileNotFoundError:
+            pass
+        with _LAST_PASS_LOCK:
+            last = dict(_LAST_PASS.get(chain) or {})
+        # Convertit timestamp absolu → âge relatif
+        if "timestamp" in last:
+            last["age_seconds"] = round(now - last.pop("timestamp"), 1)
+        chains_status.append({
+            "chain": chain,
+            "results_cache_age_seconds": results_age,
+            "results_smart_wallets_eligible": results_has_wallets_65,
+            "cockpit_cache_age_seconds": cockpit_age,
+            "last_pass": last,
+        })
+    return {
+        "thread_started": _started,
+        "thread_alive": bool(_thread and _thread.is_alive()),
+        "etherscan_api_key": bool(os.environ.get("ETHERSCAN_API_KEY")),
+        "dune_api_key": bool(os.environ.get("DUNE_API_KEY")),
+        "disabled_via_env": os.environ.get("WW_DISABLE_COCKPIT") == "1",
+        "enabled_chains": ENABLED_CHAINS,
+        "refresh_interval_sec": REFRESH_INTERVAL_SEC,
+        "min_smart_score": cockpit.MIN_SMART_SCORE,
+        "min_wallets_per_chain": MIN_SMART_WALLETS_PER_CHAIN,
+        "feed_window_min": cockpit.FEED_WINDOW_MIN,
+        "chains": chains_status,
+    }
 
 
 def start_background():
@@ -355,8 +446,13 @@ def start_background():
     if os.environ.get("WW_DISABLE_COCKPIT") == "1":
         print("[cockpit] disabled via WW_DISABLE_COCKPIT=1", flush=True)
         return None
-    if not os.environ.get("DUNE_API_KEY"):
-        print("[cockpit] DUNE_API_KEY missing — worker non démarré", flush=True)
+    # Depuis la bascule du feed live sur Etherscan V2 (commit 6051428),
+    # le worker ne consomme plus de crédits Dune. Le gate est donc passé de
+    # DUNE_API_KEY à ETHERSCAN_API_KEY. Le ranking smart wallets (Dune) reste
+    # nécessaire pour PEUPLER cache/results_*.json, mais c'est un cron externe.
+    if not os.environ.get("ETHERSCAN_API_KEY"):
+        print("[cockpit] ETHERSCAN_API_KEY missing — worker non démarré "
+              "(le feed Etherscan V2 en a besoin)", flush=True)
         return None
 
     # Recharge les baselines persistées de la session précédente : le module

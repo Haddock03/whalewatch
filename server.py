@@ -530,6 +530,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 return self._json({"error": str(e), "alerts": []}, 200)
 
+        # ── Worker status (diagnostic prod) ───────────────────────────────
+        # Expose en clair l'état du daemon : thread vivant ?, clés API
+        # présentes ?, par chain l'état des caches results_*.json et du
+        # dernier tick (smart wallets eligibles, trades fetched, signaux).
+        # Cela permet de répondre instantanément à "pourquoi Cockpit est vide ?"
+        if path == "/api/cockpit/worker-status":
+            try:
+                import cockpit_worker
+                return self._json(cockpit_worker.get_worker_status())
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
+
         # ── Hyperliquid status (visibilité de la connexion) ───────────────
         # Renvoie l'état réel de la connexion HL Info API. Pas de cache fort
         # ici — on tape directement get_asset_ctxs() qui a son propre cache
