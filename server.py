@@ -24,6 +24,13 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 CACHE_DIR  = os.path.join(BASE_DIR, "cache")
 
+# Timestamps process pour /api/version (debug deploy en prod).
+_PROCESS_START_TS = time.time()
+try:
+    _SERVER_FILE_MTIME = os.path.getmtime(os.path.abspath(__file__))
+except OSError:
+    _SERVER_FILE_MTIME = 0.0
+
 # Permet aux modules d'analyse d'être importés depuis n'importe quel endpoint
 sys.path.insert(0, BASE_DIR)
 
@@ -67,7 +74,9 @@ def _cockpit_cache_meta(payload):
     """Calcule age + flag stale pour un payload cockpit lu depuis le cache JSON.
     Renvoie un dict { cache_age_seconds, is_stale, stale_threshold_seconds }.
     Si pas de generated_at, considère stale=True (worker n'a jamais tourné)."""
-    from datetime import datetime, timezone
+    # datetime déjà importé en haut de fichier (ligne 17). Pas de re-import
+    # local — il créait un shadowing qui faisait crasher /api/version avec
+    # UnboundLocalError ("local variable 'datetime' referenced before assignment").
     gen = payload.get("generated_at") if payload else None
     if not gen:
         return {
@@ -325,7 +334,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if content_type.startswith("text/html"):
             self.send_header("Cache-Control", "no-cache, must-revalidate")
         elif content_type == "application/json":
-            self.send_header("Cache-Control", "no-store")
+            # JSON API : anti-cache strict. Triple header pour barrer aussi
+            # les CDN agressifs (Cloudflare cache parfois les 404 sinon).
+            self.send_header("Cache-Control",
+                             "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+            # CDN-spécifique (Cloudflare) : interdire explicitement le cache
+            # côté edge même si un Cache-Control "no-store" passerait.
+            self.send_header("CDN-Cache-Control", "no-store")
+            self.send_header("Cloudflare-CDN-Cache-Control", "no-store")
         elif self.path.startswith("/static/"):
             # Assets statiques : cache 1 jour avec revalidation. Au-delà,
             # le browser fait un If-Modified-Since pour vérifier. Évite
@@ -377,7 +395,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # Endpoint léger pour load balancer / uptime monitoring.
             # Renvoie 200 si le serveur tourne ; payload détaille la santé
             # par chain (cache existe, âge < 24h, nb wallets > 0).
-            from datetime import datetime, timezone
+            # datetime déjà importé en haut de fichier — pas de re-import.
             now = datetime.now(timezone.utc)
             chains_health = []
             stale_threshold_hours = 24
@@ -464,6 +482,38 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == "/api/status":
             with _lock:
                 return self._json(_state)
+
+        # /api/version — pour vérifier d'un coup d'œil quelle version tourne
+        # en prod (utile quand un nouvel endpoint renvoie 404 : on saute
+        # vite à "Railway a-t-il vraiment redéployé ?").
+        if path == "/api/version":
+            return self._json({
+                "server_mtime": datetime.fromtimestamp(_SERVER_FILE_MTIME,
+                                                       tz=timezone.utc)
+                                .isoformat(timespec="seconds")
+                                .replace("+00:00", "Z") if _SERVER_FILE_MTIME else None,
+                "process_start": datetime.fromtimestamp(_PROCESS_START_TS,
+                                                        tz=timezone.utc)
+                                .isoformat(timespec="seconds")
+                                .replace("+00:00", "Z"),
+                "uptime_seconds": round(time.time() - _PROCESS_START_TS, 1),
+                "python_version": sys.version.split()[0],
+                # Liste des endpoints API exposés pour validation
+                # rapide de la version déployée. Ajout d'un nouveau path
+                # ici quand un nouvel endpoint est ajouté ailleurs.
+                "endpoints": [
+                    "/api/health", "/api/status", "/api/version",
+                    "/api/prices", "/api/ticker",
+                    "/api/chains", "/api/chains/summary",
+                    "/api/wallets", "/api/patterns", "/api/alerts",
+                    "/api/cockpit/worker-status",
+                    "/api/cockpit/hl-status",
+                    "/api/cockpit/feed", "/api/cockpit/signals",
+                    "/api/cockpit/config", "/api/cockpit/hot-tokens",
+                    "/api/alerts/subscriptions",
+                    "/api/wallet/{addr}", "/api/wallet/{addr}/trades",
+                ],
+            })
 
         if path == "/api/chains":
             # Liste des chains disponibles pour le sélecteur frontend
