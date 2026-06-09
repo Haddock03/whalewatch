@@ -48,6 +48,21 @@ _COCKPIT_REFRESH_SEC = int(os.environ.get("COCKPIT_REFRESH_INTERVAL_SEC", "60"))
 _COCKPIT_STALE_AFTER_SEC = max(180, 3 * _COCKPIT_REFRESH_SEC)
 
 
+def _mask_url(url):
+    """Masque le path d'une URL pour ne pas exposer le secret (token Discord,
+    n8n key, etc.). Garde le host + 8 premiers chars du path."""
+    if not url:
+        return ""
+    try:
+        from urllib.parse import urlparse
+        p = urlparse(url)
+        host = p.netloc
+        head = (p.path or "/")[:8]
+        return f"{p.scheme}://{host}{head}…"
+    except Exception:
+        return url[:20] + "…"
+
+
 def _cockpit_cache_meta(payload):
     """Calcule age + flag stale pour un payload cockpit lu depuis le cache JSON.
     Renvoie un dict { cache_age_seconds, is_stale, stale_threshold_seconds }.
@@ -502,6 +517,36 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 return self._json({"error": str(e), "alerts": []}, 200)
 
+        # ── Webhook alert subscriptions (P2) ──────────────────────────────
+        # Liste publique (mais le secret est dans l'URL webhook elle-même —
+        # le créateur de la sub doit garder l'URL privée).
+        if path == "/api/alerts/subscriptions":
+            try:
+                import alert_dispatcher
+                subs = alert_dispatcher.get_subscription_store().list_all()
+                # Masque partiellement l'URL pour la liste (préserve l'host
+                # mais cache le path/secret typique d'un webhook Discord/Slack).
+                masked = [{**s, "target_masked": _mask_url(s.get("target", ""))} for s in subs]
+                return self._json({"subscriptions": masked,
+                                   "stale_threshold_seconds": _COCKPIT_STALE_AFTER_SEC})
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
+
+        if path.startswith("/api/alerts/subscriptions/") and path.endswith("/details"):
+            # /api/alerts/subscriptions/{id}/details — renvoie l'URL en clair
+            # (utile pour debug, mais auth REFRESH_TOKEN exigée si configuré).
+            if not self._check_refresh_token():
+                return
+            sub_id = path[len("/api/alerts/subscriptions/"):-len("/details")]
+            try:
+                import alert_dispatcher
+                s = alert_dispatcher.get_subscription_store().get(sub_id)
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
+            if not s:
+                return self._json({"error": "not found"}, 404)
+            return self._json(s)
+
         # ── Cockpit (P0) ──────────────────────────────────────────────────
         # 3 endpoints qui lisent UNIQUEMENT le cache JSON écrit par le
         # worker (cockpit_worker.py). Aucune query Dune/HL ici → poll user
@@ -681,13 +726,87 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json({"message": f"Calcul patterns lancé ({n} wallets, {days}j)",
                                "status": "running"})
 
+        # ── Webhook alert subscriptions (P2) ──────────────────────────────
+        if path == "/api/alerts/subscriptions":
+            # Création. Auth REFRESH_TOKEN exigée si configuré (la sub donne
+            # accès à un endpoint qui sera POST par le serveur — ne pas laisser
+            # n'importe qui y ajouter des URLs).
+            if not self._check_refresh_token():
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = self.rfile.read(length) if length > 0 else b"{}"
+                data = json.loads(body.decode("utf-8"))
+            except (ValueError, json.JSONDecodeError) as e:
+                return self._json({"error": f"body JSON invalide: {e}"}, 400)
+            try:
+                import alert_dispatcher
+                sub = alert_dispatcher.get_subscription_store().create(
+                    type_=data.get("type") or "webhook",
+                    target=data.get("target") or "",
+                    threshold=data.get("threshold", 70),
+                    chain=data.get("chain", "*"),
+                    label=data.get("label"),
+                )
+                return self._json({"subscription": sub,
+                                   "target_masked": _mask_url(sub.get("target", ""))}, 201)
+            except ValueError as e:
+                return self._json({"error": str(e)}, 400)
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
+
+        if path.startswith("/api/alerts/subscriptions/") and path.endswith("/test"):
+            if not self._check_refresh_token():
+                return
+            sub_id = path[len("/api/alerts/subscriptions/"):-len("/test")]
+            try:
+                import alert_dispatcher
+                sub = alert_dispatcher.get_subscription_store().get(sub_id)
+                if not sub:
+                    return self._json({"error": "subscription not found"}, 404)
+                fake_signal = {
+                    "token": "TEST",
+                    "confidence": 99,
+                    "tier": "Très fort",
+                    "net_side": "buy",
+                    "n_wallets": 5,
+                    "inflow_usd": 1_000_000,
+                    "age_min": 0,
+                    "hl_perp_symbol": "BTC",
+                }
+                payload = alert_dispatcher._build_payload(
+                    sub.get("chain") or "ethereum", fake_signal, sub["id"]
+                )
+                payload["text"] = "🧪 [TEST] " + payload.get("text", "")
+                ok, info = alert_dispatcher.send_webhook(sub["target"], payload)
+                return self._json({"ok": ok, "info": info}, 200 if ok else 502)
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
+
+        return self._json({"error": "Not found"}, 404)
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        if path.startswith("/api/alerts/subscriptions/"):
+            if not self._check_refresh_token():
+                return
+            sub_id = path[len("/api/alerts/subscriptions/"):]
+            try:
+                import alert_dispatcher
+                deleted = alert_dispatcher.get_subscription_store().delete(sub_id)
+                if not deleted:
+                    return self._json({"error": "not found"}, 404)
+                return self._json({"deleted": True, "id": sub_id})
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
         return self._json({"error": "Not found"}, 404)
 
     # ── OPTIONS (CORS preflight) ────────────────────────────────────────
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Refresh-Token")
         self.end_headers()
 

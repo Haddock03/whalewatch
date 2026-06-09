@@ -304,6 +304,20 @@ def refresh_one_chain(chain_key, progress_cb=None):
     }
     _atomic_write_json(_cockpit_cache_path(chain_key), payload)
     log(f"cache écrit ({len(signals)} signaux)")
+
+    # Dispatch des alertes webhook (P2). Appelé inline car les subs filtrent
+    # déjà par chain — coût quasi nul si pas de sub configurée. Erreurs HTTP
+    # gérées par send_webhook (backoff + timeout) → ne bloque pas le worker.
+    try:
+        import alert_dispatcher
+        n_sent, n_skipped, n_errors = alert_dispatcher.tick(
+            chain_key, payload, progress_cb=lambda m: log(m),
+        )
+        if n_sent or n_errors:
+            log(f"alerts: {n_sent} envoyées, {n_skipped} skip (anti-spam), {n_errors} erreurs")
+    except Exception as e:
+        log(f"alert_dispatcher tick failed: {e}")
+
     return payload
 
 

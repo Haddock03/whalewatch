@@ -22,6 +22,7 @@ import tempfile
 import cockpit
 import cockpit_worker
 import hyperliquid
+import alert_dispatcher
 
 
 _failures = []
@@ -539,6 +540,190 @@ def test_signals_and_hot_carry_hl_perp_symbol():
           f"got {by_token_h.get('NOPERPCOIN', {}).get('hl_perp_symbol')}")
 
 
+def test_alert_url_validation():
+    print("\n▶ Validation URL webhook")
+    ok, _ = alert_dispatcher.validate_webhook_url("https://hooks.slack.com/services/T/B/X")
+    check("https Slack-like → OK", ok)
+    ok, reason = alert_dispatcher.validate_webhook_url("http://hooks.slack.com/x")
+    check("http:// refusé en prod", not ok, f"got ok={ok} reason={reason}")
+    ok, reason = alert_dispatcher.validate_webhook_url("https://127.0.0.1/x")
+    check("IP loopback 127.0.0.1 refusée", not ok, f"got ok={ok} reason={reason}")
+    ok, reason = alert_dispatcher.validate_webhook_url("https://192.168.1.1/x")
+    check("IP privée 192.168 refusée", not ok, f"got ok={ok} reason={reason}")
+    ok, reason = alert_dispatcher.validate_webhook_url("https://10.0.0.5/x")
+    check("IP privée 10.0 refusée", not ok, f"got ok={ok} reason={reason}")
+    ok, reason = alert_dispatcher.validate_webhook_url("https://169.254.169.254/x")
+    check("IP link-local (AWS metadata) refusée", not ok, f"got ok={ok} reason={reason}")
+    ok, reason = alert_dispatcher.validate_webhook_url("ftp://example.com/x")
+    check("schéma non-https refusé", not ok, f"got ok={ok} reason={reason}")
+    ok, reason = alert_dispatcher.validate_webhook_url("")
+    check("URL vide refusée", not ok)
+    ok, reason = alert_dispatcher.validate_webhook_url(None)
+    check("URL None refusée", not ok)
+
+
+def test_subscription_store_crud():
+    print("\n▶ SubscriptionStore CRUD")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "subs.json")
+        store = alert_dispatcher.SubscriptionStore(path)
+        check("liste vide à l'init", store.list_all() == [])
+        sub = store.create("webhook",
+                           "https://hooks.slack.com/services/A/B/C",
+                           threshold=70, chain="ethereum", label="my-discord")
+        check("create renvoie id", "id" in sub)
+        check("create renvoie target", sub["target"].startswith("https://"))
+        check("create renvoie threshold normalisé",
+              sub["threshold"] == 70)
+        # Persistance : nouveau store → load
+        store2 = alert_dispatcher.SubscriptionStore(path)
+        check("subs persistés après reload",
+              len(store2.list_all()) == 1)
+        # Dédup
+        try:
+            store.create("webhook", "https://hooks.slack.com/services/A/B/C",
+                         threshold=70, chain="ethereum")
+            check("dédup détectée", False, "duplicate accepté !")
+        except ValueError:
+            check("dédup détectée", True)
+        # Filter by chain
+        store.create("webhook", "https://hooks.discord.com/api/webhooks/X/Y",
+                     threshold=80, chain="*")
+        eth_subs = store.for_chain("ethereum")
+        check("for_chain ethereum trouve les 2 (1 ethereum + 1 wildcard)",
+              len(eth_subs) == 2, f"got {len(eth_subs)}")
+        arb_subs = store.for_chain("arbitrum")
+        check("for_chain arbitrum trouve uniquement le wildcard",
+              len(arb_subs) == 1, f"got {len(arb_subs)}")
+        # Delete
+        deleted = store.delete(sub["id"])
+        check("delete retourne True", deleted)
+        check("delete inexistant retourne False",
+              store.delete("does-not-exist") is False)
+        check("après delete il en reste 1", len(store.list_all()) == 1)
+        # Create avec URL invalide
+        try:
+            store.create("webhook", "http://192.168.0.1/", threshold=70)
+            check("URL invalide rejetée", False, "URL invalide acceptée !")
+        except ValueError:
+            check("URL invalide rejetée", True)
+
+
+def test_dispatch_history_anti_spam():
+    print("\n▶ DispatchHistory anti-spam (dedup par tier+jour)")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "history.json")
+        h = alert_dispatcher.DispatchHistory(path)
+        # Premier dispatch : doit passer
+        check("première fois → dispatch OK",
+              h.should_dispatch("sub1", "ethereum", "ETH", "Fort", now_dt=now))
+        h.mark_dispatched("sub1", "ethereum", "ETH", "Fort", now_dt=now)
+        # Même chose → bloqué
+        check("même tier même jour → skip",
+              not h.should_dispatch("sub1", "ethereum", "ETH", "Fort", now_dt=now))
+        # Tier plus bas → bloqué
+        check("tier qui descend → skip",
+              not h.should_dispatch("sub1", "ethereum", "ETH", "Modéré", now_dt=now))
+        # Tier qui monte → ré-alerte
+        check("tier qui monte → dispatch",
+              h.should_dispatch("sub1", "ethereum", "ETH", "Très fort", now_dt=now))
+        # Autre token → pas affecté
+        check("autre token → dispatch",
+              h.should_dispatch("sub1", "ethereum", "PEPE", "Fort", now_dt=now))
+        # Autre sub → pas affecté
+        check("autre sub → dispatch (isolation)",
+              h.should_dispatch("sub2", "ethereum", "ETH", "Fort", now_dt=now))
+        # Persistance
+        h.mark_dispatched("sub1", "ethereum", "ETH", "Très fort", now_dt=now)
+        h2 = alert_dispatcher.DispatchHistory(path)
+        check("history persisté → bloque toujours après reload",
+              not h2.should_dispatch("sub1", "ethereum", "ETH", "Fort", now_dt=now))
+
+
+def test_alert_payload_build():
+    print("\n▶ Construction du payload webhook")
+    signal = {
+        "token": "WETH", "confidence": 82, "tier": "Très fort",
+        "net_side": "buy", "n_wallets": 5, "inflow_usd": 920000,
+        "age_min": 5.0, "hl_perp_symbol": "ETH",
+    }
+    p = alert_dispatcher._build_payload("ethereum", signal, sub_id="abc")
+    check("payload event = cockpit.signal",
+          p.get("event") == "cockpit.signal")
+    check("payload contient token",
+          p.get("token") == "WETH")
+    check("payload contient confidence",
+          p.get("confidence") == 82)
+    check("payload contient subscription_id",
+          p.get("subscription_id") == "abc")
+    check("trade_url construit avec encodeURIComponent",
+          p.get("trade_url") == "https://app.hyperliquid.xyz/trade/ETH",
+          f"got {p.get('trade_url')}")
+    check("text contient le tier", "Très fort" in (p.get("text") or ""))
+    # Signal sans perp HL → trade_url = None
+    sig2 = {**signal, "hl_perp_symbol": None}
+    p2 = alert_dispatcher._build_payload("ethereum", sig2, sub_id="abc")
+    check("trade_url None si pas de perp HL",
+          p2.get("trade_url") is None, f"got {p2.get('trade_url')}")
+
+
+def test_alert_tick_respects_threshold():
+    print("\n▶ tick() : seuil de confidence respecté")
+    with tempfile.TemporaryDirectory() as tmp:
+        # Override des paths globaux pour ce test
+        subs_path = os.path.join(tmp, "subs.json")
+        hist_path = os.path.join(tmp, "history.json")
+        original_subs = alert_dispatcher._subs_store
+        original_hist = alert_dispatcher._dispatch_history
+        alert_dispatcher._subs_store = alert_dispatcher.SubscriptionStore(subs_path)
+        alert_dispatcher._dispatch_history = alert_dispatcher.DispatchHistory(hist_path)
+        try:
+            # Patch send_webhook pour ne pas faire de vrai HTTP
+            calls = []
+            original_send = alert_dispatcher.send_webhook
+            alert_dispatcher.send_webhook = lambda url, payload: (calls.append((url, payload)), (True, "stub"))[1]
+            try:
+                # Sub avec threshold 70
+                alert_dispatcher._subs_store.create(
+                    "webhook", "https://hooks.slack.com/x/y/z",
+                    threshold=70, chain="ethereum",
+                )
+                payload = {
+                    "signals": [
+                        {"token": "BIG", "confidence": 85, "tier": "Très fort",
+                         "net_side": "buy", "n_wallets": 5, "inflow_usd": 100000,
+                         "age_min": 5, "hl_perp_symbol": "BTC"},
+                        {"token": "MID", "confidence": 65, "tier": "Fort",
+                         "net_side": "buy", "n_wallets": 3, "inflow_usd": 50000,
+                         "age_min": 8, "hl_perp_symbol": None},
+                        # Sous le seuil → ignoré
+                        {"token": "LOW", "confidence": 50, "tier": "Modéré",
+                         "net_side": "buy", "n_wallets": 3, "inflow_usd": 30000,
+                         "age_min": 10, "hl_perp_symbol": None},
+                    ],
+                }
+                n_sent, n_skipped, n_errors = alert_dispatcher.tick("ethereum", payload)
+                check("1 signal envoyé (BIG, conf 85 ≥ 70)",
+                      n_sent == 1, f"got n_sent={n_sent} skipped={n_skipped} errors={n_errors}")
+                check("call envoyé pour BIG uniquement",
+                      len(calls) == 1 and calls[0][1]["token"] == "BIG",
+                      f"got {[(u, p.get('token')) for u, p in calls]}")
+                # Second tick : pas de ré-envoi (anti-spam)
+                calls.clear()
+                n_sent2, n_skipped2, _ = alert_dispatcher.tick("ethereum", payload)
+                check("second tick → 0 sent (anti-spam)", n_sent2 == 0, f"got {n_sent2}")
+                check("second tick → 1 skipped", n_skipped2 == 1, f"got {n_skipped2}")
+                # Chain qui ne match aucune sub
+                n_sent3, _, _ = alert_dispatcher.tick("arbitrum", payload)
+                check("chain non-matchée → 0 sent", n_sent3 == 0)
+            finally:
+                alert_dispatcher.send_webhook = original_send
+        finally:
+            alert_dispatcher._subs_store = original_subs
+            alert_dispatcher._dispatch_history = original_hist
+
+
 def test_baselines_load_replaces_chain_not_merges():
     print("\n▶ Baselines — load remplace la chain (idempotence)")
     store = cockpit_worker._BaselineStore()
@@ -600,6 +785,11 @@ def main():
     test_apply_penalties_combined()
     test_confidence_with_penalties_visible()
     test_aggregate_tracks_wallet_volumes()
+    test_alert_url_validation()
+    test_subscription_store_crud()
+    test_dispatch_history_anti_spam()
+    test_alert_payload_build()
+    test_alert_tick_respects_threshold()
 
     print("\n" + "=" * 60)
     if _failures:

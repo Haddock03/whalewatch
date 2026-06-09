@@ -196,6 +196,32 @@
     }
     .wl-cancel-btn:hover { color: var(--text); border-color: var(--aqua); }
     .wl-char-counter { margin-left: auto; font-size: 10px; color: var(--muted-2); font-family: var(--font-mono); }
+
+    /* ── Webhooks subscriptions list (P2) ─────────────────────────────── */
+    .wl-sub-card {
+      padding: 10px; margin-bottom: 8px; border-radius: var(--radius-sm);
+      background: rgba(2,14,28,.40); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .wl-sub-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .wl-sub-target { font-family: var(--font-mono); font-size: 11px; color: var(--aqua); word-break: break-all; flex: 1; min-width: 0; }
+    .wl-sub-meta { font-size: 10px; color: var(--muted-2); font-family: var(--font-mono); }
+    .wl-sub-meta b { color: var(--c-sc); }
+    .wl-sub-actions { display: flex; gap: 4px; margin-left: auto; }
+    .wl-sub-actions button {
+      background: transparent; border: 1px solid var(--border-2); color: var(--muted);
+      padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
+      transition: all .15s;
+    }
+    .wl-sub-actions button:hover { color: var(--text); border-color: var(--aqua); }
+    .wl-sub-actions button.danger:hover { color: var(--coral); border-color: rgba(255,107,135,.40); background: rgba(255,107,135,.06); }
+    .wl-sub-label { font-size: 11px; color: var(--text); font-weight: 600; }
+    .wl-sub-chain {
+      display: inline-block; padding: 1px 7px; border-radius: 999px;
+      background: rgba(0,226,255,.10); color: var(--aqua);
+      border: 1px solid rgba(0,226,255,.25);
+      font-size: 9px; font-weight: 700; letter-spacing: .03em;
+    }
   </style>
 </head>
 <body>
@@ -283,31 +309,39 @@
 
     <!-- Col droite : notifications config -->
     <div>
+      <!-- ═══ WEBHOOKS — alertes Cockpit (P2) ════════════════════════════ -->
       <div class="wl-notif">
-        <h2>🔔 Canaux de notification</h2>
-        <div class="wl-notif-channel">
-          <span class="ico">📨</span>
-          <div class="info">
-            <div class="name">Telegram</div>
-            <div class="meta" id="wl-tg-meta">Non connecté</div>
+        <h2 style="margin-bottom:6px">🪝 Alertes webhook Cockpit</h2>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:var(--s-3);line-height:1.5">
+          POST JSON envoyé à l'URL choisie quand un signal Cockpit atteint ton seuil. Compatible
+          Discord webhooks, n8n, custom server. Anti-spam : 1 alerte / token / jour (sauf si le
+          tier monte).
+        </p>
+        <form id="wl-sub-form" onsubmit="createSubscription(event)" style="display:flex;flex-direction:column;gap:6px;margin-bottom:var(--s-3)">
+          <input id="wl-sub-url" type="url" required placeholder="https://hooks.slack.com/services/... ou Discord webhook URL"
+            style="padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg-soft);border:1px solid var(--border-2);color:var(--text);font-size:var(--fs-sm);font-family:var(--font-mono)" />
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <select id="wl-sub-chain" style="flex:1;padding:6px 10px;border-radius:var(--radius-sm);background:var(--bg-soft);border:1px solid var(--border-2);color:var(--text);font-size:11px">
+              <option value="*">Toutes les chains</option>
+              <option value="ethereum">Ethereum</option>
+              <option value="arbitrum">Arbitrum</option>
+              <option value="bnb">BNB Chain</option>
+            </select>
+            <select id="wl-sub-threshold" style="flex:1;padding:6px 10px;border-radius:var(--radius-sm);background:var(--bg-soft);border:1px solid var(--border-2);color:var(--text);font-size:11px">
+              <option value="40">≥ 40 (Modéré)</option>
+              <option value="60">≥ 60 (Fort)</option>
+              <option value="70" selected>≥ 70 (Fort+)</option>
+              <option value="80">≥ 80 (Très fort)</option>
+              <option value="90">≥ 90 (Excellence)</option>
+            </select>
           </div>
-          <div class="wl-toggle" id="wl-tg-toggle" onclick="toggleChannel('tg')"></div>
-        </div>
-        <div class="wl-notif-channel">
-          <span class="ico">💬</span>
-          <div class="info">
-            <div class="name">Discord webhook</div>
-            <div class="meta" id="wl-dc-meta">Non connecté</div>
-          </div>
-          <div class="wl-toggle" id="wl-dc-toggle" onclick="toggleChannel('dc')"></div>
-        </div>
-        <div class="wl-notif-channel">
-          <span class="ico">✉️</span>
-          <div class="info">
-            <div class="name">Email digest</div>
-            <div class="meta">Récap quotidien · gratuit</div>
-          </div>
-          <div class="wl-toggle is-on" id="wl-email-toggle" onclick="toggleChannel('email')"></div>
+          <input id="wl-sub-label" type="text" maxlength="80" placeholder="Label optionnel (ex: 'mon-discord-alpha')"
+            style="padding:6px 10px;border-radius:var(--radius-sm);background:var(--bg-soft);border:1px solid var(--border-2);color:var(--muted);font-size:11px" />
+          <button type="submit" class="wl-save-btn" style="margin-top:4px">+ Ajouter ce webhook</button>
+        </form>
+        <div id="wl-subs-list"></div>
+        <div id="wl-subs-empty" style="font-size:11px;color:var(--muted-2);font-style:italic;text-align:center;padding:var(--s-2) 0">
+          Aucun webhook configuré.
         </div>
       </div>
 
@@ -569,21 +603,129 @@ function copyAddr(addr) {
   );
 }
 
-function toggleChannel(key) {
-  const c = loadChannels();
-  c[key] = !c[key];
-  saveChannels(c);
-  syncChannelsUI();
-  showToast(`${key.toUpperCase()} ${c[key] ? 'activé' : 'désactivé'}`, c[key] ? 'success' : 'warn');
+// ═══ Webhook subscriptions (P2) ═════════════════════════════════════════
+// Si REFRESH_TOKEN est exigé côté serveur, on le lit dans localStorage
+// (pas d'auth user formelle dans ce projet — on stocke localement).
+function _refreshTokenHeader() {
+  const t = localStorage.getItem('whalewatch:refresh-token') || '';
+  return t ? { 'X-Refresh-Token': t } : {};
 }
 
-function syncChannelsUI() {
-  const c = loadChannels();
-  document.getElementById('wl-tg-toggle')   .classList.toggle('is-on', c.tg);
-  document.getElementById('wl-dc-toggle')   .classList.toggle('is-on', c.dc);
-  document.getElementById('wl-email-toggle').classList.toggle('is-on', c.email);
-  document.getElementById('wl-tg-meta').textContent = c.tg ? 'Bot connecté · @whalewatch_bot' : 'Non connecté';
-  document.getElementById('wl-dc-meta').textContent = c.dc ? 'Webhook actif' : 'Non connecté';
+async function fetchSubscriptions() {
+  try {
+    const r = await fetch('/api/alerts/subscriptions');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    return d.subscriptions || [];
+  } catch (e) {
+    console.warn('[subs] fetch failed', e);
+    return null;
+  }
+}
+
+async function renderSubscriptions() {
+  const list = await fetchSubscriptions();
+  const container = document.getElementById('wl-subs-list');
+  const emptyEl = document.getElementById('wl-subs-empty');
+  if (list === null) {
+    container.innerHTML = '';
+    emptyEl.textContent = '⚠️ Endpoint subscriptions indisponible.';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  if (!list.length) {
+    container.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  container.innerHTML = list.map(s => `
+    <div class="wl-sub-card">
+      <div class="wl-sub-row">
+        ${s.label ? `<span class="wl-sub-label">${escapeHtml(s.label)}</span>` : ''}
+        <span class="wl-sub-chain">${escapeHtml(s.chain === '*' ? 'TOUTES' : s.chain.toUpperCase())}</span>
+        <span class="wl-sub-meta">≥ <b>${s.threshold}</b></span>
+        <div class="wl-sub-actions">
+          <button onclick="testSubscription('${s.id}')" title="Envoyer un message test">🧪</button>
+          <button onclick="deleteSubscription('${s.id}')" class="danger" title="Supprimer">✕</button>
+        </div>
+      </div>
+      <div class="wl-sub-target">${escapeHtml(s.target_masked || s.target || '—')}</div>
+    </div>`).join('');
+}
+
+async function createSubscription(e) {
+  e.preventDefault();
+  const url = document.getElementById('wl-sub-url').value.trim();
+  const chain = document.getElementById('wl-sub-chain').value;
+  const threshold = parseInt(document.getElementById('wl-sub-threshold').value, 10);
+  const label = document.getElementById('wl-sub-label').value.trim();
+  if (!/^https?:\/\//.test(url)) {
+    showToast('URL invalide — https:// requis', 'error');
+    return;
+  }
+  try {
+    const r = await fetch('/api/alerts/subscriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ..._refreshTokenHeader() },
+      body: JSON.stringify({ type: 'webhook', target: url, chain, threshold, label }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      const msg = d.error || `HTTP ${r.status}`;
+      // 401 → exiger un token côté UI
+      if (r.status === 401) {
+        const t = prompt('Token d\'admin requis (REFRESH_TOKEN serveur) :');
+        if (t) {
+          localStorage.setItem('whalewatch:refresh-token', t);
+          createSubscription(e); // retry
+          return;
+        }
+      }
+      showToast('Erreur : ' + msg, 'error');
+      return;
+    }
+    showToast('Webhook ajouté ✓', 'success');
+    document.getElementById('wl-sub-form').reset();
+    renderSubscriptions();
+  } catch (e2) {
+    showToast('Erreur réseau', 'error');
+  }
+}
+
+async function deleteSubscription(id) {
+  if (!confirm('Supprimer ce webhook ?')) return;
+  try {
+    const r = await fetch(`/api/alerts/subscriptions/${id}`, {
+      method: 'DELETE', headers: _refreshTokenHeader(),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      showToast('Erreur : ' + (d.error || r.status), 'error');
+      return;
+    }
+    showToast('Webhook supprimé', 'success');
+    renderSubscriptions();
+  } catch (e) {
+    showToast('Erreur réseau', 'error');
+  }
+}
+
+async function testSubscription(id) {
+  showToast('Envoi du test…', 'success', 1500);
+  try {
+    const r = await fetch(`/api/alerts/subscriptions/${id}/test`, {
+      method: 'POST', headers: _refreshTokenHeader(),
+    });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      showToast(`Test OK · ${d.info || ''}`, 'success');
+    } else {
+      showToast(`Test échoué · ${d.info || d.error || r.status}`, 'error');
+    }
+  } catch (e) {
+    showToast('Erreur réseau', 'error');
+  }
 }
 
 // Toast minimal si pas déjà défini par app.js
@@ -604,7 +746,7 @@ function showToast(msg, type, ms = 2400) {
 function escapeHtml(s) { return String(s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
 // Boot
-syncChannelsUI();
+renderSubscriptions();
 renderWatchlist();
 </script>
 <script src="/static/assets/app.js" defer></script>
