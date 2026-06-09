@@ -216,8 +216,8 @@
     <div class="gp-workflow-steps">
       <div class="gp-step">
         <div class="gp-step-num">1</div>
-        <h3>Live feed (1 min)</h3>
-        <p>Survol les 30 derniers events. Filtre MEV pour repérer les flashs anormaux.</p>
+        <h3>Cockpit (1 min)</h3>
+        <p>Survol les signaux convergents — ≥ 70 confidence = signal actionnable. Vérifie le perp HL pour valider la direction.</p>
       </div>
       <div class="gp-step">
         <div class="gp-step-num">2</div>
@@ -227,7 +227,7 @@
       <div class="gp-step">
         <div class="gp-step-num">3</div>
         <h3>Smart Money (1 min)</h3>
-        <p>Sur Live, observe les setups Smart Money score &gt; 70 = signal qualifié.</p>
+        <p>Sur Cockpit, observe les setups Smart Money score &gt; 70 = signal qualifié.</p>
       </div>
       <div class="gp-step">
         <div class="gp-step-num">4</div>
@@ -250,7 +250,6 @@
     <a href="#mev-radar"    class="gp-toc-pill">🦈 MEV Radar</a>
     <a href="#comparator"   class="gp-toc-pill">🆚 Comparator</a>
     <a href="#alertes"      class="gp-toc-pill">🔔 Alertes</a>
-    <a href="#live-feed"    class="gp-toc-pill">⚡ Live feed</a>
     <a href="#backtest"     class="gp-toc-pill">📊 Backtest</a>
     <a href="#watchlist"    class="gp-toc-pill">👁 Watchlist</a>
   </div>
@@ -343,23 +342,6 @@
         <li class="warn">Calibre tes seuils <strong>haut</strong> au début (vol &gt; $5M, MEV only) puis baisse — sinon trop de bruit.</li>
       </ul>
       <a href="/pro/watchlist" class="gp-cta">→ Configurer les notifs</a>
-    </article>
-
-    <article class="gp-card gp-card--coral" id="live-feed">
-      <div class="gp-card-head">
-        <div class="gp-card-ico">⚡</div>
-        <div style="flex:1">
-          <div class="gp-card-step">06 · Real-time</div>
-          <div class="gp-card-title">Live Feed</div>
-        </div>
-      </div>
-      <p>Flux continu des events on-chain : <strong>BUYs/SELLs whales</strong>, <strong>sandwich MEV</strong>, <strong>transferts massifs</strong>. Filtrable par catégorie (MEV / Smart / MM / Whale).</p>
-      <ul class="gp-tips">
-        <li>Garde l'onglet ouvert pendant les sessions de trading — c'est ton radar.</li>
-        <li>Filtre <strong>MEV</strong> uniquement pour repérer les vagues d'arbitrage avant un dump.</li>
-        <li>Volume cumulé qui explose en &lt;5min = signal d'activité majeure.</li>
-      </ul>
-      <a href="/pro/cockpit" class="gp-cta">→ Ouvrir le Live</a>
     </article>
 
     <article class="gp-card gp-card--green" id="backtest">
