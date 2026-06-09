@@ -130,6 +130,72 @@
       color: var(--muted); font-size: var(--fs-xs); line-height: 1.6;
     }
     .wl-tip strong { color: var(--c-sc); }
+
+    /* ── Tags & notes (P2) ─────────────────────────────────────────────── */
+    .wl-tags {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      margin-top: 4px;
+    }
+    .wl-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(0,226,255,.10); color: var(--aqua);
+      border: 1px solid rgba(0,226,255,.25);
+      font-size: 10px; font-weight: 600; letter-spacing: .02em;
+      font-family: var(--font);
+    }
+    .wl-tag .wl-tag-x {
+      background: none; border: none; color: var(--aqua);
+      cursor: pointer; padding: 0; font-size: 11px; line-height: 1;
+      opacity: .65; transition: opacity .15s;
+    }
+    .wl-tag .wl-tag-x:hover { opacity: 1; color: var(--coral); }
+    .wl-note {
+      margin-top: 4px;
+      font-size: 11px; font-style: italic; color: var(--muted);
+      line-height: 1.4; max-width: 340px;
+    }
+    .wl-note::before { content: '📝 '; font-style: normal; opacity: .7; }
+
+    /* Edit row inline (apparaît sous la ligne wallet) */
+    .wl-edit-row td {
+      background: rgba(0,226,255,.04);
+      border-top: 1px solid rgba(0,226,255,.18);
+      padding: var(--s-3) var(--s-4) !important;
+    }
+    .wl-edit-panel {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4);
+    }
+    @media (max-width: 700px) { .wl-edit-panel { grid-template-columns: 1fr; } }
+    .wl-edit-group { display: flex; flex-direction: column; gap: 6px; }
+    .wl-edit-group label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+      color: var(--muted-2); font-weight: 700;
+    }
+    .wl-edit-tags { display: flex; flex-wrap: wrap; gap: 4px; min-height: 22px; }
+    .wl-edit-input, .wl-edit-textarea {
+      padding: 8px 10px; border-radius: var(--radius-sm);
+      background: var(--bg-soft); border: 1px solid var(--border-2);
+      color: var(--text); font-size: var(--fs-sm); font-family: var(--font);
+      outline: none; transition: border-color .15s;
+    }
+    .wl-edit-input:focus, .wl-edit-textarea:focus { border-color: rgba(0,226,255,.50); }
+    .wl-edit-textarea { resize: vertical; min-height: 60px; font-size: 12px; }
+    .wl-edit-buttons { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+    .wl-save-btn {
+      padding: 6px 14px; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #00e5b2, #2bd6ff);
+      color: #01060d; border: none; font-weight: 700; font-size: 12px;
+      cursor: pointer; transition: filter .15s;
+    }
+    .wl-save-btn:hover { filter: brightness(1.08); }
+    .wl-cancel-btn {
+      padding: 6px 12px; border-radius: var(--radius-sm);
+      background: transparent; border: 1px solid var(--border-2);
+      color: var(--muted); font-size: 12px; cursor: pointer;
+    }
+    .wl-cancel-btn:hover { color: var(--text); border-color: var(--aqua); }
+    .wl-char-counter { margin-left: auto; font-size: 10px; color: var(--muted-2); font-family: var(--font-mono); }
   </style>
 </head>
 <body>
@@ -280,20 +346,40 @@ const WL_KEY = 'whalewatch:watchlist';
 const WL_NOTIF_KEY = 'whalewatch:notif-channels';
 
 const SEED_WALLETS = [
-  { addr: '0xae2Fc483527B8EF99EB5D9B44875F005ba1FaE13', label: 'Jaredfromsubway (MEV)', alerts: ['MEV','VOL>1M'] },
-  { addr: '0xDef1C0ded9bec7F1a1670819833240f027b25EfF', label: '0x Protocol Router',     alerts: ['VOL>10M'] },
+  { addr: '0xae2Fc483527B8EF99EB5D9B44875F005ba1FaE13', label: 'Jaredfromsubway (MEV)', alerts: ['MEV','VOL>1M'],
+    tags: ['mev-bot', 'sandwich'], note: 'Bot le plus actif sur Uniswap v3, sandwich systématique.' },
+  { addr: '0xDef1C0ded9bec7F1a1670819833240f027b25EfF', label: '0x Protocol Router',     alerts: ['VOL>10M'],
+    tags: ['router', 'aggregator'], note: '' },
 ];
+
+// Migration silencieuse : ajoute tags=[] et note="" aux entries d'avant P2.
+// Préserve la backward compat avec les watchlists déjà persistées en local.
+function _migrateEntry(w) {
+  return {
+    addr: w.addr,
+    label: w.label || 'Sans label',
+    alerts: Array.isArray(w.alerts) ? w.alerts : ['ALL'],
+    tags: Array.isArray(w.tags) ? w.tags : [],
+    note: typeof w.note === 'string' ? w.note : '',
+  };
+}
 
 function loadWatchlist() {
   try {
     const raw = localStorage.getItem(WL_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return JSON.parse(raw).map(_migrateEntry);
   } catch {}
   // 1er load → seed
   saveWatchlist(SEED_WALLETS);
-  return SEED_WALLETS;
+  return SEED_WALLETS.map(_migrateEntry);
 }
 function saveWatchlist(list) { localStorage.setItem(WL_KEY, JSON.stringify(list)); }
+
+// Garde l'état "row d'édition ouverte" entre les re-renders : sinon un
+// addTag/removeTag fermerait la row immédiatement.
+const _openEditRows = new Set();
+const MAX_TAG_LEN = 30;
+const MAX_NOTE_LEN = 200;
 function loadChannels() {
   try { return JSON.parse(localStorage.getItem(WL_NOTIF_KEY)) || { tg:false, dc:false, email:true }; }
   catch { return { tg:false, dc:false, email:true }; }
@@ -338,24 +424,111 @@ async function renderWatchlist() {
     return;
   }
 
-  tbody.innerHTML = enriched.map((w, i) => `
+  tbody.innerHTML = enriched.map((w, i) => {
+    const tagsHtml = (w.tags && w.tags.length)
+      ? `<div class="wl-tags">${w.tags.map(t => `<span class="wl-tag">${escapeHtml(t)}</span>`).join('')}</div>`
+      : '';
+    const noteHtml = w.note ? `<div class="wl-note">${escapeHtml(w.note)}</div>` : '';
+    const editTagsHtml = (w.tags && w.tags.length)
+      ? w.tags.map((t, j) =>
+          `<span class="wl-tag">${escapeHtml(t)} <button class="wl-tag-x" onclick="removeTag(${i}, ${j})" title="Retirer ce tag" aria-label="Retirer ${escapeHtml(t)}">✕</button></span>`
+        ).join('')
+      : '<span style="font-size:10px;color:var(--muted-2);font-style:italic">Aucun tag</span>';
+    const editOpen = _openEditRows.has(i);
+    return `
     <tr>
       <td>
         <div class="wl-addr-cell">${fmtAddr(w.addr)}</div>
         <div style="font-size:10px;color:var(--muted-2);margin-top:2px">${w.category}</div>
       </td>
-      <td class="wl-label-cell">${escapeHtml(w.label || '—')}</td>
+      <td class="wl-label-cell">
+        ${escapeHtml(w.label || '—')}
+        ${tagsHtml}
+        ${noteHtml}
+      </td>
       <td class="wl-vol-cell">${w.volume > 0 ? fmtV(w.volume) : '<span style="color:var(--muted-2)">—</span>'}</td>
       <td>
         <span class="wl-status wl-status--on"><span class="dot"></span>${(w.alerts || ['ALL']).join(' · ')}</span>
       </td>
       <td>
         <div class="wl-actions">
+          <button class="wl-icon-btn" onclick="toggleEdit(${i})" title="Tags &amp; note">✎</button>
           <button class="wl-icon-btn" onclick="copyAddr('${w.addr}')" title="Copier l'adresse">📋</button>
           <button class="wl-icon-btn danger" onclick="removeFromWatchlist(${i})" title="Retirer">✕</button>
         </div>
       </td>
-    </tr>`).join('');
+    </tr>
+    <tr class="wl-edit-row" id="wl-edit-${i}" style="display:${editOpen ? 'table-row' : 'none'}">
+      <td colspan="5">
+        <div class="wl-edit-panel">
+          <div class="wl-edit-group">
+            <label>🏷 Tags <span class="wl-char-counter">${(w.tags || []).length} tag(s)</span></label>
+            <div class="wl-edit-tags" id="wl-tags-${i}">${editTagsHtml}</div>
+            <input class="wl-edit-input" type="text" maxlength="${MAX_TAG_LEN}"
+              placeholder="Nouveau tag (Enter pour ajouter)"
+              id="wl-tag-input-${i}"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addTag(${i})}" />
+          </div>
+          <div class="wl-edit-group">
+            <label>📝 Note <span class="wl-char-counter" id="wl-note-counter-${i}">${(w.note || '').length}/${MAX_NOTE_LEN}</span></label>
+            <textarea class="wl-edit-textarea" maxlength="${MAX_NOTE_LEN}"
+              id="wl-note-input-${i}"
+              oninput="document.getElementById('wl-note-counter-${i}').textContent=this.value.length+'/${MAX_NOTE_LEN}'"
+              placeholder="Note libre (${MAX_NOTE_LEN} chars max)">${escapeHtml(w.note || '')}</textarea>
+            <div class="wl-edit-buttons">
+              <button class="wl-save-btn" onclick="saveNote(${i})">💾 Sauvegarder note</button>
+              <button class="wl-cancel-btn" onclick="toggleEdit(${i})">Fermer</button>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Tags & note actions (P2) ───────────────────────────────────────────
+function toggleEdit(idx) {
+  if (_openEditRows.has(idx)) _openEditRows.delete(idx);
+  else _openEditRows.add(idx);
+  const row = document.getElementById(`wl-edit-${idx}`);
+  if (row) row.style.display = _openEditRows.has(idx) ? 'table-row' : 'none';
+}
+
+function addTag(idx) {
+  const input = document.getElementById(`wl-tag-input-${idx}`);
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  const list = loadWatchlist();
+  if (!list[idx]) return;
+  if ((list[idx].tags || []).some(t => t.toLowerCase() === val.toLowerCase())) {
+    showToast('Tag déjà ajouté', 'warn');
+    return;
+  }
+  list[idx].tags = [...(list[idx].tags || []), val.slice(0, MAX_TAG_LEN)];
+  saveWatchlist(list);
+  // Le render régénère le DOM mais _openEditRows garde la row ouverte
+  renderWatchlist();
+}
+
+function removeTag(idx, tagIdx) {
+  const list = loadWatchlist();
+  if (!list[idx] || !Array.isArray(list[idx].tags)) return;
+  list[idx].tags.splice(tagIdx, 1);
+  saveWatchlist(list);
+  renderWatchlist();
+}
+
+function saveNote(idx) {
+  const input = document.getElementById(`wl-note-input-${idx}`);
+  if (!input) return;
+  const val = (input.value || '').slice(0, MAX_NOTE_LEN);
+  const list = loadWatchlist();
+  if (!list[idx]) return;
+  list[idx].note = val;
+  saveWatchlist(list);
+  showToast(val ? 'Note sauvegardée' : 'Note vidée', 'success');
+  renderWatchlist();
 }
 
 function addToWatchlist(e) {
