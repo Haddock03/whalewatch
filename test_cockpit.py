@@ -16,7 +16,11 @@
 import sys
 from datetime import datetime, timezone
 
+import os
+import tempfile
+
 import cockpit
+import cockpit_worker
 import hyperliquid
 
 
@@ -304,6 +308,145 @@ def test_hot_tokens_empty_when_no_baseline():
     check("Aucun hot token au cold start", len(hot) == 0, f"got {len(hot)}")
 
 
+# ── Persistance baselines (P1+) ────────────────────────────────────────────
+def test_baselines_save_load_roundtrip():
+    print("\n▶ Baselines — save/load roundtrip")
+    store = cockpit_worker._BaselineStore(max_ticks=5)
+    # push pour 2 chains × 2 tokens
+    store.push("ethereum", "ETH", 100.0)
+    store.push("ethereum", "ETH", 200.0)
+    store.push("ethereum", "PEPE", 50.0)
+    store.push("arbitrum", "ARB", 1000.0)
+    baselines_before = store.baselines_for_chain("ethereum")
+    check("baselines avant save : ETH avg = 150",
+          abs(baselines_before["ETH"] - 150.0) < 1e-6,
+          f"got {baselines_before.get('ETH')}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "baselines_eth.json")
+        n_saved = store.save("ethereum", path)
+        check("save renvoie 2 tokens (ETH + PEPE)", n_saved == 2, f"got {n_saved}")
+        check("fichier créé", os.path.exists(path))
+        # Nouvelle instance → load
+        store2 = cockpit_worker._BaselineStore(max_ticks=5)
+        n_loaded = store2.load("ethereum", path)
+        check("load renvoie 2 tokens", n_loaded == 2, f"got {n_loaded}")
+        baselines_after = store2.baselines_for_chain("ethereum")
+        check("ETH avg préservée après load",
+              abs(baselines_after["ETH"] - 150.0) < 1e-6,
+              f"got {baselines_after.get('ETH')}")
+        check("PEPE avg préservée après load",
+              abs(baselines_after["PEPE"] - 50.0) < 1e-6,
+              f"got {baselines_after.get('PEPE')}")
+        # La chain arbitrum n'a pas été persistée → store2 n'en a rien
+        arb_baselines = store2.baselines_for_chain("arbitrum")
+        check("Chain arbitrum vide dans store2 (pas chargée)",
+              len(arb_baselines) == 0, f"got {arb_baselines}")
+
+
+def test_baselines_load_missing_file():
+    print("\n▶ Baselines — load fichier inexistant")
+    store = cockpit_worker._BaselineStore()
+    with tempfile.TemporaryDirectory() as tmp:
+        n = store.load("ethereum", os.path.join(tmp, "does_not_exist.json"))
+    check("load retourne 0 si fichier absent", n == 0, f"got {n}")
+    check("store reste vide",
+          len(store.baselines_for_chain("ethereum")) == 0)
+
+
+def test_baselines_load_corrupted_file():
+    print("\n▶ Baselines — load fichier corrompu/JSON invalide")
+    store = cockpit_worker._BaselineStore()
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "corrupt.json")
+        with open(path, "w") as f:
+            f.write("not valid json {{{")
+        n = store.load("ethereum", path)
+    check("load retourne 0 si JSON invalide", n == 0, f"got {n}")
+
+
+def test_baselines_load_wrong_schema():
+    print("\n▶ Baselines — load fichier avec mauvaise schema version")
+    store = cockpit_worker._BaselineStore()
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "wrong_schema.json")
+        import json as _json
+        with open(path, "w") as f:
+            _json.dump({"schema": 999, "tokens": {"ETH": {"values": [100], "last_updated_ts": 0}}}, f)
+        n = store.load("ethereum", path)
+    check("load retourne 0 si schema mismatch", n == 0, f"got {n}")
+
+
+def test_baselines_prune_stale_tokens():
+    print("\n▶ Baselines — purge tokens trop vieux (>TTL)")
+    store = cockpit_worker._BaselineStore(max_ticks=5)
+    # On manipule directement _buf pour simuler des timestamps anciens
+    import time as _time
+    now = _time.time()
+    very_old = now - (cockpit_worker.BASELINE_PRUNE_AFTER_SEC + 1000)
+    recent = now - 60
+    store._buf[("ethereum", "FRESH")] = {
+        "buf": __import__("collections").deque([100.0], maxlen=5),
+        "last_updated_ts": recent,
+    }
+    store._buf[("ethereum", "STALE")] = {
+        "buf": __import__("collections").deque([100.0], maxlen=5),
+        "last_updated_ts": very_old,
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "baselines.json")
+        n_saved = store.save("ethereum", path, now=now)
+    check("STALE token droppé au save", n_saved == 1, f"got {n_saved}")
+    # Vérif au load aussi : si on injecte un fichier avec un token stale,
+    # il ne devrait pas être chargé
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "in.json")
+        import json as _json
+        with open(path, "w") as f:
+            _json.dump({
+                "schema": cockpit_worker.BASELINE_FILE_SCHEMA,
+                "tokens": {
+                    "STALE": {"values": [100], "last_updated_ts": very_old},
+                    "FRESH": {"values": [200], "last_updated_ts": recent},
+                },
+            }, f)
+        store2 = cockpit_worker._BaselineStore()
+        n_loaded = store2.load("ethereum", path, now=now)
+    check("STALE token purgé au load (TTL dépassé)", n_loaded == 1, f"got {n_loaded}")
+
+
+def test_baselines_load_replaces_chain_not_merges():
+    print("\n▶ Baselines — load remplace la chain (idempotence)")
+    store = cockpit_worker._BaselineStore()
+    store.push("ethereum", "ETH", 999.0)
+    store.push("ethereum", "GHOST", 1.0)  # ne sera plus dans le fichier
+    store.push("arbitrum", "ARB", 5.0)    # chain non touchée par le load
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "in.json")
+        import json as _json, time as _time
+        now = _time.time()
+        with open(path, "w") as f:
+            _json.dump({
+                "schema": cockpit_worker.BASELINE_FILE_SCHEMA,
+                "tokens": {
+                    "ETH":  {"values": [100, 200], "last_updated_ts": now},
+                    "PEPE": {"values": [50], "last_updated_ts": now},
+                },
+            }, f)
+        store.load("ethereum", path, now=now)
+    eth_baselines = store.baselines_for_chain("ethereum")
+    arb_baselines = store.baselines_for_chain("arbitrum")
+    check("ETH écrasé par valeur du fichier (150)",
+          abs(eth_baselines.get("ETH", 0) - 150.0) < 1e-6,
+          f"got {eth_baselines.get('ETH')}")
+    check("GHOST retiré (était en mémoire, absent du fichier)",
+          "GHOST" not in eth_baselines, f"got {eth_baselines}")
+    check("PEPE ajouté depuis fichier", "PEPE" in eth_baselines)
+    check("Chain arbitrum intacte (load ne touche pas l'autre chain)",
+          abs(arb_baselines.get("ARB", 0) - 5.0) < 1e-6,
+          f"got {arb_baselines}")
+
+
 # ── Run all ────────────────────────────────────────────────────────────────
 def main():
     test_decay()
@@ -321,6 +464,12 @@ def main():
     test_hot_tokens_filtering()
     test_hot_tokens_sort_and_topn()
     test_hot_tokens_empty_when_no_baseline()
+    test_baselines_save_load_roundtrip()
+    test_baselines_load_missing_file()
+    test_baselines_load_corrupted_file()
+    test_baselines_load_wrong_schema()
+    test_baselines_prune_stale_tokens()
+    test_baselines_load_replaces_chain_not_merges()
 
     print("\n" + "=" * 60)
     if _failures:
