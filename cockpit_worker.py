@@ -30,6 +30,7 @@ import cockpit
 # dans le chemin worker. Voir le warning en tête de dune_cockpit_feed.py.
 import etherscan_cockpit_feed as cockpit_feed
 import hyperliquid
+import market_maker_detector
 
 
 REFRESH_INTERVAL_SEC = int(os.environ.get("COCKPIT_REFRESH_INTERVAL_SEC", "60"))
@@ -253,8 +254,17 @@ def refresh_one_chain(chain_key, progress_cb=None):
     if hl_err:
         log(f"HL erreur (composant neutralisé): {hl_err}")
 
+    # Détection market-makers — exclus du compteur de convergence.
+    # Un MM = wallet qui fait BUY + SELL sur le même cluster d'assets
+    # équivalents (ex: WBTC↔cbBTC) dans une fenêtre courte (~60s).
+    # Cause racine du "0 signal" observé sur arbitrum : 1 seul wallet trade,
+    # et c'est un MM → n_wallets_distinct=1 → jamais de convergence.
+    mm_wallets = market_maker_detector.detect_market_makers(feed)
+    if mm_wallets:
+        log(f"{len(mm_wallets)} market makers détectés (exclus du compteur convergence)")
+
     # Agrégation + baselines
-    aggregates = cockpit.aggregate_by_token(feed, scores)
+    aggregates = cockpit.aggregate_by_token(feed, scores, market_makers=mm_wallets)
     baselines = _baselines.baselines_for_chain(chain_key)
     signals = cockpit.build_signals(aggregates, baselines_1h=baselines,
                                     hl_asset_ctxs=hl_ctxs)
@@ -319,6 +329,13 @@ def refresh_one_chain(chain_key, progress_cb=None):
         "hot_min_accel_ratio": cockpit.HOT_MIN_ACCEL_RATIO,
         "hot_min_inflow_usd": cockpit.HOT_MIN_INFLOW_USD,
         "hl_available": not bool(hl_err),
+        # Audit MM : liste les wallets identifiés comme market-makers sur
+        # ce tick. Le frontend peut afficher un badge "MM" sur les lignes
+        # correspondantes du Live Feed.
+        "wallet_flags": {addr: ["market_maker"] for addr in sorted(mm_wallets)},
+        "market_makers_count": len(mm_wallets),
+        "mm_detection_enabled": market_maker_detector.MM_DETECTION_ENABLED,
+        "mm_window_sec": market_maker_detector.MM_WINDOW_SEC,
     }
     _atomic_write_json(_cockpit_cache_path(chain_key), payload)
     log(f"cache écrit ({len(signals)} signaux)")

@@ -16,6 +16,8 @@ BASE = "https://api.dune.com/api/v1"
 HEADERS = {"X-Dune-API-Key": DUNE_API_KEY}
 
 # Template SQL ; la valeur de `blockchain` est injectée par fetch_top_wallets.
+# `limit` aussi paramétré pour permettre d'élargir l'univers de wallets
+# scorés (voir _run_analysis.COCKPIT_MAX_WALLETS_PER_CHAIN, défaut 200).
 QUERY_TEMPLATE = """
 SELECT
     taker AS wallet,
@@ -32,8 +34,13 @@ WHERE block_time > NOW() - INTERVAL '7' DAY
 GROUP BY taker
 HAVING COUNT(*) >= 5
 ORDER BY total_volume_usd DESC
-LIMIT 200
+LIMIT {limit}
 """
+
+# Plafond par défaut quand fetch_top_wallets est appelé sans limit explicite.
+# 200 = comportement historique. Si on veut > 200 wallets éligibles côté
+# Cockpit (filtre score ≥ 65 ≈ 20% pass-rate), monter à 500+.
+DEFAULT_LIMIT = 200
 
 
 def execute_sql_direct(sql):
@@ -96,7 +103,7 @@ def get_results(execution_id):
     return pd.DataFrame(rows)
 
 
-def fetch_top_wallets(chain=DEFAULT_CHAIN, progress_cb=None):
+def fetch_top_wallets(chain=DEFAULT_CHAIN, progress_cb=None, limit=None):
     """
     Pipeline complet : exécute le SQL pour la chain donnée, attend les
     résultats, retourne un DataFrame.
@@ -104,9 +111,15 @@ def fetch_top_wallets(chain=DEFAULT_CHAIN, progress_cb=None):
     `chain` : nom de la chain (ex. "ethereum", "arbitrum", "base").
               Validé par chains.resolve().
     `progress_cb(msg)` : callback optionnel pour les mises à jour de statut.
+    `limit` : nombre de wallets à retourner. Défaut DEFAULT_LIMIT=200.
+              Augmenter ce nombre élargit l'univers éligible pour Cockpit
+              (filtré ensuite par smart_score ≥ 65). Voir
+              COCKPIT_MAX_WALLETS_PER_CHAIN dans _run_analysis.
     """
     cfg = resolve(chain)
-    sql = QUERY_TEMPLATE.format(blockchain=cfg["dune_blockchain"])
+    effective_limit = int(limit) if limit is not None and int(limit) > 0 else DEFAULT_LIMIT
+    sql = QUERY_TEMPLATE.format(blockchain=cfg["dune_blockchain"],
+                                 limit=effective_limit)
 
     print(f"=== Dune Analytics - Top Wallets DEX ({cfg['label']}) ===")
     if progress_cb:

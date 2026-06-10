@@ -301,21 +301,29 @@ def _parse_block_time(ts_str):
 
 
 def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
-                       now=None):
+                       now=None, market_makers=None):
     """Agrège un feed de trades en signaux par token.
 
-    feed : liste de {addr, token, side, usd, block_time} (sortie dune_cockpit_feed)
+    feed : liste de {addr, token, side, usd, block_time} (sortie etherscan_cockpit_feed)
     wallet_smart_scores : dict { addr_lower: smart_score 0-100 }
     conv_window_min : fenêtre pour le count distinct de la convergence
                       (défaut CONV_WINDOW_MIN). Les trades plus vieux que cette
                       fenêtre ne comptent pas pour la convergence (mais comptent
                       pour le net flow / inflow_1h).
     now : datetime UTC override pour les tests.
+    market_makers : set d'adresses (lowercase) identifiées comme MM par
+                    market_maker_detector.detect_market_makers(). Si fournie,
+                    les MM sont EXCLUS du compteur n_wallets_distinct mais
+                    restent visibles dans `wallets` (audit) et leurs trades
+                    contribuent toujours au buy_usd/sell_usd/inflow_1h (le
+                    feed brut reste utilisable). Défaut : set() = pas de filtre.
 
     Renvoie : dict { token: {
-        n_wallets_distinct,           # sur conv_window
-        wallets,                      # liste des addr distinctes (conv_window)
-        wallets_smart_scores,         # liste de scores pour wallet_quality
+        n_wallets_distinct,           # sur conv_window, MM EXCLUS
+        wallets,                      # liste TOUTES les addr distinctes (audit, incl. MM)
+        wallets_market_makers,        # sous-ensemble : adresses MM (vide si désactivé)
+        wallets_smart_scores,         # liste de scores pour wallet_quality (sur non-MM)
+        wallet_volumes,               # addr → usd contribué (incl. MM)
         buy_usd, sell_usd,            # sur fenêtre complète (FEED_WINDOW_MIN)
         net_usd,
         net_side,                     # "buy" | "sell" | "neutral"
@@ -328,6 +336,7 @@ def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
     cw = conv_window_min if conv_window_min is not None else CONV_WINDOW_MIN
     now = now or datetime.now(timezone.utc)
     cutoff_conv = now.timestamp() - cw * 60
+    mm_set = set(market_makers) if market_makers else set()
 
     by_token = defaultdict(lambda: {
         "wallets_full": set(),
@@ -371,13 +380,23 @@ def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
             net_side = "neutral"
         else:
             net_side = "buy" if net_usd > 0 else "sell"
-        smart_scores = [wallet_smart_scores.get(a, 0) for a in b["wallets_full"]]
+        # MM filtering : pour le compteur convergence et la qualité,
+        # on exclut les wallets flaggés MM. Mais on garde TOUS les wallets
+        # dans `wallets` (audit). wallet_volumes garde aussi tous (utilisé
+        # par concentration_penalty qui veut voir la vraie distribution).
+        wallets_full = b["wallets_full"]
+        wallets_conv = b["wallets_conv"]
+        wallets_mm_for_token = wallets_full & mm_set
+        wallets_conv_non_mm = wallets_conv - mm_set
+        smart_scores = [wallet_smart_scores.get(a, 0)
+                        for a in wallets_full if a not in mm_set]
         age_min = None
         if b["latest_ts"]:
             age_min = max(0.0, (now.timestamp() - b["latest_ts"]) / 60.0)
         out[token] = {
-            "n_wallets_distinct": len(b["wallets_conv"]),
-            "wallets": sorted(b["wallets_full"]),
+            "n_wallets_distinct": len(wallets_conv_non_mm),
+            "wallets": sorted(wallets_full),
+            "wallets_market_makers": sorted(wallets_mm_for_token),
             "wallets_smart_scores": smart_scores,
             # Volume contribué par chaque wallet (utilisé par
             # concentration_penalty pour détecter les pump unilatéraux).

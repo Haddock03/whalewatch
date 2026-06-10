@@ -28,9 +28,15 @@ def main(n_wallets: int = 100, pattern_days: int = 7, chain: str = DEFAULT_CHAIN
     chain_cfg = resolve(chain)
     log(f"=== Démarrage de l'analyse pour {chain_cfg['label']} ===")
 
+    # Plafond SQL Dune : on veut au moins n_wallets wallets dans
+    # results_<chain>.json pour pouvoir scorer ce nombre. LIMIT > n_wallets
+    # garantit qu'il y a assez de matière.
+    dune_limit = max(200, n_wallets)
+    log(f"Univers : top {dune_limit} wallets Dune → score top {n_wallets}")
+
     # 1. Top wallets via Dune
     log(f"Étape 1/4 — Récupération top wallets Dune ({chain_cfg['label']})…")
-    df_dune = fetch_top_wallets(chain=chain, progress_cb=log)
+    df_dune = fetch_top_wallets(chain=chain, progress_cb=log, limit=dune_limit)
 
     # 2. Etherscan + ranking → cache/results_{chain}.json
     log("Étape 2/4 — Fusion Etherscan + ranking…")
@@ -69,7 +75,15 @@ def main(n_wallets: int = 100, pattern_days: int = 7, chain: str = DEFAULT_CHAIN
 
 if __name__ == "__main__":
     # Paramètres injectés via env par server.run_analysis() ; fallbacks safe.
-    n     = int(os.environ.get("WW_N_WALLETS", "100"))
+    # COCKPIT_MAX_WALLETS_PER_CHAIN (200 par défaut) prime sur WW_N_WALLETS
+    # historique pour élargir le pool de wallets éligibles côté Cockpit.
+    # Le filtre cockpit.MIN_SMART_SCORE=65 garde ~20% du pool → 200 scorés
+    # ≈ 40 éligibles, 500 scorés ≈ 100 éligibles.
+    n_cockpit = os.environ.get("COCKPIT_MAX_WALLETS_PER_CHAIN")
+    if n_cockpit and n_cockpit.strip():
+        n = int(n_cockpit)
+    else:
+        n = int(os.environ.get("WW_N_WALLETS", "200"))
     days  = int(os.environ.get("WW_DAYS", "7"))
     chain = os.environ.get("WW_CHAIN", DEFAULT_CHAIN)
     main(n_wallets=n, pattern_days=days, chain=chain)

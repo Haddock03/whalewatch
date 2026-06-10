@@ -26,6 +26,7 @@ import hyperliquid
 import alert_dispatcher
 import etherscan_cockpit_feed
 import token_pricer
+import market_maker_detector
 
 
 _failures = []
@@ -1120,6 +1121,149 @@ def test_etherscan_feed_consumed_by_aggregate_by_token():
         token_pricer.get_price_usd = original_price
 
 
+# ── Market Maker detector (P0 fix) ─────────────────────────────────────────
+def _ts_iso(epoch):
+    """Helper : convertit epoch en ISO 8601 UTC pour les block_time des fixtures."""
+    return datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def test_mm_detects_same_cluster_within_window():
+    print("\n▶ MM detector : BUY + SELL même cluster < 60s → flag")
+    now = 1_770_000_000
+    feed = [
+        {"addr": "0xa", "token": "WBTC",  "side": "buy",  "usd": 10000,
+         "block_time": _ts_iso(now - 90)},
+        {"addr": "0xa", "token": "cbBTC", "side": "sell", "usd": 10000,
+         "block_time": _ts_iso(now - 60)},  # 30s plus tard
+    ]
+    mm = market_maker_detector.detect_market_makers(feed, window_sec=60, enabled=True)
+    check("0xa flaggé MM (WBTC+cbBTC à 30s, même cluster BTC)",
+          "0xa" in mm, f"got {mm}")
+
+
+def test_mm_does_not_flag_different_clusters():
+    print("\n▶ MM detector : BUY + SELL clusters différents → PAS flag")
+    now = 1_770_000_000
+    feed = [
+        {"addr": "0xb", "token": "WBTC", "side": "buy",  "usd": 10000,
+         "block_time": _ts_iso(now - 90)},
+        {"addr": "0xb", "token": "ETH",  "side": "sell", "usd": 10000,
+         "block_time": _ts_iso(now - 60)},  # 30s plus tard mais cluster ETH
+    ]
+    mm = market_maker_detector.detect_market_makers(feed, window_sec=60, enabled=True)
+    check("0xb non flaggé (WBTC BTC vs ETH ETH)",
+          "0xb" not in mm, f"got {mm}")
+
+
+def test_mm_respects_window():
+    print("\n▶ MM detector : trades hors fenêtre → PAS flag")
+    now = 1_770_000_000
+    feed = [
+        {"addr": "0xc", "token": "WBTC",  "side": "buy",  "usd": 10000,
+         "block_time": _ts_iso(now - 180)},
+        {"addr": "0xc", "token": "cbBTC", "side": "sell", "usd": 10000,
+         "block_time": _ts_iso(now - 60)},  # 120s plus tard, hors 60s
+    ]
+    mm = market_maker_detector.detect_market_makers(feed, window_sec=60, enabled=True)
+    check("0xc non flaggé (BUY+SELL à 120s > fenêtre 60s)",
+          "0xc" not in mm, f"got {mm}")
+
+
+def test_mm_isolation_between_wallets():
+    print("\n▶ MM detector : un MM ne fait pas flagger un autre wallet")
+    now = 1_770_000_000
+    feed = [
+        # Wallet MM
+        {"addr": "0xmm", "token": "WBTC",  "side": "buy",  "usd": 10000,
+         "block_time": _ts_iso(now - 90)},
+        {"addr": "0xmm", "token": "cbBTC", "side": "sell", "usd": 10000,
+         "block_time": _ts_iso(now - 60)},
+        # Wallet directionnel pur (buy only)
+        {"addr": "0xclean", "token": "WBTC", "side": "buy", "usd": 50000,
+         "block_time": _ts_iso(now - 60)},
+    ]
+    mm = market_maker_detector.detect_market_makers(feed, window_sec=60, enabled=True)
+    check("0xmm flaggé", "0xmm" in mm, f"got {mm}")
+    check("0xclean NON flaggé (buy only)", "0xclean" not in mm, f"got {mm}")
+
+
+def test_mm_disabled_returns_empty():
+    print("\n▶ MM detector : feature OFF → set vide")
+    now = 1_770_000_000
+    feed = [
+        {"addr": "0xa", "token": "WBTC",  "side": "buy",  "usd": 10000,
+         "block_time": _ts_iso(now - 90)},
+        {"addr": "0xa", "token": "cbBTC", "side": "sell", "usd": 10000,
+         "block_time": _ts_iso(now - 60)},
+    ]
+    mm = market_maker_detector.detect_market_makers(feed, window_sec=60, enabled=False)
+    check("enabled=False → set() vide", mm == set(), f"got {mm}")
+
+
+def test_mm_token_not_in_cluster_ignored():
+    print("\n▶ MM detector : token hors clusters → ignoré pour détection")
+    now = 1_770_000_000
+    feed = [
+        # PEPE n'est pas dans ASSET_CLUSTERS → ne peut pas trigger MM
+        {"addr": "0xa", "token": "PEPE", "side": "buy",  "usd": 10000,
+         "block_time": _ts_iso(now - 90)},
+        {"addr": "0xa", "token": "PEPE", "side": "sell", "usd": 10000,
+         "block_time": _ts_iso(now - 60)},
+    ]
+    mm = market_maker_detector.detect_market_makers(feed, window_sec=60, enabled=True)
+    check("PEPE non clusterisé → 0xa non flaggé MM",
+          "0xa" not in mm, f"got {mm}")
+
+
+def test_mm_eth_cluster_lst_variants():
+    print("\n▶ MM detector : variantes ETH (WETH/stETH/cbETH) dans même cluster")
+    now = 1_770_000_000
+    feed = [
+        {"addr": "0xeth", "token": "WETH",  "side": "buy",  "usd": 10000,
+         "block_time": _ts_iso(now - 90)},
+        {"addr": "0xeth", "token": "stETH", "side": "sell", "usd": 10000,
+         "block_time": _ts_iso(now - 60)},
+    ]
+    mm = market_maker_detector.detect_market_makers(feed, window_sec=60, enabled=True)
+    check("WETH+stETH à 30s → MM (cluster ETH)",
+          "0xeth" in mm, f"got {mm}")
+
+
+def test_aggregate_excludes_mm_from_distinct_count():
+    print("\n▶ aggregate_by_token : MM exclus de n_wallets_distinct")
+    now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    feed = [
+        # 3 wallets buy WETH dans la fenêtre conv
+        {"addr": "0xa", "token": "WETH", "side": "buy", "usd": 10000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xb", "token": "WETH", "side": "buy", "usd": 10000, "block_time": "2026-06-09T13:55:00Z"},
+        {"addr": "0xc", "token": "WETH", "side": "buy", "usd": 10000, "block_time": "2026-06-09T13:55:00Z"},
+    ]
+    scores = {"0xa": 70, "0xb": 70, "0xc": 70}
+    # Sans MM, 3 distincts
+    agg_no_mm = cockpit.aggregate_by_token(feed, scores, now=now)
+    check("Sans MM : n_wallets_distinct=3",
+          agg_no_mm["WETH"]["n_wallets_distinct"] == 3,
+          f"got {agg_no_mm['WETH']['n_wallets_distinct']}")
+    # Avec 0xb flaggé MM → 2 distincts
+    agg_with_mm = cockpit.aggregate_by_token(feed, scores, now=now,
+                                              market_makers={"0xb"})
+    check("Avec 0xb MM : n_wallets_distinct=2",
+          agg_with_mm["WETH"]["n_wallets_distinct"] == 2,
+          f"got {agg_with_mm['WETH']['n_wallets_distinct']}")
+    check("wallets garde 3 (audit, incl. MM)",
+          len(agg_with_mm["WETH"]["wallets"]) == 3,
+          f"got {agg_with_mm['WETH']['wallets']}")
+    check("wallets_market_makers contient 0xb",
+          agg_with_mm["WETH"]["wallets_market_makers"] == ["0xb"],
+          f"got {agg_with_mm['WETH']['wallets_market_makers']}")
+    check("buy_usd inchangé (MM trades comptent dans le flow)",
+          agg_with_mm["WETH"]["buy_usd"] == agg_no_mm["WETH"]["buy_usd"],
+          f"with_mm={agg_with_mm['WETH']['buy_usd']} no_mm={agg_no_mm['WETH']['buy_usd']}")
+    check("wallets_smart_scores : MM exclu",
+          len(agg_with_mm["WETH"]["wallets_smart_scores"]) == 2,
+          f"got {agg_with_mm['WETH']['wallets_smart_scores']}")
+
+
 # ── Run all ────────────────────────────────────────────────────────────────
 def main():
     test_decay()
@@ -1173,6 +1317,14 @@ def main():
     test_etherscan_feed_skip_when_pricer_returns_none()
     test_etherscan_feed_matches_dune_format()
     test_etherscan_feed_consumed_by_aggregate_by_token()
+    test_mm_detects_same_cluster_within_window()
+    test_mm_does_not_flag_different_clusters()
+    test_mm_respects_window()
+    test_mm_isolation_between_wallets()
+    test_mm_disabled_returns_empty()
+    test_mm_token_not_in_cluster_ignored()
+    test_mm_eth_cluster_lst_variants()
+    test_aggregate_excludes_mm_from_distinct_count()
 
     print("\n" + "=" * 60)
     if _failures:
