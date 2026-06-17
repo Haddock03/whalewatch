@@ -56,7 +56,12 @@ def _env_flag(key, default):
 
 
 # Configuration — tous overridables
-MIN_CONFIDENCE   = _env_int("HOT_MIN_CONFIDENCE", 70)
+# Défaut TEMPORAIRE abaissé à 35 (au lieu de 70) pour voir le pipeline
+# fonctionner avec l'univers actuel (signaux observés en prod ~42 conf).
+# À remonter à 70 dès que l'univers de wallets sera repeuplé (Sonar Dune)
+# ou quand on aura régulièrement des signaux ≥ 70. Override via env :
+#   HOT_MIN_CONFIDENCE=70  → revient au standard "Fort"
+MIN_CONFIDENCE   = _env_int("HOT_MIN_CONFIDENCE", 35)
 ATR_PERIOD       = _env_int("HOT_ATR_PERIOD", 14)
 ATR_TIMEFRAME    = (os.environ.get("HOT_ATR_TIMEFRAME") or "1h").strip()
 SL_ATR_MULT      = _env_float("HOT_SL_ATR_MULT", 1.5)
