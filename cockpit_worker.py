@@ -391,6 +391,27 @@ def _record_pass(chain, **kw):
         entry["timestamp"] = time.time()
 
 
+def get_last_mm_stats():
+    """Snapshot rapide des dernières détections MM par chain.
+    Lit le cache cockpit_<chain>.json pour récupérer les compteurs MM."""
+    out = {}
+    for chain in ENABLED_CHAINS:
+        path = _cockpit_cache_path(chain)
+        try:
+            with open(path) as f:
+                payload = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            out[chain] = None
+            continue
+        out[chain] = {
+            "market_makers_count": payload.get("market_makers_count", 0),
+            "mm_detection_enabled": payload.get("mm_detection_enabled"),
+            "mm_window_sec": payload.get("mm_window_sec"),
+            "wallet_flags_sample": list((payload.get("wallet_flags") or {}).keys())[:5],
+        }
+    return out
+
+
 def get_worker_status():
     """Snapshot lisible de l'état du worker pour debug en prod.
     Inclut : si le thread est vivant, par chain l'état du dernier tick
@@ -439,6 +460,10 @@ def get_worker_status():
             "cockpit_cache_age_seconds": cockpit_age,
             "last_pass": last,
         })
+    mm_stats = get_last_mm_stats()
+    for c in chains_status:
+        if c["chain"] in mm_stats and mm_stats[c["chain"]]:
+            c["mm_stats"] = mm_stats[c["chain"]]
     return {
         "thread_started": _started,
         "thread_alive": bool(_thread and _thread.is_alive()),
@@ -449,7 +474,11 @@ def get_worker_status():
         "refresh_interval_sec": REFRESH_INTERVAL_SEC,
         "min_smart_score": cockpit.MIN_SMART_SCORE,
         "min_wallets_per_chain": MIN_SMART_WALLETS_PER_CHAIN,
+        "conv_threshold": cockpit.CONV_THRESHOLD,
+        "conv_window_min": cockpit.CONV_WINDOW_MIN,
         "feed_window_min": cockpit.FEED_WINDOW_MIN,
+        "mm_detection_enabled": market_maker_detector.MM_DETECTION_ENABLED,
+        "mm_window_sec": market_maker_detector.MM_WINDOW_SEC,
         "chains": chains_status,
     }
 

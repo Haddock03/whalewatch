@@ -210,23 +210,27 @@ def test_aggregate_by_token():
 
 # ── Build signals (filtre convergence) ─────────────────────────────────────
 def test_build_signals_filter():
-    print("\n▶ build_signals filtre convergence (seuil N=3)")
+    print("\n▶ build_signals filtre convergence (seuil = CONV_THRESHOLD courant)")
     now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
+    threshold = cockpit.CONV_THRESHOLD
     feed = [
-        # 2 wallets distincts seulement sur DOGE → sous le seuil
-        {"addr": "0xa", "token": "DOGE", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
-        {"addr": "0xb", "token": "DOGE", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
-        # 3 wallets distincts sur SOL → au seuil
-        {"addr": "0xa", "token": "SOL", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
-        {"addr": "0xb", "token": "SOL", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
-        {"addr": "0xc", "token": "SOL", "side": "buy", "usd": 5000, "block_time": "2026-06-09T13:55:00Z"},
+        # Token UNDER : threshold - 1 wallets → sous le seuil → filtré
+        {"addr": f"0x{i}", "token": "UNDER", "side": "buy", "usd": 5000,
+         "block_time": "2026-06-09T13:55:00Z"} for i in range(max(1, threshold - 1))
+    ] + [
+        # Token OVER : threshold + 1 wallets → devient signal
+        {"addr": f"0x{i+100}", "token": "OVER", "side": "buy", "usd": 5000,
+         "block_time": "2026-06-09T13:55:00Z"} for i in range(threshold + 1)
     ]
-    scores = {"0xa": 70, "0xb": 70, "0xc": 70}
+    scores = {f"0x{i}": 70 for i in range(max(1, threshold - 1))}
+    scores.update({f"0x{i+100}": 70 for i in range(threshold + 1)})
     agg = cockpit.aggregate_by_token(feed, scores, now=now)
     signals = cockpit.build_signals(agg, baselines_1h={}, hl_asset_ctxs={})
     tokens = {s["token"] for s in signals}
-    check("SOL devient signal (n=3)", "SOL" in tokens, f"got {tokens}")
-    check("DOGE filtré (n=2 < seuil)", "DOGE" not in tokens, f"got {tokens}")
+    check(f"OVER devient signal (n={threshold+1} ≥ {threshold})",
+          "OVER" in tokens, f"got {tokens}")
+    check(f"UNDER filtré (n={max(1, threshold-1)} < {threshold})",
+          "UNDER" not in tokens, f"got {tokens}")
 
 
 # ── Select smart wallets ──────────────────────────────────────────────────

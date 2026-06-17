@@ -37,11 +37,21 @@ def _env_int(key, default):
         return int(default)
 
 
-CONV_THRESHOLD       = _env_int("COCKPIT_CONV_THRESHOLD", 3)
+# Seuils calibrés "univers Dune épuisé" — défauts permissifs pour fonctionner
+# en mode dégradé (sans Sonar Dune frais). Si Dune redevient utilisable et que
+# l'univers de wallets éligibles grossit (200+), remonter ces valeurs via env.
+#
+# - CONV_THRESHOLD baissé 3→2 : avec 7-50 wallets actifs/h, 3 distincts est
+#   statistiquement quasi-impossible. 2 = doublement de la chance de signal.
+#   Le filtre MM (commit ec219bf) compense la baisse de qualité.
+# - MIN_SMART_SCORE baissé 65→45 : 65 ne retenait que ~10% des wallets scorés
+#   (tier "Solid"). 45 retient ~40-50% (inclut "Avg"). Le filtre catégorie infra
+#   reste actif (MEV/CEX/Bridge toujours exclus dans select_smart_wallets).
+CONV_THRESHOLD       = _env_int("COCKPIT_CONV_THRESHOLD", 2)
 CONV_WINDOW_MIN      = _env_int("COCKPIT_CONV_WINDOW_MIN", 30)
 FEED_WINDOW_MIN      = _env_int("COCKPIT_FEED_WINDOW_MIN", 60)
 HALF_LIFE_MIN        = _env_float("COCKPIT_CONFIDENCE_HALF_LIFE_MIN", 20.0)
-MIN_SMART_SCORE      = _env_int("COCKPIT_MIN_SMART_SCORE", 65)
+MIN_SMART_SCORE      = _env_int("COCKPIT_MIN_SMART_SCORE", 45)
 
 W_CONVERGENCE = _env_float("COCKPIT_W_CONVERGENCE", 0.25)
 W_QUALITY     = _env_float("COCKPIT_W_QUALITY",     0.20)
