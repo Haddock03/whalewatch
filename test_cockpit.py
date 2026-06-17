@@ -210,27 +210,37 @@ def test_aggregate_by_token():
 
 # ── Build signals (filtre convergence) ─────────────────────────────────────
 def test_build_signals_filter():
-    print("\n▶ build_signals filtre convergence (seuil = CONV_THRESHOLD courant)")
+    print("\n▶ build_signals filtre convergence (forcé seuil 3 pour le test)")
     now = datetime(2026, 6, 9, 14, 0, tzinfo=timezone.utc)
-    threshold = cockpit.CONV_THRESHOLD
-    feed = [
-        # Token UNDER : threshold - 1 wallets → sous le seuil → filtré
-        {"addr": f"0x{i}", "token": "UNDER", "side": "buy", "usd": 5000,
-         "block_time": "2026-06-09T13:55:00Z"} for i in range(max(1, threshold - 1))
-    ] + [
-        # Token OVER : threshold + 1 wallets → devient signal
-        {"addr": f"0x{i+100}", "token": "OVER", "side": "buy", "usd": 5000,
-         "block_time": "2026-06-09T13:55:00Z"} for i in range(threshold + 1)
-    ]
-    scores = {f"0x{i}": 70 for i in range(max(1, threshold - 1))}
-    scores.update({f"0x{i+100}": 70 for i in range(threshold + 1)})
-    agg = cockpit.aggregate_by_token(feed, scores, now=now)
-    signals = cockpit.build_signals(agg, baselines_1h={}, hl_asset_ctxs={})
-    tokens = {s["token"] for s in signals}
-    check(f"OVER devient signal (n={threshold+1} ≥ {threshold})",
-          "OVER" in tokens, f"got {tokens}")
-    check(f"UNDER filtré (n={max(1, threshold-1)} < {threshold})",
-          "UNDER" not in tokens, f"got {tokens}")
+    # On force le seuil à 3 LOCALEMENT pour ne pas dépendre du défaut courant
+    # (qui peut bouger pour des raisons opérationnelles).
+    saved = cockpit.CONV_THRESHOLD
+    cockpit.CONV_THRESHOLD = 3
+    try:
+        feed = [
+            # Token UNDER : 2 wallets → sous le seuil 3 → filtré
+            {"addr": "0x1", "token": "UNDER", "side": "buy", "usd": 5000,
+             "block_time": "2026-06-09T13:55:00Z"},
+            {"addr": "0x2", "token": "UNDER", "side": "buy", "usd": 5000,
+             "block_time": "2026-06-09T13:55:00Z"},
+            # Token OVER : 4 wallets → au-dessus du seuil 3 → signal
+            {"addr": "0x101", "token": "OVER", "side": "buy", "usd": 5000,
+             "block_time": "2026-06-09T13:55:00Z"},
+            {"addr": "0x102", "token": "OVER", "side": "buy", "usd": 5000,
+             "block_time": "2026-06-09T13:55:00Z"},
+            {"addr": "0x103", "token": "OVER", "side": "buy", "usd": 5000,
+             "block_time": "2026-06-09T13:55:00Z"},
+            {"addr": "0x104", "token": "OVER", "side": "buy", "usd": 5000,
+             "block_time": "2026-06-09T13:55:00Z"},
+        ]
+        scores = {f"0x{i}": 70 for i in [1, 2, 101, 102, 103, 104]}
+        agg = cockpit.aggregate_by_token(feed, scores, now=now)
+        signals = cockpit.build_signals(agg, baselines_1h={}, hl_asset_ctxs={})
+        tokens = {s["token"] for s in signals}
+        check("OVER devient signal (n=4 ≥ 3)", "OVER" in tokens, f"got {tokens}")
+        check("UNDER filtré (n=2 < 3)", "UNDER" not in tokens, f"got {tokens}")
+    finally:
+        cockpit.CONV_THRESHOLD = saved
 
 
 # ── Select smart wallets ──────────────────────────────────────────────────
