@@ -274,6 +274,82 @@ def align_score(token_sym, on_chain_side, asset_ctxs=None):
     return round(max(0.0, min(100.0, score)), 1)
 
 
+def get_candles(coin, interval="1h", n_periods=20, ttl=_DEFAULT_TTL):
+    """Récupère N dernières candles OHLC du perp HL.
+
+    coin     : symbole perp HL (BTC, ETH, kPEPE, …)
+    interval : '1m', '5m', '15m', '1h', '4h', '1d'
+    n_periods: nb de candles à demander (max ~5000 selon HL)
+
+    Renvoie ([{t,o,h,l,c,v},…], err_str|None).
+    Cache 60s par (coin, interval).
+    """
+    if not coin:
+        return [], "no coin"
+    interval_to_sec = {"1m": 60, "5m": 300, "15m": 900,
+                       "1h": 3600, "4h": 14400, "1d": 86400}
+    secs = interval_to_sec.get(interval, 3600)
+    end_ms = int(time.time() * 1000)
+    start_ms = end_ms - (n_periods + 5) * secs * 1000  # marge
+    payload = {"type": "candleSnapshot",
+               "req": {"coin": coin, "interval": interval,
+                       "startTime": start_ms, "endTime": end_ms}}
+    cache_key = f"candles:{coin}:{interval}:{n_periods}"
+    raw, err = _fetch_with_cache(cache_key, payload, ttl=ttl)
+    if err or not raw:
+        return [], err
+    if not isinstance(raw, list):
+        return [], "malformed response"
+    candles = []
+    for c in raw:
+        try:
+            candles.append({
+                "t": int(c["t"]),       # open time ms
+                "o": float(c["o"]),
+                "h": float(c["h"]),
+                "l": float(c["l"]),
+                "c": float(c["c"]),
+                "v": float(c.get("v") or 0),
+            })
+        except (KeyError, TypeError, ValueError):
+            continue
+    return candles, None
+
+
+def compute_atr(candles, period=14):
+    """ATR (Average True Range) sur les `period` dernières candles.
+    Renvoie None si pas assez de données → fail closed côté caller.
+
+    Formule standard :
+      TR_i = max(H_i - L_i, |H_i - C_{i-1}|, |L_i - C_{i-1}|)
+      ATR  = moyenne arithmétique des TR sur `period` (simple, pas Wilder)
+    """
+    if not candles or len(candles) < period + 1:
+        return None
+    trs = []
+    for i in range(1, len(candles)):
+        h, l = candles[i]["h"], candles[i]["l"]
+        prev_c = candles[i - 1]["c"]
+        tr = max(h - l, abs(h - prev_c), abs(l - prev_c))
+        trs.append(tr)
+    if len(trs) < period:
+        return None
+    return sum(trs[-period:]) / period
+
+
+def get_mark_price(coin, asset_ctxs=None):
+    """Prix mark courant pour un perp HL. None si inconnu."""
+    if asset_ctxs is None:
+        asset_ctxs, err = get_asset_ctxs()
+        if err:
+            return None
+    ctx = (asset_ctxs or {}).get(coin)
+    if not ctx:
+        return None
+    px = ctx.get("mark_px")
+    return float(px) if px and px > 0 else None
+
+
 if __name__ == "__main__":
     print("→ Fetch metaAndAssetCtxs…")
     ctxs, err = get_asset_ctxs()

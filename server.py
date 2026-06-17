@@ -104,7 +104,7 @@ PAGES = {
     "/bot":           "bot.html",         "/bot.html":         "bot.html",
     "/methodology":   "methodology.html", "/methodology.html": "methodology.html",
     "/pro/cockpit":    "pro_cockpit.html",
-    "/pro/hot-tokens": "pro_hot_tokens.html",
+    "/pro/hot":        "pro_hot.html",
     "/pro/backtest":   "pro_backtest.html",
     "/pro/watchlist":  "pro_watchlist.html",
     "/pro/guide":      "pro_guide.html",
@@ -376,6 +376,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path in ("/pro/live", "/pro/live.html"):
             self.send_response(301)
             self.send_header("Location", "/pro/cockpit")
+            self.send_header("Cache-Control", "max-age=86400")
+            self.end_headers()
+            return
+        # /pro/hot-tokens (legacy accélération) → /pro/hot (calls actionnables HL)
+        if path in ("/pro/hot-tokens", "/pro/hot-tokens.html"):
+            self.send_response(301)
+            self.send_header("Location", "/pro/hot")
             self.send_header("Cache-Control", "max-age=86400")
             self.end_headers()
             return
@@ -670,7 +677,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # is_stale pour que le frontend puisse alerter visuellement si le
         # worker s'est arrêté (cache > 3× l'intervalle de refresh).
         if path in ("/api/cockpit/feed", "/api/cockpit/signals",
-                    "/api/cockpit/config", "/api/cockpit/hot-tokens"):
+                    "/api/cockpit/config", "/api/cockpit/hot-tokens",
+                    "/api/cockpit/hot-calls"):
             chain = parse_qs(parsed.query).get("chain", [DEFAULT_CHAIN])[0]
             # Valide la chain (résolution lève ValueError sinon)
             try:
@@ -691,6 +699,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "convergence_radar": [],
                     "feed": [],
                     "hot_tokens": [],
+                    "hot_calls": [],
                     "hl_available": False,
                     "status": "warming_up",
                     "cache_age_seconds": None,
@@ -729,6 +738,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "min_inflow_usd":  payload.get("hot_min_inflow_usd"),
                     "feed_window_min": payload.get("feed_window_min"),
                     "smart_wallets_count": payload.get("smart_wallets_count"),
+                    **meta,
+                })
+            if path == "/api/cockpit/hot-calls":
+                return self._json({
+                    "chain": payload["chain"],
+                    "generated_at": payload["generated_at"],
+                    "hot_calls": payload.get("hot_calls") or [],
+                    "config": payload.get("hot_calls_config") or {},
+                    "hl_available": payload.get("hl_available", False),
                     **meta,
                 })
             # /api/cockpit/config

@@ -238,20 +238,30 @@ def test_select_smart_wallets():
     print("\n▶ Sélection des smart wallets depuis cache results")
     cache_data = {
         "wallets": [
-            {"address": "0xa", "smart_score": 80, "category": "Other"},
-            {"address": "0xB", "smart_score": 66, "category": "Other"},  # case insensitive
-            {"address": "0xc", "smart_score": 90, "category": "MEV Bot"},  # filtré infra
-            {"address": "0xd", "smart_score": 50, "category": "Other"},   # sous seuil
-            {"address": "0xe", "smart_score": 70, "category": "CEX"},      # filtré infra
+            {"address": "0xa", "smart_score": 80, "category": "Other", "is_contract": False},
+            {"address": "0xB", "smart_score": 66, "category": "Other", "is_contract": False},  # case insensitive
+            {"address": "0xc", "smart_score": 90, "category": "MEV Bot", "is_contract": True},  # filtré infra MEV
+            {"address": "0xd", "smart_score": 50, "category": "Other", "is_contract": False},   # sous seuil
+            {"address": "0xe", "smart_score": 70, "category": "Other",
+             "label": "Binance Hot Wallet", "is_contract": False},  # CEX via label regex
+            {"address": "0xf", "smart_score": 70, "category": "Smart Contract", "is_contract": True},  # filtré contrat
+            # Blacklist hardcodée : 1inch V5 router
+            {"address": "0x1111111254eeb25477b68fb85ed929f73a960582",
+             "smart_score": 90, "category": "Other", "is_contract": True,
+             "label": "Unknown"},
         ]
     }
-    addrs, scores = cockpit.select_smart_wallets(cache_data, min_score=65)
-    check("0xa retenu (80)",  "0xa" in addrs, f"got {addrs}")
-    check("0xb retenu lowercased (66)", "0xb" in addrs, f"got {addrs}")
+    addrs, scores, meta = cockpit.select_smart_wallets(cache_data, min_score=65)
+    check("0xa retenu (80, EOA)",  "0xa" in addrs, f"got {addrs}")
+    check("0xb retenu lowercased (66, EOA)", "0xb" in addrs, f"got {addrs}")
     check("0xc filtré (MEV Bot)",       "0xc" not in addrs, f"got {addrs}")
     check("0xd filtré (sous seuil 65)", "0xd" not in addrs, f"got {addrs}")
-    check("0xe filtré (CEX)",           "0xe" not in addrs, f"got {addrs}")
+    check("0xe filtré (CEX via label Binance)", "0xe" not in addrs, f"got {addrs}")
+    check("0xf filtré (Smart Contract)", "0xf" not in addrs, f"got {addrs}")
+    check("1inch router filtré (blacklist hardcodée)",
+          "0x1111111254eeb25477b68fb85ed929f73a960582" not in addrs, f"got {addrs}")
     check("scores[0xa] == 80", scores.get("0xa") == 80)
+    check("meta retourné (dict)", isinstance(meta, dict))
 
 
 # ── Hot Tokens (P1) ────────────────────────────────────────────────────────

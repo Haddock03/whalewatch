@@ -311,7 +311,7 @@ def _parse_block_time(ts_str):
 
 
 def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
-                       now=None, market_makers=None):
+                       now=None, market_makers=None, wallet_clusters=None):
     """Agrège un feed de trades en signaux par token.
 
     feed : liste de {addr, token, side, usd, block_time} (sortie etherscan_cockpit_feed)
@@ -347,6 +347,10 @@ def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
     now = now or datetime.now(timezone.utc)
     cutoff_conv = now.timestamp() - cw * 60
     mm_set = set(market_makers) if market_makers else set()
+    # Convergence factice : N wallets partageant un même cluster_id sont
+    # comptés comme 1 acteur (probablement same owner, deployer commun).
+    # `wallet_clusters` : dict {addr: cluster_id}. Si non fourni → pas de dédup.
+    clusters = wallet_clusters or {}
 
     by_token = defaultdict(lambda: {
         "wallets_full": set(),
@@ -398,13 +402,23 @@ def aggregate_by_token(feed, wallet_smart_scores, conv_window_min=None,
         wallets_conv = b["wallets_conv"]
         wallets_mm_for_token = wallets_full & mm_set
         wallets_conv_non_mm = wallets_conv - mm_set
+        # Dédup par cluster_id : si plusieurs wallets non-MM dans conv_window
+        # partagent un cluster, on compte un seul acteur. Les wallets sans
+        # cluster_id sont comptés individuellement (clé = adresse).
+        unique_actors = set()
+        for addr in wallets_conv_non_mm:
+            cid = clusters.get(addr)
+            unique_actors.add(f"cluster:{cid}" if cid else f"addr:{addr}")
         smart_scores = [wallet_smart_scores.get(a, 0)
                         for a in wallets_full if a not in mm_set]
         age_min = None
         if b["latest_ts"]:
             age_min = max(0.0, (now.timestamp() - b["latest_ts"]) / 60.0)
         out[token] = {
-            "n_wallets_distinct": len(wallets_conv_non_mm),
+            # n_wallets_distinct est désormais le nombre d'ACTEURS distincts
+            # (dédup par cluster_id quand fourni). Cohérent avec l'intention
+            # "convergence ≠ même owner derrière plusieurs adresses".
+            "n_wallets_distinct": len(unique_actors),
             "wallets": sorted(wallets_full),
             "wallets_market_makers": sorted(wallets_mm_for_token),
             "wallets_smart_scores": smart_scores,
@@ -549,32 +563,53 @@ def build_hot_tokens(aggregates, baselines_1h, top_n=None,
 
 # ── Utilitaire : sélection des smart wallets depuis results_*.json ─────────
 def select_smart_wallets(cache_data, min_score=None):
-    """Renvoie deux outputs depuis un cache results_<chain>.json :
-      - addresses : liste d'adresses (lower hex) avec smart_score >= min_score
+    """Renvoie 3 outputs depuis un cache results_<chain>.json :
+      - addresses : liste d'adresses (lower hex) EOA non-blacklist, score >= min_score
       - scores    : dict { addr: smart_score } pour wallet_quality
+      - meta      : dict { addr: {cluster_id, ...} } pour détection convergence factice
 
-    Filtre aussi les wallets dont la category est infra évidente (MEV/CEX/Bridge)
-    même s'ils ont un score élevé par accident — c'est une ceinture
-    supplémentaire après le score, pas un substitut.
+    Filtre P0 renforcé (jamais de signal sur ces wallets) :
+      1. score < MIN_SMART_SCORE → exclu
+      2. is_contract is True → exclu (jamais d'alpha discrétionnaire sur contrat)
+      3. wallet_classifier.is_infrastructure → exclu (MEV/MM/CEX/Bridge/Router)
+      4. infra_blacklist.is_blacklisted → exclu (hardcoded routers/bridges/CEX)
     """
     threshold = min_score if min_score is not None else MIN_SMART_SCORE
     addrs = []
     scores = {}
+    meta = {}
     if not cache_data or not isinstance(cache_data, dict):
-        return [], {}
-    INFRA_CATS = {"MEV Bot", "CEX", "Bridge"}
+        return [], {}, {}
+
+    # Imports locaux pour éviter les cycles + permettre mock dans les tests
+    from wallet_classifier import classify_wallet, INFRA_TYPES, TYPE_CONTRACT
+    from infra_blacklist import is_blacklisted
+
     for w in cache_data.get("wallets") or []:
         score = w.get("smart_score") or 0
         if score < threshold:
             continue
-        if (w.get("category") or "") in INFRA_CATS:
-            continue
         addr = (w.get("address") or "").lower()
         if not addr:
             continue
+        # Filtre 2+3 : classifier détecte infrastructure (MEV/MM/CEX/Bridge/Router)
+        # ET tout smart contract (is_contract=True via category=Smart Contract ou
+        # directement is_contract dans le wallet record)
+        cls = classify_wallet(w)
+        if cls["key"] in INFRA_TYPES or cls["key"] == TYPE_CONTRACT:
+            continue
+        # Filtre 4 : blacklist hardcodée d'adresses connues
+        if is_blacklisted(addr):
+            continue
         addrs.append(addr)
         scores[addr] = int(score)
-    return addrs, scores
+        # Meta pour détection convergence factice (cluster_id partagé = 1 acteur)
+        meta[addr] = {
+            "cluster_id": w.get("cluster_id"),
+            "cluster_size": w.get("cluster_size"),
+            "label": w.get("label"),
+        }
+    return addrs, scores, meta
 
 
 if __name__ == "__main__":

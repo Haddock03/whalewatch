@@ -29,6 +29,7 @@ import cockpit
 # dune_cockpit_feed reste dans le repo mais n'est PLUS importé ici ni nulle part
 # dans le chemin worker. Voir le warning en tête de dune_cockpit_feed.py.
 import etherscan_cockpit_feed as cockpit_feed
+import hot_calls
 import hyperliquid
 import market_maker_detector
 
@@ -225,7 +226,7 @@ def refresh_one_chain(chain_key, progress_cb=None):
         _record_pass(chain_key, ok=False, error="no results cache",
                      smart_wallets=0, feed_trades=0, signals=0)
         return None
-    addresses, scores = cockpit.select_smart_wallets(results)
+    addresses, scores, wallet_meta = cockpit.select_smart_wallets(results)
     if len(addresses) < MIN_SMART_WALLETS_PER_CHAIN:
         log(f"skip — {len(addresses)} smart wallets (<{MIN_SMART_WALLETS_PER_CHAIN})")
         _record_pass(chain_key, ok=False,
@@ -263,17 +264,31 @@ def refresh_one_chain(chain_key, progress_cb=None):
     if mm_wallets:
         log(f"{len(mm_wallets)} market makers détectés (exclus du compteur convergence)")
 
+    # Extrait le cluster_id par wallet pour la dédup convergence factice
+    wallet_clusters = {a: m.get("cluster_id") for a, m in wallet_meta.items()
+                       if m.get("cluster_id")}
+    if wallet_clusters:
+        log(f"{len(wallet_clusters)} wallets clusterisés (dédup convergence)")
+
     # Agrégation + baselines
-    aggregates = cockpit.aggregate_by_token(feed, scores, market_makers=mm_wallets)
+    aggregates = cockpit.aggregate_by_token(feed, scores, market_makers=mm_wallets,
+                                             wallet_clusters=wallet_clusters)
     baselines = _baselines.baselines_for_chain(chain_key)
     signals = cockpit.build_signals(aggregates, baselines_1h=baselines,
                                     hl_asset_ctxs=hl_ctxs)
     log(f"{len(signals)} signaux convergents (seuil N={cockpit.CONV_THRESHOLD})")
 
-    # Hot Tokens (P1) — accélération seule, sans seuil de convergence.
-    # Vide tant qu'il n'y a pas de baseline (cold-start ≤ premier tick).
+    # Hot Tokens (legacy) — accélération seule. Conservé pour rétrocompat
+    # du payload mais l'onglet Pro affiche maintenant hot_calls (calls
+    # leviérés HL). Les hot_tokens restent disponibles via le payload.
     hot_tokens = cockpit.build_hot_tokens(aggregates, baselines_1h=baselines)
-    log(f"{len(hot_tokens)} hot tokens (ratio≥{cockpit.HOT_MIN_ACCEL_RATIO}× inflow≥${cockpit.HOT_MIN_INFLOW_USD:.0f})")
+    log(f"{len(hot_tokens)} hot tokens (legacy)")
+
+    # Hot Calls (NEW P1) — calls actionnables sur Hyperliquid.
+    # Filtre dur : confidence ≥ HOT_MIN_CONFIDENCE + perp HL existant.
+    # Aucun call inventé : mark/ATR manquant = pas de call (fail closed).
+    hot_calls_list = hot_calls.build_calls(signals, asset_ctxs=hl_ctxs)
+    log(f"{len(hot_calls_list)} hot calls (conf≥{hot_calls.MIN_CONFIDENCE} + perp HL)")
 
     # Push baselines après avoir compute (le tick courant ne biaise pas
     # son propre baseline) puis persiste sur disque pour survivre au restart.
@@ -328,6 +343,9 @@ def refresh_one_chain(chain_key, progress_cb=None):
         "hot_tokens": hot_tokens,
         "hot_min_accel_ratio": cockpit.HOT_MIN_ACCEL_RATIO,
         "hot_min_inflow_usd": cockpit.HOT_MIN_INFLOW_USD,
+        # Hot Calls — calls actionnables HL (P1)
+        "hot_calls": hot_calls_list,
+        "hot_calls_config": hot_calls.config_snapshot(),
         "hl_available": not bool(hl_err),
         # Audit MM : liste les wallets identifiés comme market-makers sur
         # ce tick. Le frontend peut afficher un badge "MM" sur les lignes
@@ -434,7 +452,7 @@ def get_worker_status():
                 # la liste complète (rapide check pour diag)
                 results = _load_results_cache(chain)
                 if results:
-                    addrs, _ = cockpit.select_smart_wallets(results)
+                    addrs, _, _ = cockpit.select_smart_wallets(results)
                     results_has_wallets_65 = len(addrs)
             except FileNotFoundError:
                 results_age = None

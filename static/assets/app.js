@@ -12,7 +12,7 @@
   'use strict';
 
   // ── Soft navigation ───────────────────────────────────────────────────
-  const ROUTES = new Set(['/', '/pro/cockpit', '/pro/hot-tokens',
+  const ROUTES = new Set(['/', '/pro/cockpit', '/pro/hot',
                           '/pro/backtest', '/pro/watchlist', '/pro/guide',
                           '/why', '/guide', '/bot',
                           '/index.html', '/why.html',

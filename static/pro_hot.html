@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro · Hot — WhaleWatch</title>
+  <meta name="description" content="Calls leviérés Hyperliquid à partir des signaux Cockpit. Direction LONG/SHORT, entrée, TP1/TP2, SL ATR-based. Pour traders informés." />
+  <meta name="theme-color" content="#020c1b" />
+  <link rel="canonical" href="https://whalewatchapp.io/pro/hot" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WhaleWatch" />
+  <meta property="og:url" content="https://whalewatchapp.io/pro/hot" />
+  <meta property="og:title" content="WhaleWatch Pro · Hot calls Hyperliquid" />
+  <meta property="og:description" content="Calls leviérés HL à partir des signaux Cockpit ≥ 70 confidence." />
+  <meta property="og:image" content="https://whalewatchapp.io/static/assets/og.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/assets/whale.css">
+  <style>
+    /* ═══ HOT CALLS — disclaimer + grid cartes call ═══════════════════════ */
+
+    /* ── Hero compact ── */
+    .ht-hero { padding: var(--s-5) var(--s-4) var(--s-4); text-align: center; max-width: 760px; margin: 0 auto; }
+    .ht-hero h1 { font-size: var(--fs-2xl); margin: var(--s-2) 0 var(--s-2); color: #fff; }
+    .ht-hero h1 .accent { background: linear-gradient(90deg, var(--coral), var(--c-sc)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .ht-hero p { color: var(--muted); font-size: var(--fs-sm); max-width: 600px; margin: 0 auto; }
+    .ht-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 999px;
+      background: rgba(255,107,135,.10); color: var(--coral);
+      border: 1px solid rgba(255,107,135,.30);
+      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    /* ── Disclaimer NON-MASQUABLE (P0) ── */
+    .ht-disclaimer {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 16px; margin-bottom: var(--s-4);
+      background: linear-gradient(135deg, rgba(255,198,87,.10), rgba(255,107,135,.08));
+      border: 1px solid rgba(255,198,87,.45);
+      border-left: 4px solid var(--coral);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs); line-height: 1.55;
+    }
+    .ht-disclaimer .ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+    .ht-disclaimer strong { color: var(--c-sc); }
+    .ht-disclaimer .body { color: var(--text); }
+
+    /* ── Stale banner ── */
+    .ht-stale-banner {
+      display: none;
+      align-items: center; gap: var(--s-2); flex-wrap: wrap;
+      padding: var(--s-3) var(--s-4);
+      background: linear-gradient(135deg, rgba(255,107,135,.12), rgba(255,198,87,.06));
+      border: 1px solid rgba(255,107,135,.40);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-3);
+      color: var(--coral);
+      font-size: var(--fs-sm); font-weight: 600;
+    }
+    .ht-stale-banner.is-visible { display: flex; }
+    .ht-stale-banner .ico { font-size: 18px; line-height: 1; animation: htPulse 1.4s ease-in-out infinite; }
+    .ht-stale-banner b { color: #fff; }
+    @keyframes htPulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+
+    /* ── Toolbar ── */
+    .ht-toolbar {
+      display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+      padding: var(--s-3) var(--s-4);
+      background: rgba(8,42,72,.40);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--s-4);
+    }
+    .ht-toolbar-label { font-size: 11px; color: var(--muted-2); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+    .ht-toolbar select {
+      padding: 6px 28px 6px 12px; border-radius: var(--radius-sm);
+      background: var(--bg-soft); border: 1px solid var(--border-2);
+      color: var(--text); font-family: var(--font); font-size: var(--fs-sm); font-weight: 600;
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237a99b3' stroke-width='1.5' fill='none'/></svg>");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+    .ht-toolbar .ht-status {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+      font-size: var(--fs-xs); color: var(--muted-2); font-family: var(--font-mono);
+    }
+    .ht-toolbar .ht-status .live-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .ht-toolbar .ht-status.is-warming .live-dot { background: var(--c-sc); box-shadow: 0 0 8px var(--c-sc); }
+    .ht-toolbar .ht-status.is-error .live-dot { background: var(--coral); box-shadow: 0 0 8px var(--coral); }
+
+    /* ── Top metrics ── */
+    .ht-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-3); margin-bottom: var(--s-4); }
+    @media (max-width: 900px) { .ht-metrics { grid-template-columns: 1fr 1fr; } }
+    .ht-metric { padding: var(--s-3); background: rgba(8,42,72,.40); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .ht-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted-2); font-weight: 700; }
+    .ht-metric-value { font-family: var(--font-mono); font-weight: 700; font-size: 20px; color: var(--text); margin-top: 4px; }
+
+    /* ── Grid cartes call ── */
+    .ht-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-4); }
+    @media (max-width: 900px) { .ht-cards { grid-template-columns: 1fr; } }
+
+    .ht-card {
+      padding: var(--s-4);
+      background: rgba(8,42,72,.50);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      display: flex; flex-direction: column; gap: var(--s-3);
+      position: relative; overflow: hidden;
+    }
+    .ht-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+    .ht-card.dir-long::before  { background: linear-gradient(90deg, var(--green), var(--aqua)); }
+    .ht-card.dir-short::before { background: linear-gradient(90deg, var(--coral), var(--c-sc)); }
+    .ht-card.is-expired { opacity: .55; }
+    .ht-card.is-divergent { border-color: rgba(255,198,87,.35); }
+
+    .ht-card-head { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+    .ht-card-sym { font-family: var(--font-mono); font-weight: 800; font-size: 22px; color: var(--text); }
+    .ht-card-sub { font-size: 10px; color: var(--muted-2); margin-left: 2px; }
+    .ht-card-dir {
+      padding: 3px 10px; border-radius: var(--radius-sm);
+      font-weight: 800; font-size: 11px; letter-spacing: .07em;
+    }
+    .ht-card-dir.long  { background: rgba(46,212,168,.18); color: var(--green); border: 1px solid rgba(46,212,168,.40); }
+    .ht-card-dir.short { background: rgba(255,107,135,.18); color: var(--coral); border: 1px solid rgba(255,107,135,.40); }
+    .ht-card-conf {
+      margin-left: auto;
+      font-family: var(--font-mono); font-weight: 800; font-size: 22px;
+      background: linear-gradient(135deg, var(--aqua), var(--green));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .ht-perp-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 10px; font-weight: 700;
+    }
+    .ht-perp-badge.aligned   { background: rgba(46,212,168,.14); color: var(--green); border: 1px solid rgba(46,212,168,.30); }
+    .ht-perp-badge.divergent { background: rgba(255,198,87,.14); color: var(--c-sc); border: 1px solid rgba(255,198,87,.30); }
+    .ht-perp-badge.neutral   { background: rgba(122,153,179,.14); color: var(--muted); border: 1px solid rgba(122,153,179,.30); }
+
+    /* Niveaux entry / TP / SL */
+    .ht-levels { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; }
+    @media (max-width: 540px) { .ht-levels { grid-template-columns: 1fr 1fr; } }
+    .ht-level {
+      padding: 8px 10px; border-radius: var(--radius-sm);
+      background: rgba(2,14,28,.45); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .ht-level .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-2); font-weight: 700; }
+    .ht-level .val { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-sm); color: var(--text); }
+    .ht-level.entry .val { color: var(--aqua); }
+    .ht-level.tp .val { color: var(--green); }
+    .ht-level.sl .val { color: var(--coral); }
+
+    /* Meta row */
+    .ht-meta {
+      display: flex; flex-wrap: wrap; gap: var(--s-2);
+      font-size: 10px; color: var(--muted); font-family: var(--font-mono);
+      padding: 6px 0; border-top: 1px dashed var(--border);
+    }
+    .ht-meta b { color: var(--text); }
+    .ht-meta .lev { color: var(--gold); font-weight: 800; }
+
+    /* Actions */
+    .ht-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ht-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 700; text-decoration: none;
+      cursor: pointer; border: 1px solid transparent;
+      transition: filter .15s, transform .15s;
+    }
+    .ht-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .ht-btn--hl {
+      background: linear-gradient(135deg, #00e5b2, #2bd6ff);
+      color: #01060d; flex: 1;
+    }
+    .ht-btn--copy {
+      background: rgba(0,226,255,.10);
+      color: var(--aqua);
+      border-color: rgba(0,226,255,.30);
+    }
+
+    .ht-empty { text-align: center; padding: var(--s-6); color: var(--muted); grid-column: 1/-1; }
+    .ht-empty-icon { font-size: 36px; margin-bottom: 8px; opacity: .6; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-text">
+        <span class="brand-name">WHALEWATCH</span>
+        <span class="brand-sub">on-chain · hot calls</span>
+      </span>
+    </a>
+    <nav class="nav" style="margin-left:auto" aria-label="Navigation principale">
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/cockpit" class="nav-link nav-link--pro is-active">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
+    </nav>
+    <div class="header-prices">
+      <span><span class="lbl">Ξ</span><span class="val" id="eth-price">—</span></span>
+      <span><span class="lbl">₿</span><span class="val" id="btc-price">—</span></span>
+      <span class="updated mono" id="header-clock">— UTC</span>
+    </div>
+  </div>
+</header>
+<div class="site-header-spacer"></div>
+
+<main class="container" style="padding-top:var(--s-4);padding-bottom:var(--s-8)">
+  <section class="ht-hero">
+    <div class="ht-eyebrow">🔥 WhaleWatch Pro · Hot</div>
+    <h1>Calls <span class="accent">leviérés</span> Hyperliquid.</h1>
+    <p>Sortis automatiquement des signaux Cockpit ≥ <strong id="ht-conf-thresh">70</strong> confidence. TP/SL ATR-based, levier capé selon la confidence.</p>
+  </section>
+
+  <!-- Sub-nav Pro -->
+  <nav class="pro-subnav" aria-label="Sections Pro">
+    <a href="/pro/hot"        class="pro-subnav-link is-active">🔥 Hot</a>
+    <a href="/pro/cockpit"    class="pro-subnav-link">🎯 Cockpit</a>
+    <a href="/pro/backtest"   class="pro-subnav-link">📊 Backtest</a>
+    <a href="/pro/watchlist"  class="pro-subnav-link">👁 Watchlist</a>
+    <a href="/pro/guide"      class="pro-subnav-link">📘 Guide Pro</a>
+  </nav>
+
+  <!-- DISCLAIMER OBLIGATOIRE — NON MASQUABLE -->
+  <div class="ht-disclaimer" role="alert" aria-live="polite">
+    <span class="ico">⚠️</span>
+    <div class="body">
+      <strong>Signaux algorithmiques à but informatif.</strong> Pas un conseil financier.
+      Le trading à effet de levier comporte un <strong>risque de perte totale</strong>.
+      Tu es seul·e responsable de tes décisions. Vérifie chaque call, sa fraîcheur et
+      la liquidité du perp avant d'exécuter.
+    </div>
+  </div>
+
+  <!-- Bandeau stale conditionnel -->
+  <div id="ht-stale-banner" class="ht-stale-banner" role="alert" aria-live="polite">
+    <span class="ico">⚠️</span>
+    <span><b>Données pas à jour.</b> Le worker n'a pas rafraîchi le cache depuis <span id="ht-stale-age">—</span>.</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="ht-toolbar">
+    <span class="ht-toolbar-label">Chain</span>
+    <select id="ht-chain" aria-label="Chain">
+      <option value="ethereum">Ethereum</option>
+      <option value="arbitrum">Arbitrum</option>
+      <option value="bnb">BNB Chain</option>
+    </select>
+    <span class="ht-toolbar-label" style="margin-left:var(--s-3)">Hyperliquid</span>
+    <span id="ht-hl-status" style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--muted-2);display:inline-flex;align-items:center;gap:6px">
+      <span id="ht-hl-dot" style="width:6px;height:6px;border-radius:50%;background:var(--muted-2)"></span>
+      <span id="ht-hl-text">vérification…</span>
+    </span>
+    <div class="ht-status" id="ht-status">
+      <span class="live-dot" style="width:8px;height:8px;border-radius:50%"></span>
+      <span id="ht-status-text">Chargement…</span>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="ht-metrics">
+    <div class="ht-metric"><div class="ht-metric-label">Calls actifs</div><div class="ht-metric-value" id="ht-m-count">—</div></div>
+    <div class="ht-metric"><div class="ht-metric-label">Conf. min.</div><div class="ht-metric-value" id="ht-m-conf">—</div></div>
+    <div class="ht-metric"><div class="ht-metric-label">ATR</div><div class="ht-metric-value" id="ht-m-atr">—</div></div>
+    <div class="ht-metric"><div class="ht-metric-label">Levier max</div><div class="ht-metric-value" id="ht-m-lev">—</div></div>
+  </div>
+
+  <!-- Cards grid -->
+  <div class="ht-cards" id="ht-cards"></div>
+</main>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">🐳</span>
+      <span class="brand-name">WHALEWATCH</span>
+      <span class="brand-sub">Multi-chain On-Chain Radar</span>
+    </a>
+    <nav class="nav">
+      <a href="/"            class="nav-link">Dashboard</a>
+      <a href="/pro/cockpit" class="nav-link">Pro</a>
+      <a href="/why"         class="nav-link">Why</a>
+      <a href="/guide"       class="nav-link">Guide</a>
+      <a href="/bot"         class="nav-link">Bot</a>
+      <a href="/methodology" class="nav-link">Méthode</a>
+    </nav>
+    <p class="site-footer-tag">Contenu éducatif — pas un conseil financier · DEX on-chain seulement · DYOR</p>
+  </div>
+</footer>
+
+<div id="toast-container" class="toast-stack"></div>
+
+<script>
+const HT_POLL_MS = 30000;
+const HT_CHAINS = ['ethereum','arbitrum','bnb'];
+
+function getCurrentChain() {
+  const stored = localStorage.getItem('ww_chain');
+  return (stored && HT_CHAINS.includes(stored)) ? stored : 'ethereum';
+}
+function setStatus(text, mode) {
+  const el = document.getElementById('ht-status');
+  const txt = document.getElementById('ht-status-text');
+  el.classList.remove('is-warming','is-error');
+  if (mode === 'warming') el.classList.add('is-warming');
+  if (mode === 'error')   el.classList.add('is-error');
+  txt.textContent = text;
+}
+
+function escapeHtml(s) { return String(s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+
+function renderCard(c) {
+  const dirCls = c.direction === 'LONG' ? 'long' : 'short';
+  const bandCls = c.direction === 'LONG' ? 'dir-long' : 'dir-short';
+  const expiredCls = c.expired ? 'is-expired' : '';
+  const divergentCls = c.perp_alignment === 'divergent' ? 'is-divergent' : '';
+  const perpBadge = {
+    aligned:   '<span class="ht-perp-badge aligned">⚡ HL aligned</span>',
+    divergent: '<span class="ht-perp-badge divergent">⚠ HL divergent</span>',
+    neutral:   '<span class="ht-perp-badge neutral">HL neutre</span>',
+  }[c.perp_alignment] || '';
+  const rr = (c.rr_tp1 != null) ? c.rr_tp1.toFixed(2) + 'x' : '—';
+  const age = (c.age_min != null) ? c.age_min.toFixed(1) + 'min' : '—';
+  return `
+    <div class="ht-card ${bandCls} ${expiredCls} ${divergentCls}">
+      <div class="ht-card-head">
+        <span class="ht-card-sym">${escapeHtml(c.hl_perp_symbol)}</span>
+        <span class="ht-card-sub">${escapeHtml(c.token)}</span>
+        <span class="ht-card-dir ${dirCls}">${c.direction}</span>
+        ${perpBadge}
+        <span class="ht-card-conf">${c.confidence}</span>
+      </div>
+      <div class="ht-levels">
+        <div class="ht-level entry"><span class="lbl">Entry</span><span class="val">${c.entry}</span></div>
+        <div class="ht-level tp"><span class="lbl">TP1</span><span class="val">${c.tp1}</span></div>
+        <div class="ht-level tp"><span class="lbl">TP2</span><span class="val">${c.tp2}</span></div>
+        <div class="ht-level sl"><span class="lbl">SL</span><span class="val">${c.sl}</span></div>
+      </div>
+      <div class="ht-meta">
+        <span>Levier <b class="lev">${c.leverage}x</b></span><span>·</span>
+        <span>R/R TP1 <b>${rr}</b></span><span>·</span>
+        <span>ATR <b>${c.atr}</b> (${c.atr_timeframe}×${c.atr_period})</span><span>·</span>
+        <span>${c.expired ? '<b style="color:var(--coral)">EXPIRÉ</b>' : 'âge <b>' + age + '</b>'}</span>
+      </div>
+      <div class="ht-actions">
+        <a class="ht-btn ht-btn--hl" href="${escapeHtml(c.trade_url)}" target="_blank" rel="noopener noreferrer">
+          ⇗ Trade ${escapeHtml(c.hl_perp_symbol)} sur HL
+        </a>
+        <button class="ht-btn ht-btn--copy" onclick='copyCall(${JSON.stringify(c.copy_text)})'>
+          📋 Copier
+        </button>
+      </div>
+    </div>`;
+}
+
+function copyCall(text) {
+  if (!navigator.clipboard) { showToast('Clipboard indispo', 'error'); return; }
+  navigator.clipboard.writeText(text).then(
+    () => showToast('Call copié', 'success'),
+    () => showToast('Copie échouée', 'error')
+  );
+}
+
+function showToast(msg, type, ms = 2400) {
+  const c = document.getElementById('toast-container');
+  if (!c) { console.log('[toast]', msg); return; }
+  const colors = { success:'#2ed4a8', warn:'#ffc657', error:'#ff6b87' };
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.cssText = `padding:10px 16px;border-radius:8px;background:rgba(2,14,28,.92);
+    border:1px solid ${colors[type]||'#3aa6ff'}55;color:${colors[type]||'#fff'};
+    font-size:13px;margin-bottom:8px;animation:slideIn .2s ease;`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(),200); }, ms);
+}
+
+function renderStaleBanner(data) {
+  const banner = document.getElementById('ht-stale-banner');
+  if (!data.is_stale) { banner.classList.remove('is-visible'); return; }
+  const ageSec = data.cache_age_seconds;
+  let ageText = ageSec == null ? 'le démarrage' :
+                ageSec < 60 ? Math.round(ageSec) + 's' :
+                Math.floor(ageSec/60) + 'min ' + Math.round(ageSec%60) + 's';
+  document.getElementById('ht-stale-age').textContent = ageText;
+  banner.classList.add('is-visible');
+}
+
+async function pollHlStatus() {
+  try {
+    const r = await fetch('/api/cockpit/hl-status');
+    const d = await r.json();
+    const dot = document.getElementById('ht-hl-dot');
+    const txt = document.getElementById('ht-hl-text');
+    if (d.connected) {
+      dot.style.background = 'var(--green)'; dot.style.boxShadow = '0 0 6px var(--green)';
+      txt.textContent = d.n_perps + ' perps';
+      txt.style.color = 'var(--green)';
+    } else {
+      dot.style.background = 'var(--coral)';
+      txt.textContent = 'indisponible';
+      txt.style.color = 'var(--coral)';
+    }
+  } catch {}
+}
+
+async function pollOnce() {
+  const chain = getCurrentChain();
+  try {
+    const r = await fetch(`/api/cockpit/hot-calls?chain=${chain}`);
+    if (!r.ok) { setStatus('Erreur API', 'error'); return; }
+    const data = await r.json();
+    const calls = data.hot_calls || [];
+    const conf = data.config || {};
+    document.getElementById('ht-m-count').textContent = calls.length;
+    document.getElementById('ht-m-conf').textContent = '≥ ' + (conf.min_confidence ?? '—');
+    document.getElementById('ht-conf-thresh').textContent = conf.min_confidence ?? 70;
+    document.getElementById('ht-m-atr').textContent = (conf.atr_timeframe ?? '—') + ' × ' + (conf.atr_period ?? '—');
+    document.getElementById('ht-m-lev').textContent = (conf.max_leverage ?? '—') + 'x';
+
+    renderStaleBanner(data);
+
+    if (data.status === 'warming_up') {
+      setStatus('Worker en chauffe', 'warming');
+    } else {
+      setStatus('Maj ' + new Date(data.generated_at).toLocaleTimeString('en-GB'), 'ok');
+    }
+
+    const container = document.getElementById('ht-cards');
+    if (!calls.length) {
+      container.innerHTML = `
+        <div class="ht-empty">
+          <div class="ht-empty-icon">🔥</div>
+          <div>Aucun call actif pour le moment.</div>
+          <div style="margin-top:6px;font-size:11px">Un call est émis dès qu'un signal Cockpit atteint <b>${conf.min_confidence ?? 70}</b> de confidence ET a un perp HL.</div>
+        </div>`;
+      return;
+    }
+    container.innerHTML = calls.map(renderCard).join('');
+  } catch (e) {
+    console.error('[hot] poll error', e);
+    setStatus('Erreur réseau', 'error');
+  }
+}
+
+function bootChainSelector() {
+  const sel = document.getElementById('ht-chain');
+  sel.value = getCurrentChain();
+  sel.addEventListener('change', () => {
+    localStorage.setItem('ww_chain', sel.value);
+    setStatus('Chargement…', 'warming');
+    pollOnce();
+  });
+}
+
+bootChainSelector();
+pollHlStatus();
+pollOnce();
+setInterval(pollOnce, HT_POLL_MS);
+setInterval(pollHlStatus, 60000);
+</script>
+<script src="/static/assets/app.js" defer></script>
+
+</body>
+</html>
