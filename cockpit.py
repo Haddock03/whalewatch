@@ -47,7 +47,7 @@ def _env_int(key, default):
 # - MIN_SMART_SCORE baissé 65→45 : 65 ne retenait que ~10% des wallets scorés
 #   (tier "Solid"). 45 retient ~40-50% (inclut "Avg"). Le filtre catégorie infra
 #   reste actif (MEV/CEX/Bridge toujours exclus dans select_smart_wallets).
-CONV_THRESHOLD       = _env_int("COCKPIT_CONV_THRESHOLD", 2)
+CONV_THRESHOLD       = _env_int("COCKPIT_CONV_THRESHOLD", 1)
 CONV_WINDOW_MIN      = _env_int("COCKPIT_CONV_WINDOW_MIN", 30)
 FEED_WINDOW_MIN      = _env_int("COCKPIT_FEED_WINDOW_MIN", 60)
 HALF_LIFE_MIN        = _env_float("COCKPIT_CONFIDENCE_HALF_LIFE_MIN", 20.0)
